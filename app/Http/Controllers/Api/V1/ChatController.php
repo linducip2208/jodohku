@@ -51,6 +51,26 @@ class ChatController extends Controller
         return response()->json(MessageResource::make($message->load(['sender', 'attachments'])), 201);
     }
 
+    public function upload(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('send', $conversation);
+        $request->validate([
+            'file' => ['required', 'file', 'max:51200'],
+            'body' => ['nullable', 'string', 'max:2000'],
+            'client_message_id' => ['nullable', 'string', 'max:64'],
+        ]);
+        try {
+            $message = $chat->sendAttachment(
+                $conversation, $request->user(), $request->file('file'),
+                $request->input('body'), $request->input('client_message_id')
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(MessageResource::make($message->load(['sender', 'attachments'])), 201);
+    }
+
     public function edit(Request $request, Message $message, ChatService $chat)
     {
         $this->authorize('update', $message);

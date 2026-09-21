@@ -41,6 +41,38 @@ class SettingsController extends Controller
         return response()->json(['message' => 'Password updated.']);
     }
 
+    public function privacy(Request $request)
+    {
+        $user = $request->user();
+        $privacy = \App\Models\ProfilePrivacy::firstOrCreate(['user_id' => $user->id]);
+        $privacy->update([
+            'show_online_status' => ! $request->boolean('hide_online'),
+            'online_visibility' => $request->boolean('hide_online') ? 'private' : 'public',
+            'is_incognito' => $request->boolean('incognito'),
+            'show_distance' => ! $request->boolean('hide_distance'),
+        ]);
+
+        return $request->wantsJson()
+            ? response()->json($privacy->fresh())
+            : back()->with('status', 'Preferensi privasi disimpan ✅');
+    }
+
+    public function notifications(Request $request)
+    {
+        $prefs = \App\Models\NotificationPreference::firstOrCreate(['user_id' => $request->user()->id]);
+        $prefs->update([
+            'email_matches' => $request->boolean('match'),
+            'push_matches' => $request->boolean('match'),
+            'email_messages' => $request->boolean('message'),
+            'push_messages' => $request->boolean('message'),
+            'push_likes' => $request->boolean('like'),
+        ]);
+
+        return $request->wantsJson()
+            ? response()->json($prefs->fresh())
+            : back()->with('status', 'Preferensi notifikasi disimpan ✅');
+    }
+
     public function destroy(Request $request)
     {
         $request->validate(['password' => ['required', 'current_password']]);

@@ -189,6 +189,65 @@ class ChatService
         );
     }
 
+    /**
+     * Store an uploaded chat file and send it as a message in one call.
+     * Voice notes arrive as audio/*, GIFs as image/gif — both first-class.
+     *
+     * @throws \InvalidArgumentException|\RuntimeException
+     */
+    public function sendAttachment(Conversation $conversation, User $sender, \Illuminate\Http\UploadedFile $file, ?string $body = null, ?string $clientMessageId = null): Message
+    {
+        if (! $file->isValid()) {
+            throw new \InvalidArgumentException('Upload failed.');
+        }
+        $mime = (string) $file->getMimeType();
+        $size = (int) $file->getSize();
+        $type = match (true) {
+            str_starts_with($mime, 'image/') => 'image',
+            str_starts_with($mime, 'video/') => 'video',
+            str_starts_with($mime, 'audio/') => 'audio',
+            default => 'file',
+        };
+        $maxBytes = match ($type) {
+            'video' => 50 * 1024 * 1024,
+            'audio' => 25 * 1024 * 1024,
+            'image' => 10 * 1024 * 1024,
+            default => 10 * 1024 * 1024,
+        };
+        $allowed = [
+            'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+            'video/mp4', 'video/quicktime', 'video/webm',
+            'audio/mpeg', 'audio/ogg', 'audio/mp4', 'audio/wav', 'audio/webm',
+            'application/pdf',
+        ];
+        if ($size > $maxBytes || ! in_array($mime, $allowed, true)) {
+            throw new \InvalidArgumentException('File type or size not allowed.');
+        }
+        // Extension must agree with real content (no spoofed executables).
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if (in_array($ext, ['php', 'phtml', 'phar', 'exe', 'sh', 'bat', 'js', 'html', 'htm', 'svg'], true)) {
+            throw new \InvalidArgumentException('File type not allowed.');
+        }
+
+        $path = $file->store("chat-attachments/{$conversation->id}", 'public');
+        $meta = [
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime_type' => $mime,
+            'file_size' => $size,
+        ];
+        if ($type === 'image' && ($dims = @getimagesize($file->getRealPath()))) {
+            $meta['width'] = $dims[0];
+            $meta['height'] = $dims[1];
+        }
+
+        return $this->sendMessage($conversation, $sender, [
+            'body' => $body ?? '',
+            'type' => $type,
+            'attachments' => [$meta],
+        ], $clientMessageId);
+    }
+
     public function react(Message $message, User $user, string $emoji): MessageReaction
     {
         if (! $message->conversation->involves((int) $user->id)) {

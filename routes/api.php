@@ -69,6 +69,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/conversations/{conversation}', [ChatController::class, 'show']);
         Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
         Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1,chat-send');
+        Route::post('/conversations/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);

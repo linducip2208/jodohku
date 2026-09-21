@@ -182,17 +182,21 @@ Route::middleware('auth')->group(function () {
         return view('member.chat.show', ['conversation' => $conversation]);
     })->name('member.chat.show');
     Route::post('/chat/{conversation}/pin', function (Conversation $conversation, \App\Services\ChatService $chat) {
-        $chat->setting($conversation, Auth::user(), 'pinned', true);
+        abort_unless($conversation->involves(Auth::id()), 403);
+        $chat->setting($conversation, Auth::user(), 'is_pinned', true);
         return back();
     });
     Route::post('/chat/{conversation}/mute', function (Conversation $conversation, \App\Services\ChatService $chat) {
-        $chat->setting($conversation, Auth::user(), 'muted', true);
+        abort_unless($conversation->involves(Auth::id()), 403);
+        $chat->setting($conversation, Auth::user(), 'is_muted', true);
         return back();
     });
     Route::post('/chat/{conversation}/archive', function (Conversation $conversation, \App\Services\ChatService $chat) {
-        $chat->setting($conversation, Auth::user(), 'archived', true);
+        abort_unless($conversation->involves(Auth::id()), 403);
+        $chat->setting($conversation, Auth::user(), 'is_archived', true);
         return back();
     });
+    Route::post('/chat/{conversation}/attachments', [\App\Http\Controllers\Member\MessageController::class, 'upload'])->name('member.chat.attachments');
     Route::post('/chat/{conversation}/unmatch', function (Conversation $conversation) {
         try { $conversation->update(['is_blocked' => true]); } catch (\Throwable) {}
         return redirect('/chat')->with('status', 'Unmatch berhasil.');
@@ -237,8 +241,8 @@ Route::middleware('auth')->group(function () {
         try { $u->profile()->updateOrCreate([], $r->only(['bio', 'occupation', 'education'])); } catch (\Throwable) {}
         return back()->with('status', 'Profil disimpan ✅');
     });
-    Route::post('/settings/privacy', fn () => back()->with('status', 'Preferensi privasi disimpan ✅'));
-    Route::post('/settings/notifications', fn () => back()->with('status', 'Preferensi notifikasi disimpan ✅'));
+    Route::post('/settings/privacy', [\App\Http\Controllers\Member\SettingsController::class, 'privacy'])->name('settings.privacy');
+    Route::post('/settings/notifications', [\App\Http\Controllers\Member\SettingsController::class, 'notifications'])->name('settings.notifications');
     Route::post('/settings/2fa/enable', [\App\Http\Controllers\Member\SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
     Route::post('/settings/2fa/disable', [\App\Http\Controllers\Member\SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
 

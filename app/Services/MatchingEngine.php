@@ -396,6 +396,11 @@ class MatchingEngine
         if ($blockedIds) {
             $query->whereNotIn('id', $blockedIds);
         }
+        // Incognito: hidden unless they already liked the viewer.
+        $query->where(function ($q) use ($u) {
+            $q->whereDoesntHave('profilePrivacy', fn ($p) => $p->where('is_incognito', true))
+                ->orWhereIn('id', \App\Models\Like::where('liked_id', $u->id)->select('liker_id'));
+        });
         if (! empty($filters['exclude_ids'])) {
             $query->whereNotIn('id', (array) $filters['exclude_ids']);
         }

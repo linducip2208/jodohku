@@ -65,6 +65,12 @@ class DiscoveryService
             $query->whereNotIn('users.id', $excluded);
         }
 
+        // Incognito: hidden from discovery unless they already liked the viewer.
+        $query->where(function ($q) use ($user) {
+            $q->whereDoesntHave('profilePrivacy', fn ($p) => $p->where('is_incognito', true))
+                ->orWhereIn('users.id', Like::where('liked_id', $user->id)->select('liker_id'));
+        });
+
         // Base ordering by sort mode (pre-score); final compatibility sort applied in memory
         match ($sort) {
             'distance' => $query->orderBy('last_active_at', 'desc'),
