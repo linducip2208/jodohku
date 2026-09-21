@@ -42,6 +42,8 @@ class SubscriptionController extends Controller
             $result = $payments->checkout($request->user(), array_filter($order));
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
         }
 
         return response()->json([

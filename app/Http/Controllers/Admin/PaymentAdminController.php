@@ -23,12 +23,18 @@ class PaymentAdminController extends Controller
         return response()->json($payment);
     }
 
-    public function refund(Request $request, Payment $payment, AuditService $audit)
+    public function refund(Request $request, Payment $payment, \App\Services\PaymentService $payments)
     {
         $this->authorize('refund', $payment);
-        $payment->update(['status' => 'refunded']);
-        $audit->log('admin.payment.refunded', $request->user(), $payment);
+        $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+        try {
+            $result = $payments->refund($payment, $request->user(), $request->input('reason'));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 502);
+        }
 
-        return response()->json(['message' => 'Refunded.']);
+        return response()->json($result);
     }
 }

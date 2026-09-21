@@ -78,13 +78,13 @@ class VirtualMemberService
 
         // Daily cap per real user
         $todayCount = VirtualConversation::where('real_user_id', $realUser->id)->whereDate('created_at', today())->count();
-        if ($todayCount >= 5) {
+        if ($todayCount >= (int) config('jodohku.virtual.max_daily_messages', 5)) {
             return null;
         }
 
-        // Active hours 08:00–22:00 local
+        // Active hours (configurable, default 08:00–22:00 local)
         $hour = (int) now()->format('H');
-        if ($hour < 8 || $hour > 22) {
+        if ($hour < (int) config('jodohku.virtual.active_from_hour', 8) || $hour > (int) config('jodohku.virtual.active_until_hour', 22)) {
             return null;
         }
 

@@ -14,7 +14,9 @@ class PhoneVerificationController extends Controller
         $request->validate(['phone' => ['required', 'string', 'max:30']]);
         $key = 'phone-otp-send:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
-            return response()->json(['message' => 'Too many attempts.'], 429);
+            return $request->wantsJson()
+                ? response()->json(['message' => 'Too many attempts.'], 429)
+                : back()->withErrors(['phone' => 'Terlalu sering. Coba lagi 5 menit.']);
         }
         RateLimiter::hit($key, 300);
 
@@ -22,7 +24,9 @@ class PhoneVerificationController extends Controller
         Cache::put('phone-otp:'.$request->input('phone'), $otp, now()->addMinutes(10));
 
         // SMS gateway integration point: dispatch via Notification if configured.
-        return response()->json(['message' => 'OTP sent.']);
+        return $request->wantsJson()
+            ? response()->json(['message' => 'OTP sent.'])
+            : back()->with('status', 'Kode OTP dikirim. Berlaku 10 menit.');
     }
 
     public function verify(Request $request)
@@ -33,11 +37,15 @@ class PhoneVerificationController extends Controller
         ]);
         $expected = Cache::get('phone-otp:'.$request->input('phone'));
         if (! $expected || ! hash_equals((string) $expected, (string) $request->input('otp'))) {
-            return response()->json(['message' => 'Invalid OTP.'], 422);
+            return $request->wantsJson()
+                ? response()->json(['message' => 'Invalid OTP.'], 422)
+                : back()->withErrors(['code' => 'Kode salah atau kedaluwarsa.']);
         }
         Cache::forget('phone-otp:'.$request->input('phone'));
         $request->user()->forceFill(['phone' => $request->input('phone'), 'phone_verified_at' => now()])->save();
 
-        return response()->json(['message' => 'Phone verified.']);
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Phone verified.'])
+            : redirect('/home')->with('status', 'Nomor terverifikasi ✅');
     }
 }

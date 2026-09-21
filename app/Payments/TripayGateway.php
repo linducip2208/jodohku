@@ -31,6 +31,9 @@ class TripayGateway extends BaseGateway
             'gateway_transaction_id' => $ref ?? $payment->gateway_transaction_id,
             'gateway_response' => array_merge($payment->gateway_response ?? [], ['create' => $data]),
         ]);
+        if (empty($data['data']['checkout_url'])) {
+            throw new \RuntimeException('Tripay unavailable: no checkout URL returned.');
+        }
 
         return ['gateway' => 'tripay', 'reference' => $ref, 'checkout_url' => $data['data']['checkout_url'] ?? null, 'raw' => $data];
     }
@@ -48,8 +51,8 @@ class TripayGateway extends BaseGateway
     {
         $signature = $headers['x-signature'] ?? $headers['X-Signature'] ?? request()->header('x-signature', '');
         $expected = hash_hmac('sha256', json_encode($payload), (string) $this->cfg('private_key', ''));
-        if ($signature && ! hash_equals($expected, (string) $signature)) {
-            throw new \RuntimeException('Invalid Tripay signature.');
+        if ($signature === '' || ! hash_equals($expected, (string) $signature)) {
+            throw new \RuntimeException('Invalid or missing Tripay signature.');
         }
         $status = strtolower((string) ($payload['status'] ?? ''));
 

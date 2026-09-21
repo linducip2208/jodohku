@@ -21,9 +21,12 @@ class CouponService
         if (! $coupon) {
             throw new \InvalidArgumentException('Coupon not found.');
         }
-        $discount = $coupon->quoteFor($user, $subtotal);
+        // Re-fetch with row lock so concurrent checkouts serialize on the
+        // coupon (usage_limit / per_user_limit enforced; caller must be in txn).
+        $locked = Coupon::whereKey($coupon->id)->lockForUpdate()->first();
+        $discount = ($locked ?? $coupon)->quoteFor($user, $subtotal);
 
-        return ['coupon' => $coupon, 'discount' => $discount];
+        return ['coupon' => $locked ?? $coupon, 'discount' => $discount];
     }
 
     public function recordRedemption(Coupon $coupon, User $user, int $paymentId, float $discount): void

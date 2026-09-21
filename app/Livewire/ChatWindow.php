@@ -94,7 +94,7 @@ class ChatWindow extends Component
         if ($conv && $me) {
             try {
                 $chat->markRead($conv, $me);
-                $messages = Message::where('conversation_id', $conv->id)->with(['sender', 'reactions', 'replyTo'])->latest('id')->take($this->perPage)->get()->reverse()->values();
+                $messages = Message::where('conversation_id', $conv->id)->with(['sender', 'reactions', 'replyTo', 'attachments', 'reads'])->latest('id')->take($this->perPage)->get()->reverse()->values();
                 $other = $conv->otherUser($me->id);
             } catch (\Throwable) {}
         }

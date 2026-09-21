@@ -18,7 +18,10 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/admin/overview` | sanctum+`admin` | `users_total`, `reports_pending` (403 untuk member) |
 | GET | `/admin/gateways` | sanctum+`can:admin` | daftar gateway; sekret dimask `***encrypted***` |
 | POST | `/admin/gateways/{code}` | sanctum+`can:admin` | simpan setting; sekret dienkripsi `Crypt` |
-| POST | `/webhooks/{gateway}` | publik (HMAC) | `ipaymu/xendit/midtrans/tripay`; idempoten via `event_id` |
+| POST | `/conversations/{conversation}/messages` | sanctum | kirim pesan (`client_message_id` idempoten) |
+| POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload) |
+| POST | `/chat-requests/{user}` | sanctum | kirim permintaan chat (idempoten pending, cap harian) |
+| POST | `/webhooks/{gateway}` | publik (HMAC, fail-closed) | `ipaymu/xendit/midtrans/tripay`; idempoten via `event_id`; tanpa signature → 400 |
 | POST | `/admin/reports/{report}/resolve` | staff `moderator` | selesaikan laporan + audit log |
 | GET | `/blog`, `/blog/{slug}` | sanctum | artikel published (view_count auto-increment) |
 | GET | `/forums`, `/forums/{slug}` | sanctum | daftar forum & thread |

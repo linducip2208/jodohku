@@ -34,6 +34,9 @@ class IpaymuGateway extends BaseGateway
 
         $data = $res->json() ?? [];
         $payment->update(['gateway_response' => array_merge($payment->gateway_response ?? [], ['create' => $data])]);
+        if (empty($data['Data']['Url'])) {
+            throw new \RuntimeException('iPaymu unavailable: no checkout URL returned.');
+        }
 
         return [
             'gateway' => 'ipaymu',
@@ -56,8 +59,8 @@ class IpaymuGateway extends BaseGateway
     {
         $signature = $headers['signature'] ?? $headers['Signature'] ?? '';
         $expected = hash_hmac('sha256', json_encode($payload), (string) $this->cfg('api_key', ''));
-        if ($signature && ! hash_equals($expected, (string) $signature)) {
-            throw new \RuntimeException('Invalid iPaymu signature.');
+        if ($signature === '' || ! hash_equals($expected, (string) $signature)) {
+            throw new \RuntimeException('Invalid or missing iPaymu signature.');
         }
         $reference = $payload['reference_id'] ?? $payload['referenceId'] ?? null;
         $status = strtolower((string) ($payload['status'] ?? $payload['status_code'] ?? ''));

@@ -27,6 +27,9 @@ class MidtransGateway extends BaseGateway
             $data = $snap->json() ?? [];
         }
         $payment->update(['gateway_response' => array_merge($payment->gateway_response ?? [], ['create' => $data])]);
+        if (empty($data['payment_url']) && empty($data['redirect_url']) && empty($data['token'])) {
+            throw new \RuntimeException('Midtrans unavailable: no checkout URL returned.');
+        }
 
         return ['gateway' => 'midtrans', 'reference' => $payment->invoice_number, 'checkout_url' => $data['payment_url'] ?? $data['redirect_url'] ?? null, 'raw' => $data];
     }
@@ -49,8 +52,8 @@ class MidtransGateway extends BaseGateway
         $serverKey = (string) $this->cfg('server_key', '');
         $expected = hash('sha512', $orderId.$statusCode.$gross.$serverKey);
         $signature = $payload['signature_key'] ?? '';
-        if ($signature && ! hash_equals($expected, (string) $signature)) {
-            throw new \RuntimeException('Invalid Midtrans signature.');
+        if ($signature === '' || ! hash_equals($expected, (string) $signature)) {
+            throw new \RuntimeException('Invalid or missing Midtrans signature.');
         }
         $trx = strtolower((string) ($payload['transaction_status'] ?? ''));
         $status = in_array($trx, ['capture', 'settlement'], true) ? 'paid' : $trx;
@@ -71,7 +74,7 @@ class MidtransGateway extends BaseGateway
             ->post(rtrim((string) $this->cfg('base_url'), '/').'/v2/'.$payment->invoice_number.'/refund', [
                 'amount' => $amount ?? (float) $payment->total_amount,
                 'reason' => 'customer_request',
-            ]);
+            ])->throw();
 
         return ['gateway' => 'midtrans', 'status' => 'refunded', 'raw' => $res->json()];
     }

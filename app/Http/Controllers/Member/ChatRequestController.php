@@ -30,10 +30,20 @@ class ChatRequestController extends Controller
         $request->validate(['message' => ['nullable', 'string', 'max:500']]);
         $me = $request->user();
 
+        $limit = (int) config('chat.rate_limits.requests_per_day', 30);
+        $sentToday = ChatRequest::where('sender_id', $me->id)->whereDate('created_at', today())->count();
+        if ($sentToday >= $limit) {
+            return $request->wantsJson()
+                ? response()->json(['message' => 'Batas permintaan chat harian tercapai.'], 429)
+                : back()->withErrors(['chat_request' => 'Batas permintaan chat harian tercapai.']);
+        }
+
         $existing = ChatRequest::where('sender_id', $me->id)->where('receiver_id', $user->id)
             ->where('status', 'pending')->first();
         if ($existing) {
-            return response()->json($existing);
+            return $request->wantsJson()
+                ? response()->json($existing)
+                : back()->with('status', 'Permintaan chat sudah terkirim.');
         }
 
         $chatRequest = DB::transaction(function () use ($me, $user, $request) {
@@ -49,7 +59,9 @@ class ChatRequestController extends Controller
             return $r;
         });
 
-        return response()->json($chatRequest, 201);
+        return $request->wantsJson()
+            ? response()->json($chatRequest, 201)
+            : back()->with('status', 'Permintaan chat terkirim ✅');
     }
 
     public function act(ChatRequestActionRequest $request, ChatRequest $chatRequest, ChatService $chat)

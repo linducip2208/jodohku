@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
 // Role granularity: moderator handles trust & safety content but NEVER money,
 // gateway secrets, or system settings. Operator handles live chat/virtual only.
 // Admins keep full access via the moderator/operator gates; superadmin owns secrets.
-Route::prefix('admin')->name('admin.')->middleware(['web', 'auth'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.account'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware('can:staff')->name('dashboard');
 
     // ---- Trust & safety: moderator+ ----

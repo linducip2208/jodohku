@@ -14,6 +14,6 @@ abstract class BaseGateway implements PaymentGatewayInterface
 
     protected function http()
     {
-        return Http::timeout(30)->acceptJson();
+        return Http::timeout(30)->retry(2, 100)->acceptJson();
     }
 }

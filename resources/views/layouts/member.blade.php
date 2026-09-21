@@ -36,16 +36,16 @@ try {
 <div class="jk-app">
 <aside class="jk-sidebar" style="display:block" x-show="true">
 <div class="jk-logo" style="padding:4px 12px 16px">Jodoh<span style="background:linear-gradient(135deg,#f43f5e,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent">ku</span></div>
-<nav>
-<a class="jk-side-link {{ request()->is('home') ? 'active' : '' }}" href="/home"><span>🏠</span> Home</a>
-<a class="jk-side-link {{ request()->is('discover*') ? 'active' : '' }}" href="/discover"><span>🔍</span> Discover</a>
-<a class="jk-side-link {{ request()->is('matches*') ? 'active' : '' }}" href="/matches"><span>💘</span> Matches</a>
-<a class="jk-side-link {{ request()->is('chat*') ? 'active' : '' }}" href="/chat"><span>💬</span> Chat @if($unreadChats > 0)<span class="jk-dot" style="position:static">{{ $unreadChats > 9 ? '9+' : $unreadChats }}</span>@endif</a>
-<a class="jk-side-link {{ request()->is('likes*') ? 'active' : '' }}" href="/likes"><span>❤️</span> Likes</a>
-<a class="jk-side-link {{ request()->is('visitors*') ? 'active' : '' }}" href="/visitors"><span>👀</span> Visitors</a>
-<a class="jk-side-link {{ request()->is('events*') ? 'active' : '' }}" href="/events"><span>🎉</span> Events</a>
-<a class="jk-side-link {{ request()->is('premium*') ? 'active' : '' }}" href="/premium"><span>⭐</span> Premium</a>
-<a class="jk-side-link {{ request()->is('settings*') ? 'active' : '' }}" href="/settings"><span>⚙️</span> Settings</a>
+<nav aria-label="Navigasi desktop">
+<a class="jk-side-link {{ request()->is('home') ? 'active' : '' }}" href="/home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg> Home</a>
+<a class="jk-side-link {{ request()->is('discover*') ? 'active' : '' }}" href="/discover"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> Discover</a>
+<a class="jk-side-link {{ request()->is('matches*') ? 'active' : '' }}" href="/matches"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7.5-4.7-9.5-9C1 8.5 3 5 6.5 5c2 0 3.5 1 4.5 2.5C12 6 13.5 5 15.5 5 19 5 21 8.5 20.5 12c-2 4.3-8.5 9-8.5 9z"/></svg> Matches</a>
+<a class="jk-side-link {{ request()->is('chat*') ? 'active' : '' }}" href="/chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg> Chat @if($unreadChats > 0)<span class="jk-dot" style="position:static">{{ $unreadChats > 9 ? '9+' : $unreadChats }}</span>@endif</a>
+<a class="jk-side-link {{ request()->is('likes*') ? 'active' : '' }}" href="/likes"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.7-9.5-9C1 8.5 3 5 6.5 5c2 0 3.5 1 4.5 2.5C12 6 13.5 5 15.5 5 19 5 21 8.5 20.5 12c-2 4.3-8.5 9-8.5 9z"/></svg> Likes</a>
+<a class="jk-side-link {{ request()->is('visitors*') ? 'active' : '' }}" href="/visitors"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg> Visitors</a>
+<a class="jk-side-link {{ request()->is('events*') ? 'active' : '' }}" href="/events"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg> Events</a>
+<a class="jk-side-link {{ request()->is('premium*') ? 'active' : '' }}" href="/premium"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg> Premium</a>
+<a class="jk-side-link {{ request()->is('settings*') ? 'active' : '' }}" href="/settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg> Settings</a>
 </nav>
 <div style="margin-top:16px;padding:12px">@livewire('notification-bell')</div>
 </aside>
@@ -64,12 +64,12 @@ try {
 <div class="jk-container">@yield('content')</div>
 </div>
 </div>
-<nav class="jk-bottomnav">
-<a class="jk-navlink {{ request()->is('home') ? 'active' : '' }}" href="/home"><span class="ico">🏠</span>Home</a>
-<a class="jk-navlink {{ request()->is('discover*') ? 'active' : '' }}" href="/discover"><span class="ico">🔍</span>Discover</a>
-<a class="jk-navlink {{ request()->is('matches*') ? 'active' : '' }}" href="/matches"><span class="ico">💘</span>Matches</a>
-<a class="jk-navlink {{ request()->is('chat*') ? 'active' : '' }}" href="/chat"><span class="ico">💬</span>Chat @if($unreadChats > 0)<span class="jk-dot">{{ $unreadChats > 9 ? '9+' : $unreadChats }}</span>@endif</a>
-<a class="jk-navlink {{ request()->is('settings*') || request()->is('profile*') ? 'active' : '' }}" href="/settings"><span class="ico">👤</span>Profile</a>
+<nav class="jk-bottomnav" aria-label="Navigasi utama">
+<a class="jk-navlink {{ request()->is('home') ? 'active' : '' }}" href="/home"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+<a class="jk-navlink {{ request()->is('discover*') ? 'active' : '' }}" href="/discover"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Discover</a>
+<a class="jk-navlink {{ request()->is('matches*') ? 'active' : '' }}" href="/matches"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7.5-4.7-9.5-9C1 8.5 3 5 6.5 5c2 0 3.5 1 4.5 2.5C12 6 13.5 5 15.5 5 19 5 21 8.5 20.5 12c-2 4.3-8.5 9-8.5 9z"/></svg>Matches</a>
+<a class="jk-navlink {{ request()->is('chat*') ? 'active' : '' }}" href="/chat"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>Chat @if($unreadChats > 0)<span class="jk-dot">{{ $unreadChats > 9 ? '9+' : $unreadChats }}</span>@endif</a>
+<a class="jk-navlink {{ request()->is('settings*') || request()->is('profile*') ? 'active' : '' }}" href="/settings"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>Profile</a>
 </nav>
 @livewireScripts
 <div x-data="{ show:@json(session('status') ? true : false) }" x-show="show" x-init="setTimeout(() => show = false, 4000)" class="jk-toast" style="display:none" x-transition>{{ session('status') }}</div>

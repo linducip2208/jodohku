@@ -53,6 +53,11 @@ class ProfilePhoto extends Model
 
     public function url(): string
     {
-        return asset('storage/'.$this->path);
+        $path = (string) $this->path;
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return asset('storage/'.ltrim($path, '/'));
     }
 }

@@ -20,3 +20,14 @@
 - `fulfill`: `payments.status=paid`, aktifkan subscription (`SubscriptionService::activate`), tambah kredit (`CreditService::record` purchase), audit + event `PaymentPaid`.
 
 Replay `event_id` sama → satu aktivasi (diuji di `PaymentWebhookPaidActivatesSubscriptionTest`).
+
+**Fail-closed**: webhook tanpa signature/token yang valid DITOLAK (400) — tidak ada lagi jalur tanpa verifikasi. Xendit mewajibkan `XENDIT_WEBHOOK_TOKEN` terkonfigurasi.
+
+**Retry/timeout**: HTTP gateway `timeout(30)` + `retry(2, 100ms)` di `BaseGateway`; refund driver `->throw()` agar kegagalan membatalkan reversal (uang & barang tak pernah divergen).
+
+## Refund (`PaymentService::refund`, admin `POST /admin/payments/{payment}/refund`)
+
+1. Hanya status `paid` (sudah `refunded` → no-op idempoten; lainnya → 422).
+2. Gateway `refund()` dulu — gagal → abort, entitlement utuh.
+3. Cabut subscription (`subscription_id` → cancel immediate), clawback kredit maksimal sebesar saldo (tak pernah negatif; shortfall di-audit).
+4. Status `refunded` + `refunded_at`, audit lengkap. Diuji di `RefundTest`.

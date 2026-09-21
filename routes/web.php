@@ -52,6 +52,10 @@ Route::middleware('guest')->group(function () {
             return back()->withErrors(['email' => 'Email atau password salah.'])->withInput();
         }
         $user = Auth::user();
+        if ($reason = $user->loginBlockedReason()) {
+            Auth::logout();
+            return back()->withErrors(['email' => $reason])->withInput();
+        }
         if ($user->two_factor_enabled) {
             try { app(\App\Services\TwoFactorService::class)->sendChallenge($user); }
             catch (\RuntimeException) {}
@@ -85,29 +89,18 @@ Route::middleware('guest')->group(function () {
         return redirect('/home');
     })->name('register.store');
 
-    Route::get('/forgot-password', fn () => view('auth.forgot-password'))->name('password.request');
-    Route::post('/forgot-password', function (Request $r) {
-        $r->validate(['email' => 'required|email']);
-        return back()->with('status', 'Jika email terdaftar, link reset telah dikirim. Cek inbox/spam.');
-    })->name('password.email');
-    Route::get('/reset-password/{token}', fn (string $token) => view('auth.reset-password', ['token' => $token]))->name('password.reset');
-    Route::post('/reset-password', function (Request $r) {
-        $data = $r->validate(['email' => 'required|email', 'password' => 'required|min:8|confirmed', 'token' => 'required']);
-        $user = User::where('email', $data['email'])->first();
-        if ($user) { $user->update(['password' => Hash::make($data['password'])]); }
-        return redirect()->route('login')->with('status', 'Password diperbarui. Silakan masuk.');
-    })->name('password.update');
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\PasswordResetController::class, 'send'])->middleware('throttle:3,1,web-password')->name('password.email');
+    Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\PasswordResetController::class, 'reset'])->name('password.reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Auth\PasswordResetController::class, 'update'])->name('password.update');
 });
 
 Route::get('/verify-email', fn () => view('auth.verify-email'))->name('verification.notice');
-Route::post('/verify-email/send', fn () => back()->with('status', 'Link verifikasi dikirim ulang.'))->name('verification.send');
+Route::post('/verify-email/send', [\App\Http\Controllers\Auth\VerificationController::class, 'resend'])->middleware('throttle:3,1,email-verify')->name('verification.send');
+Route::get('/verify-email/{id}/{hash}', [\App\Http\Controllers\Auth\VerificationController::class, 'verify'])->middleware(['signed', 'throttle:10,1,email-verify-click'])->name('verification.verify');
 Route::get('/phone-verify', fn () => view('auth.phone-verify'))->name('phone.verify');
-Route::post('/phone-verify/send', fn () => back()->with('status', 'Kode OTP dikirim ulang via SMS/WhatsApp.'))->name('phone.send');
-Route::post('/phone-verify', function (Request $r) {
-    $r->validate(['code' => 'required|string|max:6']);
-    if (Auth::check()) { try { Auth::user()->update(['phone_verified_at' => now()]); } catch (\Throwable) {} }
-    return redirect('/home');
-});
+Route::post('/phone-verify/send', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'send'])->middleware('throttle:5,1,phone-otp')->name('phone.send');
+Route::post('/phone-verify', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'verify'])->name('phone.verify.store');
 Route::post('/logout', function (Request $r) {
     Auth::logout(); $r->session()->invalidate(); $r->session()->regenerateToken();
     return redirect('/');
@@ -143,7 +136,7 @@ Route::middleware('guest')->group(function () {
 });
 
 /* ---------- Member ---------- */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/home', fn () => view('member.home'))->name('member.home');
     Route::get('/discover', fn () => view('member.discover'))->name('member.discover');
     Route::get('/profile/edit', function () {
@@ -197,6 +190,7 @@ Route::middleware('auth')->group(function () {
         return back();
     });
     Route::post('/chat/{conversation}/attachments', [\App\Http\Controllers\Member\MessageController::class, 'upload'])->name('member.chat.attachments');
+    Route::post('/chat-requests/{user}', [\App\Http\Controllers\Member\ChatRequestController::class, 'store'])->name('member.chat-requests.store');
     Route::post('/chat/{conversation}/unmatch', function (Conversation $conversation) {
         try { $conversation->update(['is_blocked' => true]); } catch (\Throwable) {}
         return redirect('/chat')->with('status', 'Unmatch berhasil.');
@@ -298,7 +292,7 @@ Route::middleware('auth')->group(function () {
 });
 
 /* ---------- Admin HTML views (role-gated mirrors of admin.php) ---------- */
-Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'active.account'])->group(function () {
     Route::middleware('can:moderator')->group(function () {
         foreach (['profiles' => 'admin.profiles', 'photos' => 'admin.photos', 'verification' => 'admin.verification', 'reports' => 'admin.reports', 'blocks' => 'admin.blocks'] as $uri => $view) {
             Route::get('/' . $uri, fn () => view($view))->name(str_replace('.', '-', $uri));

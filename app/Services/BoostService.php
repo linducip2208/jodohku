@@ -38,9 +38,14 @@ class BoostService
 
     public function expireDue(int $batch = 200): int
     {
-        return Boost::where('status', BoostStatus::Active->value)
-            ->where('ends_at', '<=', now())->limit($batch)
-            ->update(['status' => BoostStatus::Expired->value]);
+        // Chunk by ids instead of UPDATE..LIMIT (SQLite-incompatible).
+        $ids = Boost::where('status', BoostStatus::Active->value)
+            ->where('ends_at', '<=', now())->limit($batch)->pluck('id');
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return Boost::whereIn('id', $ids)->update(['status' => BoostStatus::Expired->value]);
     }
 
     public function isLive(User $user): bool

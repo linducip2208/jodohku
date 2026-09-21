@@ -19,7 +19,7 @@ class Payment extends Model
         'ulid', 'user_id', 'subscription_id', 'payment_gateway_id', 'gateway',
         'gateway_transaction_id', 'invoice_number', 'amount', 'tax_amount',
         'discount_amount', 'total_amount', 'currency', 'status',
-        'gateway_response', 'paid_at', 'expires_at',
+        'gateway_response', 'paid_at', 'expires_at', 'refunded_at',
     ];
 
     protected function casts(): array
@@ -33,6 +33,7 @@ class Payment extends Model
             'gateway_response' => 'array',
             'paid_at' => 'datetime',
             'expires_at' => 'datetime',
+            'refunded_at' => 'datetime',
         ];
     }
 

@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,7 +21,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
@@ -326,6 +327,19 @@ class User extends Authenticatable
         return $this->status === UserStatus::Active && ! $this->trashed();
     }
 
+    /** Human-readable login block reason, or null when login is allowed. */
+    public function loginBlockedReason(): ?string
+    {
+        return match ($this->status) {
+            UserStatus::Active, UserStatus::PendingVerification => null,
+            UserStatus::Suspended => 'Akun ditangguhkan sementara. Hubungi dukungan.',
+            UserStatus::Banned => 'Akun diblokir permanen. Hubungi dukungan untuk banding.',
+            UserStatus::Inactive => 'Akun nonaktif. Hubungi dukungan untuk mengaktifkan kembali.',
+            UserStatus::Deleted => 'Akun telah dihapus.',
+            default => 'Akun tidak dapat digunakan.',
+        };
+    }
+
     public function isPremium(): bool
     {
         if ($this->is_premium) {
@@ -356,5 +370,25 @@ class User extends Authenticatable
     public function displayName(): string
     {
         return $this->display_name ?: $this->name;
+    }
+
+    /** Public URL for avatar (or first photo fallback). Null when none. */
+    public function avatarUrl(): ?string
+    {
+        $path = $this->avatar_path;
+        if (! $path) {
+            $photo = $this->relationLoaded('photos')
+                ? $this->photos->first()
+                : $this->photos()->ordered()->first();
+            $path = $photo?->path;
+        }
+        if (! $path) {
+            return null;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return asset('storage/'.ltrim($path, '/'));
     }
 }

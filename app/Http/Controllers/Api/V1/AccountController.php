@@ -60,6 +60,8 @@ class AccountController extends Controller
             ]));
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
         }
 
         return response()->json(['payment_id' => $result['payment']->id, 'gateway' => $result['gateway']], 201);

@@ -22,7 +22,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1,auth-register');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,auth-login');
         Route::post('/2fa/verify', [AuthController::class, 'verify2fa'])->middleware('throttle:10,1,auth-2fa');
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'active.account'])->group(function () {
             Route::post('/logout', [AuthController::class, 'logout']);
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/2fa/enable', [SettingsController::class, 'enable2fa']);
@@ -36,7 +36,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->middleware('throttle:60,1,webhooks')
         ->name('webhooks.handle');
 
-    Route::middleware(['auth:sanctum', 'throttle:120,1,api'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active.account', 'throttle:120,1,api'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
 
@@ -75,6 +75,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);
 
         Route::get('/chat-requests', [ChatController::class, 'requests']);
+        Route::post('/chat-requests/{user}', [\App\Http\Controllers\Member\ChatRequestController::class, 'store'])->middleware('throttle:30,1,chat-requests');
         Route::post('/chat-requests/{chatRequest}/action', [ChatController::class, 'requestAction']);
 
         Route::get('/notifications', [AccountController::class, 'notifications']);

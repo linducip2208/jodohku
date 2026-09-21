@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureBlocked;
 use App\Http\Middleware\FeatureFlag;
 use App\Http\Middleware\PremiumOnly;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'active.account' => EnsureActiveAccount::class,
             'blocked' => EnsureBlocked::class,
             'role' => CheckRole::class,
             'feature' => FeatureFlag::class,

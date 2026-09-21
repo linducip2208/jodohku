@@ -28,10 +28,16 @@ class CreditController extends Controller
     public function buy(CheckoutRequest $request, PaymentService $payments)
     {
         $request->validate(['credit_product' => ['required', 'string', 'exists:credit_products,code']]);
-        $result = $payments->checkout($request->user(), [
-            'gateway' => $request->string('gateway'),
-            'credit_product' => $request->string('credit_product'),
-        ]);
+        try {
+            $result = $payments->checkout($request->user(), [
+                'gateway' => $request->string('gateway'),
+                'credit_product' => $request->string('credit_product'),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
+        }
 
         return response()->json(['payment_id' => $result['payment']->id, 'gateway' => $result['gateway']], 201);
     }

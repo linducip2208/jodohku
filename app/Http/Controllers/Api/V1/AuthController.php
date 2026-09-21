@@ -60,6 +60,9 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['login' => 'Invalid credentials.', 'email' => 'Invalid credentials.']);
         }
         $user = $candidate;
+        if ($reason = $user->loginBlockedReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
         if ($user->two_factor_enabled) {
             try {
                 app(\App\Services\TwoFactorService::class)->sendChallenge($user);
@@ -86,6 +89,9 @@ class AuthController extends Controller
     {
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'code' => ['required', 'string', 'max:6']]);
         $user = User::findOrFail($request->integer('user_id'));
+        if ($reason = $user->loginBlockedReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
         $tfa = app(\App\Services\TwoFactorService::class);
         try {
             $ok = $tfa->verify($user, (string) $request->input('code'));

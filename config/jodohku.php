@@ -18,4 +18,10 @@ return [
         'free_daily_super_likes' => 1,
         'rewind_cooldown_minutes' => 5,
     ],
+
+    'virtual' => [
+        'max_daily_messages' => env('VIRTUAL_MAX_DAILY', 5),
+        'active_from_hour' => env('VIRTUAL_ACTIVE_FROM', 8),
+        'active_until_hour' => env('VIRTUAL_ACTIVE_UNTIL', 22),
+    ],
 ];

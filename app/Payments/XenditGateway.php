@@ -25,6 +25,9 @@ class XenditGateway extends BaseGateway
             'gateway_transaction_id' => $data['id'] ?? $payment->gateway_transaction_id,
             'gateway_response' => array_merge($payment->gateway_response ?? [], ['create' => $data]),
         ]);
+        if (empty($data['invoice_url'])) {
+            throw new \RuntimeException('Xendit unavailable: no invoice URL returned.');
+        }
 
         return ['gateway' => 'xendit', 'reference' => $data['id'] ?? null, 'checkout_url' => $data['invoice_url'] ?? null, 'raw' => $data];
     }
@@ -42,8 +45,8 @@ class XenditGateway extends BaseGateway
     {
         $token = $headers['x-callback-token'] ?? $headers['X-Callback-Token'] ?? request()->header('x-callback-token');
         $expected = (string) $this->cfg('webhook_token', '');
-        if ($expected && $token !== $expected) {
-            throw new \RuntimeException('Invalid Xendit callback token.');
+        if ($expected === '' || $token !== $expected) {
+            throw new \RuntimeException('Invalid or missing Xendit callback token. Configure XENDIT_WEBHOOK_TOKEN.');
         }
         $status = strtolower((string) ($payload['status'] ?? ''));
 
@@ -63,7 +66,7 @@ class XenditGateway extends BaseGateway
                 'invoice_id' => $payment->gateway_transaction_id,
                 'amount' => $amount ?? (float) $payment->total_amount,
                 'reason' => 'customer_request',
-            ]);
+            ])->throw();
 
         return ['gateway' => 'xendit', 'status' => 'refunded', 'raw' => $res->json()];
     }

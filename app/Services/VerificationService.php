@@ -69,4 +69,17 @@ class VerificationService
             return $ok;
         });
     }
+
+    /** Expire stale pending/under-review requests past expires_at. */
+    public function expireDue(int $batch = 500): int
+    {
+        $ids = VerificationRequest::whereIn('status', [VerificationStatus::Pending->value, VerificationStatus::UnderReview->value])
+            ->whereNotNull('expires_at')->where('expires_at', '<=', now())
+            ->limit($batch)->pluck('id');
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return VerificationRequest::whereIn('id', $ids)->update(['status' => VerificationStatus::Expired->value]);
+    }
 }

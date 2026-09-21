@@ -46,6 +46,7 @@ body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'I
 .jk-navlink{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--jk-mute);text-decoration:none;padding:6px 12px;border-radius:12px}
 .jk-navlink.active{color:var(--jk-rose);font-weight:700}
 .jk-navlink .ico{font-size:20px}
+.jk-navlink svg.ico{width:22px;height:22px}
 .jk-side-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#3f3f46;text-decoration:none;font-size:14px;font-weight:600}
 .jk-side-link.active,.jk-side-link:hover{background:#fff1f2;color:var(--jk-rose)}
 .jk-chat-list{display:flex;flex-direction:column;gap:8px}

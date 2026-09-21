@@ -12,7 +12,7 @@ $photos = $profileUser->photos ?? collect();
 <a href="/discover" class="jk-muted">← Kembali</a>
 <div class="jk-card" style="margin-top:8px">
 <div class="jk-photo" style="aspect-ratio:4/4">
-@if($profileUser->avatar_path)<img src="{{ $profileUser->avatar_path }}" alt="">@else<div class="jk-photo-fallback">{{ strtoupper(substr((string)($profileUser->displayName() ?? '?'),0,1)) }}</div>@endif
+@if($profileUser->avatarUrl())<img src="{{ $profileUser->avatarUrl() }}" alt="Foto {{ $profileUser->displayName() }}">@else<div class="jk-photo-fallback">{{ strtoupper(substr((string)($profileUser->displayName() ?? '?'),0,1)) }}</div>@endif
 <span class="{{ $profileUser->is_online ? 'jk-online' : 'jk-offline' }}"></span>
 @if(isset($score))<span class="jk-compat">{{ (int) $score }}% cocok</span>@endif
 </div>

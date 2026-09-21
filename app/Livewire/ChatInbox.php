@@ -21,7 +21,7 @@ class ChatInbox extends Component
         $items = collect();
         if ($user) {
             try {
-                $q = Conversation::forUser($user->id)->with(['users', 'latestMessages'])->latest('last_message_at')->take(40)->get();
+                $q = Conversation::forUser($user->id)->with(['members.user', 'latestMessages'])->latest('last_message_at')->take(40)->get();
                 if ($this->search !== '') {
                     $s = mb_strtolower($this->search);
                     $q = $q->filter(fn ($c) => str_contains(mb_strtolower($c->title ?? $c->otherUser($user->id)?->displayName() ?? ''), $s));
