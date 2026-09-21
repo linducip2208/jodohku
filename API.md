@@ -6,8 +6,14 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 |---|---|---|---|
 | POST | `/auth/register` | publik | name, email, password+confirmation → user + token (201), fire `UserRegistered` |
 | POST | `/auth/login` | publik | email+password → token (422 bila salah) |
+| POST | `/auth/2fa/verify` | publik | `{user_id, code}` → token (wajib bila user aktifkan 2FA; login mengembalikan `two_factor_required`) |
+| POST | `/2fa/enable`, `/2fa/disable` | sanctum | aktif/nonaktif 2FA (disable perlu `current_password`) |
 | GET | `/auth/me` | sanctum | profil ringkas + role + premium |
+| POST | `/profile/photos` | sanctum | upload foto (JPG/PNG/WebP ≤8MB, min 200×200, anti-duplikat; status pending → antrian moderasi; hanya approved yang publik) |
+| GET | `/profile/{user}` | sanctum+policy | profil orang lain (foto pending disembunyikan; block → 403) |
 | GET | `/discover` | sanctum | feed `DiscoveryService` (`per_page`, filter gender/city/min_age/max_age/verified/online/sort); `data[]` + `meta.next_cursor` |
+| GET | `/who-liked`, `/visitors` | sanctum+premium | 403 + `upgrade:true` untuk free |
+| GET | `/likes/quota` | sanctum | `{remaining\|"unlimited", is_premium}` |
 | POST | `/checkout` | sanctum | `gateway` + `subscription_plan`/`credit_product` + opsional `coupon_code` (diskon persen/nominal, redeem atomik; kupon tak valid → 422 tanpa orphan payment) |
 | GET | `/admin/overview` | sanctum+`admin` | `users_total`, `reports_pending` (403 untuk member) |
 | GET | `/admin/gateways` | sanctum+`can:admin` | daftar gateway; sekret dimask `***encrypted***` |

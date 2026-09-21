@@ -1,2 +1,22 @@
 User-agent: *
-Disallow:
+Allow: /$
+Allow: /blog
+Allow: /blog/*
+Allow: /forums
+Allow: /forums/*
+Disallow: /home
+Disallow: /discover
+Disallow: /matches
+Disallow: /likes
+Disallow: /who-liked
+Disallow: /visitors
+Disallow: /chat
+Disallow: /profile/
+Disallow: /settings
+Disallow: /premium
+Disallow: /credits
+Disallow: /notifications
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: /sitemap.xml

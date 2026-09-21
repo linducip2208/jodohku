@@ -115,4 +115,27 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Deleted.']);
     }
+
+    public function photoQueue(Request $request)
+    {
+        $photos = \App\Models\ProfilePhoto::pendingReview()->with('user')->paginate(25);
+
+        return $request->wantsJson()
+            ? response()->json($photos)
+            : view('admin.photos', ['photos' => $photos]);
+    }
+
+    public function moderatePhoto(Request $request, int $photo, \App\Services\PhotoService $photos)
+    {
+        $record = \App\Models\ProfilePhoto::findOrFail($photo);
+        $request->validate(['action' => ['required', 'string', 'in:approve,reject'], 'reason' => ['nullable', 'string', 'max:500']]);
+        $action = $request->string('action')->toString();
+        $result = $action === 'approve'
+            ? $photos->approve($record, $request->user())
+            : $photos->reject($record, $request->user(), (string) $request->input('reason', ''));
+
+        return $request->wantsJson()
+            ? response()->json($result)
+            : back()->with('status', 'Photo '.$action.'d.');
+    }
 }

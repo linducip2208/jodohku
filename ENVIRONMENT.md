@@ -2,6 +2,8 @@
 
 Sumber kebenaran: `.env.example`. Semua sekret hanya placeholder — jangan commit sekret asli.
 
+**PHP**: production target 8.4+, kompatibel 8.3 (`composer.json: "php": "^8.3"` — caret mengizinkan 8.4/8.5; tidak ada sintaks 8.4-only di codebase; env berjalan di 8.3.30 terverifikasi via test suite).
+
 | Grup | Var | Default | Dipakai di |
 |---|---|---|---|
 | APP | `APP_NAME/ENV/KEY/DEBUG/URL/TIMEZONE` | Jodohku/local/-/true/localhost | `config/app.php` |

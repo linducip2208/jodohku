@@ -60,6 +60,15 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['login' => 'Invalid credentials.', 'email' => 'Invalid credentials.']);
         }
         $user = $candidate;
+        if ($user->two_factor_enabled) {
+            try {
+                app(\App\Services\TwoFactorService::class)->sendChallenge($user);
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 429);
+            }
+
+            return response()->json(['two_factor_required' => true, 'user_id' => $user->id]);
+        }
         $user->update(['is_online' => true, 'last_active_at' => now()]);
         $token = $user->createToken('api')->plainTextToken;
 
@@ -71,6 +80,25 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out.']);
+    }
+
+    public function verify2fa(Request $request)
+    {
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'code' => ['required', 'string', 'max:6']]);
+        $user = User::findOrFail($request->integer('user_id'));
+        $tfa = app(\App\Services\TwoFactorService::class);
+        try {
+            $ok = $tfa->verify($user, (string) $request->input('code'));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        }
+        if (! $ok) {
+            return response()->json(['message' => 'Invalid code.'], 422);
+        }
+        $user->update(['is_online' => true, 'last_active_at' => now()]);
+        $token = $user->createToken('api')->plainTextToken;
+
+        return response()->json(['user' => UserResource::make($user->fresh()), 'token' => $token]);
     }
 
     public function me(Request $request)

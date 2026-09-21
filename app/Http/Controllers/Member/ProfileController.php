@@ -11,16 +11,19 @@ use App\Models\User;
 use App\Services\VirtualMemberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
     public function show(Request $request, User $user, VirtualMemberService $virtual)
     {
         $this->authorize('view', $user);
-        $user->load(['profile', 'photos', 'videos', 'interests', 'profilePrivacy']);
         $viewer = $request->user();
-        if ($viewer && (int) $viewer->id !== (int) $user->id) {
+        $isSelf = $viewer && (int) $viewer->id === (int) $user->id;
+        $user->load([
+            'profile', 'videos', 'interests', 'profilePrivacy',
+            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($viewer && $viewer->isStaff())), fn ($qq) => $qq->where('status', 'approved')),
+        ]);
+        if ($viewer && ! $isSelf) {
             event(new ProfileViewed($user, $viewer));
         }
 
@@ -86,32 +89,37 @@ class ProfileController extends Controller
         return response()->json(UserResource::make($user->fresh(['profile', 'photos', 'interests'])));
     }
 
-    public function photos(Request $request)
+    public function photos(Request $request, \App\Services\PhotoService $photos)
     {
-        $request->validate(['photos' => ['required', 'array', 'max:9'], 'photos.*' => ['image', 'max:8192']]);
-        $user = $request->user();
+        $request->validate([
+            'photos' => ['required', 'array', 'max:9'],
+            'photos.*' => ['file', 'max:8192'],
+            'is_private' => ['sometimes', 'boolean'],
+        ]);
         $stored = [];
-        DB::transaction(function () use ($request, $user, &$stored) {
-            foreach ($request->file('photos', []) as $file) {
-                $path = $file->store('profile-photos', 'public');
-                $stored[] = $user->photos()->create([
-                    'file_path' => $path,
-                    'is_primary' => $user->photos()->count() === 0 && empty($stored),
-                    'sort_order' => $user->photos()->count() + count($stored),
-                ]);
+        foreach ($request->file('photos', []) as $file) {
+            try {
+                $stored[] = $photos->upload($request->user(), $file, $request->boolean('is_private'));
+            } catch (\InvalidArgumentException $e) {
+                return $request->wantsJson()
+                    ? response()->json(['message' => $e->getMessage()], 422)
+                    : back()->withErrors(['photos' => $e->getMessage()]);
             }
-        });
+        }
 
-        return response()->json($stored, 201);
+        return $request->wantsJson()
+            ? response()->json($stored, 201)
+            : back()->with('status', count($stored).' foto diupload, menunggu moderasi ✅');
     }
 
-    public function destroyPhoto(Request $request, int $photo)
+    public function destroyPhoto(Request $request, int $photo, \App\Services\PhotoService $photos)
     {
         $record = $request->user()->photos()->findOrFail($photo);
-        Storage::disk('public')->delete($record->file_path);
-        $record->delete();
+        $photos->destroy($request->user(), $record);
 
-        return response()->json(['message' => 'Photo deleted.']);
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Photo deleted.'])
+            : back()->with('status', 'Foto dihapus.');
     }
 
     public function video(Request $request)

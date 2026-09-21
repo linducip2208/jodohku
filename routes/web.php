@@ -12,6 +12,23 @@ use Illuminate\Support\Facades\Route;
 /* ---------- Landing ---------- */
 Route::get('/', fn () => view('welcome'))->name('landing');
 
+Route::get('/sitemap.xml', function () {
+    $urls = [['loc' => url('/'), 'updated' => now()->toAtomString(), 'freq' => 'daily']];
+    try {
+        foreach (\App\Models\BlogPost::published()->latest('published_at')->take(200)->get(['slug', 'updated_at']) as $p) {
+            $urls[] = ['loc' => url('/blog/'.$p->slug), 'updated' => $p->updated_at?->toAtomString() ?? now()->toAtomString(), 'freq' => 'weekly'];
+        }
+        $urls[] = ['loc' => url('/blog'), 'updated' => now()->toAtomString(), 'freq' => 'daily'];
+        foreach (\App\Models\Forum::where('is_active', true)->get(['slug', 'updated_at']) as $f) {
+            $urls[] = ['loc' => url('/forums/'.$f->slug), 'updated' => $f->updated_at?->toAtomString() ?? now()->toAtomString(), 'freq' => 'daily'];
+        }
+        $urls[] = ['loc' => url('/forums'), 'updated' => now()->toAtomString(), 'freq' => 'daily'];
+    } catch (\Throwable) {}
+    $xml = view('seo.sitemap', ['urls' => $urls])->render();
+
+    return response($xml, 200)->header('Content-Type', 'application/xml');
+})->name('sitemap');
+
 /* ---------- Auth (dating-styled) ---------- */
 Route::middleware('guest')->group(function () {
     Route::get('/login', fn () => view('auth.login'))->name('login');
@@ -19,6 +36,14 @@ Route::middleware('guest')->group(function () {
         $data = $r->validate(['email' => 'required|email', 'password' => 'required']);
         if (! Auth::attempt($data, $r->boolean('remember'))) {
             return back()->withErrors(['email' => 'Email atau password salah.'])->withInput();
+        }
+        $user = Auth::user();
+        if ($user->two_factor_enabled) {
+            try { app(\App\Services\TwoFactorService::class)->sendChallenge($user); }
+            catch (\RuntimeException) {}
+            $r->session()->put('2fa_pending_id', $user->id);
+            Auth::logout();
+            return redirect()->route('2fa.challenge');
         }
         $r->session()->regenerate();
         return redirect()->intended('/home');
@@ -74,10 +99,42 @@ Route::post('/logout', function (Request $r) {
     return redirect('/');
 })->name('logout');
 
+/* ---------- Two-factor challenge (email OTP) ---------- */
+Route::middleware('guest')->group(function () {
+    Route::get('/2fa', function () {
+        return session()->has('2fa_pending_id')
+            ? view('auth.two-factor')
+            : redirect()->route('login');
+    })->name('2fa.challenge');
+    Route::post('/2fa', function (Request $r) {
+        $r->validate(['code' => ['required', 'string', 'max:6']]);
+        $user = User::find($r->session()->get('2fa_pending_id'));
+        if (! $user) { return redirect()->route('login'); }
+        $tfa = app(\App\Services\TwoFactorService::class);
+        try { $ok = $tfa->verify($user, (string) $r->input('code')); }
+        catch (\RuntimeException $e) { return back()->withErrors(['code' => $e->getMessage()]); }
+        if (! $ok) { return back()->withErrors(['code' => 'Kode salah.']); }
+        $r->session()->forget('2fa_pending_id');
+        Auth::login($user, true);
+        $r->session()->regenerate();
+        return redirect()->intended('/home');
+    })->name('2fa.verify')->middleware('throttle:10,1');
+    Route::post('/2fa/resend', function (Request $r) {
+        $user = User::find($r->session()->get('2fa_pending_id'));
+        if (! $user) { return redirect()->route('login'); }
+        try { app(\App\Services\TwoFactorService::class)->sendChallenge($user); }
+        catch (\RuntimeException $e) { return back()->with('status', $e->getMessage()); }
+        return back()->with('status', 'Kode baru dikirim ke email.');
+    })->name('2fa.resend')->middleware('throttle:3,1');
+});
+
 /* ---------- Member ---------- */
 Route::middleware('auth')->group(function () {
     Route::get('/home', fn () => view('member.home'))->name('member.home');
     Route::get('/discover', fn () => view('member.discover'))->name('member.discover');
+    Route::get('/profile/edit', function () {
+        return view('member.profile.edit', ['user' => Auth::user()->load(['profile', 'photos', 'interests'])]);
+    })->name('member.profile.edit');
     Route::get('/profile/{user}', function (User $user) {
         $score = null;
         try {
@@ -86,11 +143,21 @@ Route::middleware('auth')->group(function () {
                 $score = app(\App\Services\MatchingEngine::class)->scorePair($me, $user)['mutual'] ?? null;
             }
         } catch (\Throwable) {}
-        return view('member.profile.show', ['profileUser' => $user->loadMissing(['profile', 'photos', 'interests']), 'score' => $score]);
+        $me = Auth::user();
+        $isSelf = $me && (int) $me->id === (int) $user->id;
+        $user->loadMissing([
+            'profile', 'interests',
+            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($me && $me->isStaff())), fn ($qq) => $qq->where('status', 'approved')),
+        ]);
+
+        return view('member.profile.show', ['profileUser' => $user, 'score' => $score]);
     })->name('member.profile');
+    Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos'])->name('member.profile.photos');
+    Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
-    Route::get('/visitors', fn () => view('member.visitors'))->name('member.visitors');
+    Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked'])->name('member.who-liked');
+    Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors'])->name('member.visitors');
     Route::get('/favorites', fn () => view('member.favorites'))->name('member.favorites');
 
     Route::get('/chat', fn () => view('member.chat.inbox'))->name('member.chat');
@@ -156,6 +223,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::post('/settings/privacy', fn () => back()->with('status', 'Preferensi privasi disimpan ✅'));
     Route::post('/settings/notifications', fn () => back()->with('status', 'Preferensi notifikasi disimpan ✅'));
+    Route::post('/settings/2fa/enable', [\App\Http\Controllers\Member\SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
+    Route::post('/settings/2fa/disable', [\App\Http\Controllers\Member\SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
 
     Route::get('/safety', fn () => view('member.safety.center'))->name('member.safety');
     Route::post('/safety/block', function (Request $r) {

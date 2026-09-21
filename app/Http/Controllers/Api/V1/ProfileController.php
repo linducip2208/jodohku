@@ -21,9 +21,14 @@ class ProfileController extends Controller
     public function show(Request $request, User $user)
     {
         $this->authorize('view', $user);
-        $user->load(['profile', 'photos', 'interests']);
-        if ((int) $request->user()->id !== (int) $user->id) {
-            event(new ProfileViewed($user, $request->user()));
+        $viewer = $request->user();
+        $isSelf = $viewer && (int) $viewer->id === (int) $user->id;
+        $user->load([
+            'profile', 'interests',
+            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($viewer && $viewer->isStaff())), fn ($qq) => $qq->where('status', 'approved')),
+        ]);
+        if (! $isSelf) {
+            event(new ProfileViewed($user, $viewer));
         }
 
         return response()->json(UserResource::make($user));

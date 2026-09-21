@@ -15,6 +15,7 @@ class ProfilePhoto extends Model
     protected $fillable = [
         'user_id', 'path', 'thumbnail_path', 'sort_order',
         'is_primary', 'is_approved', 'is_private',
+        'status', 'file_hash', 'width', 'height', 'reviewed_by', 'reviewed_at',
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class ProfilePhoto extends Model
             'is_primary' => 'boolean',
             'is_approved' => 'boolean',
             'is_private' => 'boolean',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -34,7 +36,13 @@ class ProfilePhoto extends Model
     /** @param Builder<ProfilePhoto> $query */
     public function scopeApproved(Builder $query): Builder
     {
-        return $query->where('is_approved', true);
+        return $query->where('status', 'approved');
+    }
+
+    /** @param Builder<ProfilePhoto> $query */
+    public function scopePendingReview(Builder $query): Builder
+    {
+        return $query->where('status', 'pending')->oldest('id');
     }
 
     /** @param Builder<ProfilePhoto> $query */

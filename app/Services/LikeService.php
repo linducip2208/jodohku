@@ -27,9 +27,34 @@ class LikeService
         }
     }
 
+    /** Free members are capped per day; premium is unlimited. Re-likes don't consume quota. */
+    protected function enforceDailyLikeLimit(User $liker): void
+    {
+        if ($liker->isPremium()) {
+            return;
+        }
+        $limit = (int) config('jodohku.limits.free_daily_likes', 20);
+        $used = Like::where('liker_id', $liker->id)->whereDate('created_at', today())->count();
+        if ($used >= $limit) {
+            throw new \RuntimeException('Daily like limit reached. Upgrade to Premium for unlimited likes.');
+        }
+    }
+
+    public function likesRemainingToday(User $user): int|string
+    {
+        if ($user->isPremium()) {
+            return 'unlimited';
+        }
+        $limit = (int) config('jodohku.limits.free_daily_likes', 20);
+        $used = Like::where('liker_id', $user->id)->whereDate('created_at', today())->count();
+
+        return max($limit - $used, 0);
+    }
+
     public function like(User $liker, User $liked, bool $isSuper = false): array
     {
         $this->guard($liker, $liked);
+        $this->enforceDailyLikeLimit($liker);
 
         return DB::transaction(function () use ($liker, $liked, $isSuper) {
             $like = Like::firstOrCreate(

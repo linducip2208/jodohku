@@ -29,6 +29,19 @@
 <div class="jk-section"><div class="jk-h2">Langganan</div>
 <p class="jk-muted">Status: {{ auth()->user()?->isPremium() ? 'Premium aktif ⭐' : 'Gratis' }}</p>
 <a href="/premium">Kelola Premium →</a>
-<form method="POST" action="/logout" style="margin-top:12px">@csrf<button class="jk-btn jk-btn-pass" style="width:100%" type="submit">Keluar</button></form>
+</div>
+<div class="jk-section"><div class="jk-h2">🔐 Verifikasi 2 Langkah</div>
+<p class="jk-muted">Status: {{ auth()->user()?->two_factor_enabled ? 'Aktif ✅' : 'Nonaktif' }}</p>
+@if(auth()->user()?->two_factor_enabled)
+<form method="POST" action="/settings/2fa/disable" style="margin-top:8px">@csrf
+<label>Password saat ini</label><input type="password" name="password" required>
+<button class="jk-btn jk-btn-pass" style="width:100%;margin-top:8px" type="submit">Nonaktifkan 2FA</button></form>
+@else
+<form method="POST" action="/settings/2fa/enable" style="margin-top:8px">@csrf
+<button class="jk-submit" type="submit">Aktifkan 2FA (kode via email)</button></form>
+@endif
+</div>
+<div class="jk-section">
+<form method="POST" action="/logout" style="margin-top:0">@csrf<button class="jk-btn jk-btn-pass" style="width:100%" type="submit">Keluar</button></form>
 </div>
 @endsection

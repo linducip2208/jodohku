@@ -32,7 +32,7 @@ $photos = $profileUser->photos ?? collect();
 </div>
 @if($photos->count())
 <div class="jk-section"><div class="jk-h2">📷 Galeri ({{ $photos->count() }})</div>
-<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">@foreach($photos as $ph)<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">@if(!empty($ph->path) || !empty($ph->url))<img src="{{ $ph->path ?? $ph->url }}" alt="" loading="lazy">@else<div class="jk-photo-fallback">📷</div>@endif</div></div>@endforeach</div>
+<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">@foreach($photos as $ph)<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">@if(!empty($ph->path))<img src="{{ asset('storage/'.$ph->path) }}" alt="" loading="lazy">@elseif(!empty($ph->url))<img src="{{ $ph->url }}" alt="" loading="lazy">@else<div class="jk-photo-fallback">📷</div>@endif</div></div>@endforeach</div>
 </div>
 @endif
 @if($explain)

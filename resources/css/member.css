@@ -74,3 +74,16 @@ body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'I
 .jk-form label{display:block;font-size:12.5px;font-weight:700;margin:12px 0 6px}
 .jk-form input,.jk-form select,.jk-form textarea{width:100%;border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;font-size:14px}
 .jk-submit{background:linear-gradient(135deg,var(--jk-rose),var(--jk-pink));color:#fff;border:0;border-radius:12px;padding:12px;width:100%;font-weight:800;font-size:15px;cursor:pointer}
+/* badges, toast, modal, skeleton, empty/error states */
+.jk-navlink{position:relative}
+.jk-dot{position:absolute;top:2px;right:calc(50% - 20px);min-width:18px;height:18px;border-radius:999px;background:var(--jk-rose);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.jk-toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100;background:#18181b;color:#fff;font-size:13.5px;font-weight:600;padding:12px 18px;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.25);max-width:92vw}
+.jk-toast.ok{background:#15803d}.jk-toast.err{background:#b91c1c}
+.jk-modal-bg{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.jk-modal{background:#fff;border-radius:20px;padding:22px;max-width:380px;width:100%}
+.jk-skeleton{border-radius:12px;background:linear-gradient(90deg,#f4f4f5 25%,#e9e9ec 50%,#f4f4f5 75%);background-size:200% 100%;animation:jk-shimmer 1.4s infinite}
+@keyframes jk-shimmer{to{background-position:-200% 0}}
+.jk-empty{text-align:center;padding:36px 20px;color:var(--jk-mute)}
+.jk-empty .big{font-size:44px}
+.jk-spinner{width:18px;height:18px;border-radius:50%;border:2px solid #e4e4e7;border-top-color:var(--jk-rose);animation:jk-spin .7s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes jk-spin{to{transform:rotate(360deg)}}

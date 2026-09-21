@@ -52,4 +52,36 @@ class MatchController extends Controller
             ? response()->json(['message' => 'Unmatched.'])
             : back()->with('status', 'Unmatched.');
     }
+
+    /** Premium-only: members who liked you (mutual-not-yet). Free members get 403 + upgrade hint. */
+    public function whoLiked(Request $request)
+    {
+        $user = $request->user();
+        if (! $user->isPremium()) {
+            return response()->json(['message' => 'Who Liked You is a Premium feature.', 'upgrade' => true], 403);
+        }
+        $likes = \App\Models\Like::with('liker.profile')
+            ->where('liked_id', $user->id)
+            ->whereNotIn('liker_id', fn ($q) => $q->select('liked_id')->from('likes')->where('liker_id', $user->id))
+            ->latest('id')->paginate(20);
+
+        return $request->wantsJson()
+            ? \App\Http\Resources\UserResource::collection($likes->getCollection()->pluck('liker'))->response()
+            : view('member.likes', ['whoLiked' => $likes]);
+    }
+
+    /** Premium-only: members who viewed your profile. */
+    public function visitors(Request $request)
+    {
+        $user = $request->user();
+        if (! $user->isPremium()) {
+            return response()->json(['message' => 'Visitors is a Premium feature.', 'upgrade' => true], 403);
+        }
+        $views = \App\Models\ProfileView::with('viewer.profile')
+            ->where('profile_user_id', $user->id)->latest('id')->paginate(20);
+
+        return $request->wantsJson()
+            ? \App\Http\Resources\UserResource::collection($views->getCollection()->pluck('viewer')->filter())->response()
+            : view('member.visitors', ['visitors' => $views]);
+    }
 }

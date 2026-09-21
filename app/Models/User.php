@@ -48,6 +48,7 @@ class User extends Authenticatable
         'country',
         'avatar_path',
         'profile_completion',
+        'two_factor_enabled',
     ];
 
     protected $hidden = [
@@ -73,6 +74,8 @@ class User extends Authenticatable
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'profile_completion' => 'integer',
+            'two_factor_enabled' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 

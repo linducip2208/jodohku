@@ -39,6 +39,8 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'can:admin'])
     Route::post('/users/{user}/verify', [UserController::class, 'verify'])->name('users.verify');
     Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     Route::post('/users/{user}/credits', [UserController::class, 'adjustCredits'])->name('users.credits');
+    Route::get('/photos/queue', [UserController::class, 'photoQueue'])->name('photos.queue');
+    Route::post('/photos/{photo}/moderate', [UserController::class, 'moderatePhoto'])->name('photos.moderate');
 
     Route::get('/moderation', [ModerationController::class, 'queues'])->name('moderation.queues');
     Route::post('/moderation/{queue}/decide', [ModerationController::class, 'decide'])->name('moderation.decide');

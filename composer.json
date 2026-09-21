@@ -7,14 +7,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "guzzlehttp/guzzle": "*",
-        "intervention/image": "*",
+        "guzzlehttp/guzzle": "^7.0",
+        "intervention/image": "^4.0",
         "laravel/framework": "^13.0",
-        "laravel/reverb": "*",
-        "laravel/sanctum": "*",
+        "laravel/reverb": "^1.0",
+        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "livewire/livewire": "*",
-        "predis/predis": "*"
+        "livewire/livewire": "^4.0",
+        "predis/predis": "^3.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

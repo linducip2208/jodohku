@@ -5,12 +5,15 @@ Platform matchmaking + chat aman + verifikasi + virtual member transparan, diban
 ## Fitur
 
 - **Discovery & matchmaking**: skor kompatibilitas 8 dimensi (`MatchingEngine`), hard filter blokir/status, daily picks, boost hanya memengaruhi urutan tampil.
-- **Like / Super-like / Favorite / Rewind**: mutual-like otomatis membuat `matches` kanonis idempoten (`LikeService`, `Like::createsMatch`).
+- **Like / Super-like / Favorite / Rewind**: mutual-like otomatis membuat `matches` kanonis idempoten (`LikeService`, `Like::createsMatch`). Free dibatasi harian (`FREE_DAILY_LIKES`, default 20), Premium unlimited; Who Liked You & Visitors khusus Premium (403 + flag upgrade untuk free).
 - **Chat realtime**: direct conversation, idempotensi `client_message_id`, read receipt, reaksi, typing broadcast via Reverb, notifikasi DB+mail.
 - **Moderasi lokal-first**: `ProfanityService` + `ScamDetectionService` → `MessageModerationService` (allow/mask/warning/flag/block), AI review hanya saat flagged (`ProcessMessageModeration`).
 - **Virtual member transparan**: akun `virtual`/`ai` selalu berlabel, mode template/hybrid/ai, trigger `user.registered` dengan cap harian + jam aktif 08–22 + cooldown (`VirtualMemberService`), takeover operator menjeda AI (`ai_paused_at`).
 - **Monetisasi**: subscription Free/Premium/VIP (`MembershipService`/`SubscriptionService`), kredit wallet tanpa-minus (`CreditService`), gift, 4 gateway Indonesia (iPaymu/Xendit/Midtrans/Tripay) dengan webhook idempoten.
 - **Verifikasi & fraud**: request dokumen, risk score, event log, scam detector (no HP, invite off-platform, phishing, investment lure).
+- **Foto aman**: pipeline `PhotoService` (validasi MIME asli + dimensi, resize 1600 + thumbnail 400, deteksi duplikat SHA-256, status pending → antrian moderasi admin), foto pending tak terlihat publik.
+- **2FA email OTP**: `TwoFactorService` (kode 6 digit hash + TTL 10 mnt + throttle), wajib di login web & API bila aktif.
+- **SEO publik**: `/sitemap.xml` (blog + forum saja), `robots.txt` menutup area member/admin/API.
 - **Admin/operator**: gate `member/premium/operator/moderator/admin/superadmin`, policies, audit log tanpa-sekret, gateway secrets terenkripsi (`Crypt`).
 
 ## Stack

@@ -50,4 +50,31 @@ class SettingsController extends Controller
 
         return response()->json(['message' => 'Account deleted.']);
     }
+
+    public function enable2fa(Request $request, \App\Services\TwoFactorService $tfa)
+    {
+        $user = $request->user();
+        $tfa->enable($user);
+        try {
+            $tfa->sendChallenge($user);
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 429)
+                : back()->with('status', $e->getMessage());
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['message' => '2FA enabled. Verification code sent to your email.'])
+            : back()->with('status', '2FA aktif. Kode verifikasi dikirim ke email ✅');
+    }
+
+    public function disable2fa(Request $request, \App\Services\TwoFactorService $tfa)
+    {
+        $request->validate(['password' => ['required', 'current_password']]);
+        $tfa->disable($request->user());
+
+        return $request->wantsJson()
+            ? response()->json(['message' => '2FA disabled.'])
+            : back()->with('status', '2FA dinonaktifkan.');
+    }
 }

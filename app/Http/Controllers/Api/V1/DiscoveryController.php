@@ -49,8 +49,19 @@ class DiscoveryController extends Controller
     public function like(Request $request, User $user, LikeService $likes)
     {
         $this->authorize('view', $user);
+        try {
+            return response()->json($likes->like($request->user(), $user), 201);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage(), 'upgrade' => true], 403);
+        }
+    }
 
-        return response()->json($likes->like($request->user(), $user), 201);
+    public function likeQuota(Request $request, LikeService $likes)
+    {
+        return response()->json([
+            'remaining' => $likes->likesRemainingToday($request->user()),
+            'is_premium' => (bool) $request->user()->isPremium(),
+        ]);
     }
 
     public function pass(Request $request, User $user, LikeService $likes)

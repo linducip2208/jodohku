@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\BlogController;
 use App\Http\Controllers\Member\ForumController;
+use App\Http\Controllers\Member\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
@@ -20,9 +21,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::prefix('auth')->name('auth.')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('/2fa/verify', [AuthController::class, 'verify2fa'])->middleware('throttle:10,1');
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('/logout', [AuthController::class, 'logout']);
             Route::get('/me', [AuthController::class, 'me']);
+            Route::post('/2fa/enable', [SettingsController::class, 'enable2fa']);
+            Route::post('/2fa/disable', [SettingsController::class, 'disable2fa']);
         });
     });
 
@@ -38,6 +42,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/profile', [ProfileController::class, 'me']);
         Route::put('/profile', [ProfileController::class, 'update']);
+        Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos']);
+        Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto']);
         Route::get('/profile/{user}', [ProfileController::class, 'show'])->middleware('blocked');
 
         Route::get('/preferences', [PreferenceController::class, 'show']);
@@ -49,7 +55,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/discover', [DiscoveryController::class, 'discover']);
         Route::get('/matches', [DiscoveryController::class, 'matches']);
         Route::get('/matches/{user}/explain', [DiscoveryController::class, 'explain']);
+        Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked']);
+        Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
+        Route::get('/likes/quota', [DiscoveryController::class, 'likeQuota']);
         Route::delete('/likes/{user}', [DiscoveryController::class, 'pass']);
         Route::post('/superlikes/{user}', [DiscoveryController::class, 'superlike']);
         Route::post('/favorites/{user}', [DiscoveryController::class, 'favorite']);

@@ -14,7 +14,11 @@ class LikeController extends Controller
     public function like(Request $request, User $user, LikeService $likes)
     {
         $this->authorize('view', $user);
-        $result = $likes->like($request->user(), $user);
+        try {
+            $result = $likes->like($request->user(), $user);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage(), 'upgrade' => true], 403);
+        }
 
         return response()->json([
             'like_id' => $result['like']->id,
