@@ -51,11 +51,16 @@ class AccountController extends Controller
 
     public function checkout(CheckoutRequest $request, PaymentService $payments)
     {
-        $result = $payments->checkout($request->user(), array_filter([
-            'gateway' => $request->string('gateway'),
-            'subscription_plan' => $request->input('subscription_plan', $request->input('plan_code')),
-            'credit_product' => $request->input('credit_product'),
-        ]));
+        try {
+            $result = $payments->checkout($request->user(), array_filter([
+                'gateway' => $request->string('gateway'),
+                'subscription_plan' => $request->input('subscription_plan', $request->input('plan_code')),
+                'credit_product' => $request->input('credit_product'),
+                'coupon_code' => $request->input('coupon_code'),
+            ]));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json(['payment_id' => $result['payment']->id, 'gateway' => $result['gateway']], 201);
     }

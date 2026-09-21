@@ -19,6 +19,7 @@ class CheckoutRequest extends FormRequest
             'subscription_plan' => ['nullable', 'string', Rule::exists('membership_plans', 'code')],
             'credit_product' => ['nullable', 'string', Rule::exists('credit_products', 'code')],
             'gateway' => ['required', 'string', 'in:ipaymu,xendit,midtrans,tripay'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
             'return_url' => ['nullable', 'url', 'max:512'],
         ];
     }

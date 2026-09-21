@@ -46,3 +46,9 @@ Migrasi: `database/migrations/*`. Fresh seed: `php artisan migrate:fresh --seed`
 ## sosial & settings (`081200`)
 
 - `gifts` unik `code`; `gift_transactions`; `events/slug` unik; `event_members/groups/group_members/posts/comments/post_likes/ads/*` constraint standar; `settings` unik `(group,key)`; `audit_logs` index polimorfik.
+
+## kupon, blog & forum (`2026_09_21_000100`)
+
+- `coupons` unik `code`; `coupon_redemptions` unik `(coupon_id,payment_id)` + index `(coupon_id,user_id)`; redeem tercatat dalam transaksi checkout yang sama (tanpa orphan payment).
+- `blog_posts` unik `slug`, soft delete, index `(status,published_at)`.
+- `forums` unik `slug`; `forum_threads` FK forum/user cascade, index `(forum_id,last_reply_at)`, counter `reply_count`; `forum_replies` FK thread cascade, index `(thread_id,id)`.

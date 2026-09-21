@@ -198,6 +198,14 @@ Route::middleware('auth')->group(function () {
         try { \App\Models\EventMember::firstOrCreate(['event_id' => $id, 'user_id' => Auth::id()]); } catch (\Throwable) {}
         return back()->with('status', 'RSVP berhasil 🎟️ Sampai jumpa di lokasi!');
     });
+
+    Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
+    Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');
+    Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
+    Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
+    Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');
+    Route::post('/forums/{slug}/threads', [\App\Http\Controllers\Member\ForumController::class, 'storeThread'])->name('member.forums.threads.store');
+    Route::post('/forums/thread/{thread}/reply', [\App\Http\Controllers\Member\ForumController::class, 'reply'])->name('member.forums.thread.reply');
 });
 
 /* ---------- Admin (HTML views; admin.php holds controller/JSON routes — only non-duplicate URIs here) ---------- */

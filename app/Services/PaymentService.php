@@ -21,10 +21,11 @@ class PaymentService
         protected SubscriptionService $subscriptions,
         protected CreditService $credits,
         protected AuditService $audit,
+        protected CouponService $coupons,
     ) {}
 
     /**
-     * @param array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string} $order
+     * @param array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string} $order
      */
     public function checkout(User $user, array $order): array
     {
@@ -49,21 +50,36 @@ class PaymentService
                 throw new \InvalidArgumentException('Order must contain items.');
             }
 
+            // Coupon is validated BEFORE the payment row exists so failures
+            // never leave orphan pending payments.
+            $coupon = null;
+            $discount = 0.0;
+            if (! empty($order['coupon_code'])) {
+                ['coupon' => $coupon, 'discount' => $discount] = $this->coupons->quote($user, (string) $order['coupon_code'], (float) $amount);
+                if ($discount > 0) {
+                    $items[] = ['item_type' => 'discount', 'item_id' => $coupon->id, 'name' => 'Coupon '.$coupon->code, 'quantity' => 1, 'unit_price' => -$discount, 'subtotal' => -$discount];
+                }
+            }
+            $total = round(max((float) $amount - $discount, 0), 2);
+
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'gateway' => $gatewayCode,
                 'amount' => $amount,
-                'total_amount' => $amount,
+                'total_amount' => $total,
                 'currency' => config('payments.currency', 'IDR'),
                 'status' => PaymentStatus::Pending,
             ]);
             foreach ($items as $it) {
                 $payment->items()->create($it);
             }
+            if ($coupon && $discount > 0) {
+                $this->coupons->recordRedemption($coupon, $user, (int) $payment->id, (float) $discount);
+            }
 
             $driver = $this->gateways->driver($gatewayCode);
             $result = $driver->createPayment($payment->fresh(), $order);
-            $this->audit->log('payment.created', $user, $payment, [], ['gateway' => $gatewayCode, 'total' => $amount]);
+            $this->audit->log('payment.created', $user, $payment, [], ['gateway' => $gatewayCode, 'total' => $total, 'coupon' => $coupon?->code]);
 
             return ['payment' => $payment->fresh(), 'gateway' => $result];
         });

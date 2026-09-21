@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\V1\DiscoveryController;
 use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Member\BlogController;
+use App\Http\Controllers\Member\ForumController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
@@ -90,6 +92,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/ai/replies/{conversation}', [AccountController::class, 'suggestedReplies']);
         Route::post('/ai/matchmaker', [AccountController::class, 'matchmaker']);
         Route::get('/settings', [AccountController::class, 'settings']);
+
+        Route::get('/blog', [BlogController::class, 'index']);
+        Route::get('/blog/{slug}', [BlogController::class, 'show']);
+        Route::get('/forums', [ForumController::class, 'index']);
+        Route::get('/forums/{slug}', [ForumController::class, 'threads']);
+        Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1');
+        Route::get('/forum-threads/{thread}', [ForumController::class, 'show']);
+        Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1');
 
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])

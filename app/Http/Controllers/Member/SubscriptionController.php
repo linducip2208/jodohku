@@ -34,6 +34,7 @@ class SubscriptionController extends Controller
             'gateway' => $request->string('gateway'),
             'subscription_plan' => $request->input('subscription_plan', $request->input('plan_code')),
             'credit_product' => $request->input('credit_product'),
+            'coupon_code' => $request->input('coupon_code'),
             'return_url' => $request->input('return_url'),
         ];
 

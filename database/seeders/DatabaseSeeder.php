@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             MemberSeeder::class,
             VirtualMemberSeeder::class,
             TriggerSeeder::class,
+            CouponBlogForumSeeder::class,
         ]);
     }
 }

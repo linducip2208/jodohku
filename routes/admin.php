@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BoostAdminController;
 use App\Http\Controllers\Admin\ChatAdminController;
 use App\Http\Controllers\Admin\CommunityAdminController;
+use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\CreditAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FraudController;
@@ -106,6 +107,12 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'can:admin'])
     Route::put('/credits/products/{product}', [CreditAdminController::class, 'updateProduct'])->name('credits.products.update');
     Route::get('/credits/transactions', [CreditAdminController::class, 'transactions'])->name('credits.transactions');
 
+    Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
+    Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');
+    Route::put('/coupons/{coupon}', [CouponController::class, 'update'])->name('coupons.update');
+    Route::post('/coupons/{coupon}/toggle', [CouponController::class, 'toggle'])->name('coupons.toggle');
+    Route::get('/coupons/redemptions', [CouponController::class, 'redemptions'])->name('coupons.redemptions');
+
     Route::get('/gifts', [GiftAdminController::class, 'index'])->name('gifts');
     Route::post('/gifts', [GiftAdminController::class, 'store'])->name('gifts.store');
     Route::put('/gifts/{gift}', [GiftAdminController::class, 'update'])->name('gifts.update');
@@ -125,6 +132,12 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'can:admin'])
     Route::match(['get', 'post'], '/community/groups', [CommunityAdminController::class, 'groups'])->name('community.groups');
     Route::match(['get', 'post'], '/community/events', [CommunityAdminController::class, 'events'])->name('community.events');
     Route::put('/community/events/{event}', [CommunityAdminController::class, 'updateEvent'])->name('community.events.update');
+    Route::match(['get', 'post'], '/community/blogs', [CommunityAdminController::class, 'blogs'])->name('community.blogs');
+    Route::put('/community/blogs/{blog}', [CommunityAdminController::class, 'updateBlog'])->name('community.blogs.update');
+    Route::delete('/community/blogs/{blog}', [CommunityAdminController::class, 'destroyBlog'])->name('community.blogs.destroy');
+    Route::match(['get', 'post'], '/community/forums', [CommunityAdminController::class, 'forums'])->name('community.forums');
+    Route::post('/community/threads/{thread}/moderate', [CommunityAdminController::class, 'moderateThread'])->name('community.threads.moderate');
+    Route::post('/community/replies/{reply}/moderate', [CommunityAdminController::class, 'moderateReply'])->name('community.replies.moderate');
 
     Route::post('/notifications/broadcast', [NotificationAdminController::class, 'broadcast'])->name('notifications.broadcast');
 
