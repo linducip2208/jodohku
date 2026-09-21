@@ -105,6 +105,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
         Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
         Route::post('/users/stop-impersonate', [UserController::class, 'stopImpersonate'])->name('users.stop-impersonate');
+        Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
 
         Route::get('/matching/questions', [MatchingAdminController::class, 'questions'])->name('matching.questions');
         Route::post('/matching/questions', [MatchingAdminController::class, 'storeQuestion'])->name('matching.questions.store');
@@ -113,6 +114,8 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::match(['get', 'post'], '/matching/categories', [MatchingAdminController::class, 'categories'])->name('matching.categories');
         Route::match(['get', 'post'], '/matching/versions', [MatchingAdminController::class, 'versions'])->name('matching.versions');
         Route::match(['get', 'post', 'put'], '/matching/weights', [MatchingAdminController::class, 'weights'])->name('matching.weights');
+        Route::get('/matching/demographic', [MatchingAdminController::class, 'demographic'])->name('matching.demographic');
+        Route::post('/matching/weights/sync', [MatchingAdminController::class, 'syncWeights'])->name('matching.weights.sync');
 
         Route::get('/virtual', [VirtualMemberAdminController::class, 'index'])->name('virtual.index');
         Route::post('/virtual', [VirtualMemberAdminController::class, 'store'])->name('virtual.store');

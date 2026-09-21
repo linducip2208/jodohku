@@ -362,4 +362,39 @@ class ChatService
 
         return $messages->count();
     }
+
+    public function createConversation(User $a, User $b): Conversation
+    {
+        return $this->findOrCreateDirect($a, $b);
+    }
+
+    public function export(Conversation $conversation, User $user): array
+    {
+        if (! $conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $messages = $conversation->messages()->with(['sender', 'attachments', 'reactions'])
+            ->orderBy('id')->get();
+
+        return [
+            'conversation_id' => $conversation->id,
+            'title' => $conversation->title,
+            'type' => $conversation->type->value,
+            'created_at' => $conversation->created_at,
+            'total_messages' => $messages->count(),
+            'members' => $conversation->members->pluck('user_id')->all(),
+            'messages' => $messages->map(fn ($m) => [
+                'id' => $m->id,
+                'sender_id' => $m->sender_id,
+                'sender_name' => $m->sender?->display_name ?? $m->sender?->name,
+                'body' => $m->body,
+                'type' => $m->type,
+                'status' => $m->status->value ?? $m->status,
+                'created_at' => $m->created_at,
+                'is_edited' => $m->is_edited,
+                'attachments' => $m->attachments->map(fn ($a) => ['file_path' => $a->file_path, 'file_name' => $a->file_name, 'mime_type' => $a->mime_type]),
+                'reactions' => $m->reactions->map(fn ($r) => ['emoji' => $r->emoji, 'user_id' => $r->user_id]),
+            ])->all(),
+        ];
+    }
 }

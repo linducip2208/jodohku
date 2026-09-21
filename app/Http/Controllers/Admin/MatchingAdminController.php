@@ -96,4 +96,17 @@ class MatchingAdminController extends Controller
 
         return response()->json(config('matchmaking.weights'));
     }
+
+    public function demographic(Request $request, \App\Services\MatchingEngine $engine)
+    {
+        return response()->json($engine->demographicBreakdown($request->user()));
+    }
+
+    public function syncWeights(Request $request, \App\Services\MatchingEngine $engine)
+    {
+        $request->validate(['weights' => ['required', 'array']]);
+        $updated = $engine->updateWeights($request->input('weights'));
+
+        return response()->json(['weights' => $updated]);
+    }
 }

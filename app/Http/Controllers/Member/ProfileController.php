@@ -183,4 +183,30 @@ class ProfileController extends Controller
 
         return response()->json(['can_view' => $canView, 'photos' => $photos, 'visibility' => $privacy?->photos_visibility?->value ?? 'public']);
     }
+
+    public function stats(Request $request, User $user)
+    {
+        $this->authorize('view', $user);
+        $viewer = $request->user();
+        $isSelf = $viewer && (int) $viewer->id === (int) $user->id;
+
+        return response()->json([
+            'profile_views_total' => \App\Models\ProfileView::where('profile_user_id', $user->id)->count(),
+            'profile_views_today' => \App\Models\ProfileView::where('profile_user_id', $user->id)->whereDate('created_at', today())->count(),
+            'likes_received' => \App\Models\Like::where('liked_id', $user->id)->count(),
+            'likes_received_today' => \App\Models\Like::where('liked_id', $user->id)->whereDate('created_at', today())->count(),
+            'superlikes_received' => \App\Models\SuperLike::where('receiver_id', $user->id)->count(),
+            'matches' => \App\Models\UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
+            'messages_sent' => \App\Models\Message::where('sender_id', $user->id)->count(),
+            'messages_received' => \App\Models\Message::where('sender_id', '!=', $user->id)->whereHas('conversation', fn ($q) => $q->whereHas('members', fn ($q2) => $q2->where('user_id', $user->id)))->count(),
+            'is_self' => $isSelf,
+        ]);
+    }
+
+    public function blocking(Request $request)
+    {
+        $items = \App\Models\Block::where('blocker_id', $request->user()->id)->with(['blocked'])->latest('id')->paginate(20);
+
+        return response()->json($items);
+    }
 }

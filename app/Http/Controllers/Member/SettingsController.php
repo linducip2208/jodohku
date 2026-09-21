@@ -109,4 +109,31 @@ class SettingsController extends Controller
             ? response()->json(['message' => '2FA disabled.'])
             : back()->with('status', '2FA dinonaktifkan.');
     }
+
+    public function loginHistory(Request $request)
+    {
+        $logs = \App\Models\AuditLog::where('actor_id', $request->user()->id)
+            ->whereIn('action', ['auth.login', 'auth.login.api', 'admin.login'])
+            ->orderByDesc('created_at')
+            ->paginate(25);
+
+        return response()->json($logs);
+    }
+
+    public function sessions(Request $request)
+    {
+        $tokens = $request->user()->tokens()->latest('created_at')->paginate(20);
+        $sessions = $tokens->map(fn ($t) => [
+            'id' => $t->id,
+            'name' => $t->name,
+            'created_at' => $t->created_at,
+            'last_used' => $t->last_used_at,
+            'expires_at' => $t->expires_at,
+            'ip' => $t->last_used_ip ?? $t->ip_address ?? null,
+            'user_agent' => $t->user_agent ?? null,
+            'is_current' => $t->id === $request->user()->currentAccessToken()?->id,
+        ]);
+
+        return response()->json(['sessions' => $sessions, 'total' => $tokens->total()]);
+    }
 }

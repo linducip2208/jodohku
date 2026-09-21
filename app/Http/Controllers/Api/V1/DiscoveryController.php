@@ -116,4 +116,48 @@ class DiscoveryController extends Controller
     {
         return response()->json($likes->rewind($request->user()) ?? ['message' => 'Nothing to rewind.']);
     }
+
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+        $today = today();
+
+        return response()->json([
+            'profiles_viewed_today' => \App\Models\ProfileView::where('viewer_id', $user->id)->where('created_at', '>=', $today)->count(),
+            'profiles_viewed_total' => \App\Models\ProfileView::where('viewer_id', $user->id)->count(),
+            'likes_given_today' => \App\Models\Like::where('liker_id', $user->id)->whereDate('created_at', $today)->count(),
+            'likes_given_total' => \App\Models\Like::where('liker_id', $user->id)->count(),
+            'likes_received_today' => \App\Models\Like::where('liked_id', $user->id)->whereDate('created_at', $today)->count(),
+            'likes_received_total' => \App\Models\Like::where('liked_id', $user->id)->count(),
+            'matches_today' => \App\Models\UserMatch::where('user_a_id', $user->id)->orWhere('user_b_id', $user->id)->whereDate('matched_at', '>=', $today)->count(),
+            'matches_total' => \App\Models\UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
+            'rewinds_total' => \App\Models\Rewind::where('user_id', $user->id)->whereNull('undone_at')->count(),
+            'favorites_total' => \App\Models\Favorite::where('user_id', $user->id)->count(),
+            'superlikes_given_total' => \App\Models\SuperLike::where('sender_id', $user->id)->count(),
+            'superlikes_received_total' => \App\Models\SuperLike::where('receiver_id', $user->id)->count(),
+        ]);
+    }
+
+    public function history(Request $request)
+    {
+        $user = $request->user();
+        $type = $request->query('type', 'all');
+        $perPage = (int) $request->query('per_page', 20);
+
+        $query = \App\Models\Like::where('liker_id', $user->id)->with(['liked']);
+
+        match ($type) {
+            'likes' => $query->where('is_super', false),
+            'superlikes' => $query->where('is_super', true),
+            default => $query,
+        };
+
+        if ($request->query('target_id')) {
+            $query->where('liked_id', (int) $request->query('target_id'));
+        }
+
+        $items = $query->latest('id')->paginate($perPage);
+
+        return response()->json($items);
+    }
 }

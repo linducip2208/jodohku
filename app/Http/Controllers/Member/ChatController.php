@@ -163,4 +163,39 @@ class ChatController extends Controller
             ? response()->json(['conversations' => ConversationResource::collection($conversations)->response()->getData(), 'unread_total' => $chat->unreadTotal($user)])
             : view('member.chat.inbox', ['conversations' => $conversations, 'filter' => $filter]);
     }
+
+    public function create(Request $request, ChatService $chat)
+    {
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'initial_message' => ['nullable', 'string', 'max:2000']]);
+        $target = \App\Models\User::findOrFail($request->integer('user_id'));
+        $conversation = $chat->findOrCreateDirect($request->user(), $target);
+
+        if ($request->filled('initial_message')) {
+            $message = $chat->sendMessage($conversation, $request->user(), ['body' => $request->string('initial_message')]);
+
+            return response()->json(['conversation_id' => $conversation->id, 'message_id' => $message->id], 201);
+        }
+
+        return response()->json(['conversation_id' => $conversation->id], 201);
+    }
+
+    public function export(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        $messages = $conversation->messages()->with(['sender', 'attachments', 'reactions'])
+            ->orderBy('id')->cursorPaginate(1000);
+
+        $data = [
+            'conversation' => ConversationResource::make($conversation->load(['members.user'])),
+            'messages' => $messages,
+            'exported_at' => now(),
+            'total_messages' => $messages->total(),
+        ];
+
+        if ($request->wantsJson()) {
+            return response()->json($data);
+        }
+
+        return view('member.chat.export', $data);
+    }
 }

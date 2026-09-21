@@ -125,4 +125,46 @@ class ChatController extends Controller
 
         return response()->json(['message' => 'Declined.']);
     }
+
+    public function reactions(Request $request, Message $message)
+    {
+        $this->authorize('view', $message->conversation);
+
+        return response()->json($message->reactions()->with('user')->get()->groupBy('emoji')->map(fn ($g) => [
+            'emoji' => $g->first()->emoji,
+            'count' => $g->count(),
+            'users' => $g->pluck('user')->filter()->values(),
+        ])->values());
+    }
+
+    public function create(Request $request, ChatService $chat)
+    {
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'initial_message' => ['nullable', 'string', 'max:2000']]);
+        $target = \App\Models\User::findOrFail($request->integer('user_id'));
+        $conversation = $chat->findOrCreateDirect($request->user(), $target);
+
+        if ($request->filled('initial_message')) {
+            $message = $chat->sendMessage($conversation, $request->user(), ['body' => $request->string('initial_message')]);
+
+            return response()->json(['conversation_id' => $conversation->id, 'message' => MessageResource::make($message->load(['sender', 'attachments']))], 201);
+        }
+
+        return response()->json(['conversation_id' => $conversation->id], 201);
+    }
+
+    public function forward(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        $request->validate(['conversation_id' => ['required', 'integer', 'exists:conversations,id']]);
+        $target = \App\Models\Conversation::findOrFail($request->integer('conversation_id'));
+        $this->authorize('send', $target);
+
+        $forwarded = $chat->sendMessage($target, $request->user(), [
+            'body' => $message->body,
+            'type' => $message->type,
+            'metadata' => ['forwarded_from' => $message->conversation->id, 'original_message_id' => $message->id],
+        ]);
+
+        return response()->json(MessageResource::make($forwarded->load(['sender', 'attachments'])), 201);
+    }
 }

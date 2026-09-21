@@ -59,8 +59,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/discover', [DiscoveryController::class, 'discover']);
         Route::get('/matches', [DiscoveryController::class, 'matches']);
         Route::get('/matches/{user}/explain', [DiscoveryController::class, 'explain']);
-        Route::post('/matches/score-cache', [DiscoveryController::class, 'scoreCache']);
         Route::post('/matches/batch-score', [DiscoveryController::class, 'batchScore']);
+        Route::get('/matches/stats', [DiscoveryController::class, 'stats']);
+        Route::get('/matches/history', [DiscoveryController::class, 'history']);
         Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked']);
         Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
@@ -84,6 +85,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);
+        Route::get('/messages/{message}/reactions', [ChatController::class, 'reactions']);
+        Route::post('/conversations', [ChatController::class, 'create']);
+        Route::post('/messages/{message}/forward', [ChatController::class, 'forward']);
 
         Route::get('/chat-requests', [ChatController::class, 'requests']);
         Route::post('/chat-requests/{user}', [\App\Http\Controllers\Member\ChatRequestController::class, 'store'])->middleware('throttle:30,1,chat-requests');
@@ -94,13 +98,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/plans', [AccountController::class, 'plans']);
         Route::get('/subscriptions', [AccountController::class, 'subscriptions']);
-        Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:10,1,checkout');
+        Route::get('/subscriptions/history', [AccountController::class, 'subscriptionHistory']);
         Route::post('/subscriptions/{subscription}/cancel', [AccountController::class, 'cancelSubscription']);
+
         Route::get('/payments/{payment}', [AccountController::class, 'payment']);
         Route::get('/payments/{payment}/receipt', [AccountController::class, 'receipt']);
+        Route::get('/payments/summary', [AccountController::class, 'paymentSummary']);
         Route::post('/payments/{payment}/retry', [AccountController::class, 'retry']);
 
         Route::get('/wallet', [AccountController::class, 'wallet']);
+        Route::get('/wallet/transactions', [AccountController::class, 'transactions']);
         Route::get('/credit-products', [AccountController::class, 'creditProducts']);
         Route::post('/wallet/spend', [AccountController::class, 'spend'])->middleware('throttle:30,1,wallet-spend');
 

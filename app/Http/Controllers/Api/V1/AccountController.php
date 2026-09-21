@@ -220,4 +220,49 @@ class AccountController extends Controller
     {
         return response()->json($request->user()->load(['notificationPreference', 'profilePrivacy']));
     }
+
+    public function transactions(Request $request, CreditService $credits)
+    {
+        $type = $request->query('type');
+        $query = \App\Models\CreditTransaction::where('user_id', $request->user()->id)->with('user');
+        if ($type) {
+            $query->where('type', $type);
+        }
+        $items = $query->latest('id')->paginate(25);
+
+        return response()->json($items);
+    }
+
+    public function subscriptionHistory(Request $request)
+    {
+        $items = $request->user()->subscriptions()->with('plan')
+            ->whereIn('status', ['expired', 'cancelled'])
+            ->latest('id')->paginate(20);
+
+        return response()->json($items);
+    }
+
+    public function paymentSummary(Request $request)
+    {
+        $monthStart = now()->startOfMonth();
+        $paid = \App\Models\Payment::where('user_id', $request->user()->id)
+            ->where('status', \App\Enums\PaymentStatus::Paid)
+            ->where('paid_at', '>=', $monthStart)
+            ->sum('total_amount');
+        $refunded = \App\Models\Payment::where('user_id', $request->user()->id)
+            ->where('status', \App\Enums\PaymentStatus::Refunded)
+            ->where('refunded_at', '>=', $monthStart)
+            ->sum('total_amount');
+        $count = \App\Models\Payment::where('user_id', $request->user()->id)
+            ->where('created_at', '>=', $monthStart)->count();
+
+        return response()->json([
+            'month' => now()->format('Y-m'),
+            'total_paid' => $paid,
+            'total_refunded' => $refunded,
+            'net' => $paid - $refunded,
+            'payment_count' => $count,
+            'balance' => $request->user()->creditWallet->balance ?? 0,
+        ]);
+    }
 }

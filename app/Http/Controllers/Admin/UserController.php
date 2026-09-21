@@ -186,4 +186,31 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Stopped impersonating.']);
     }
+
+    public function bulkAction(Request $request, AuditService $audit)
+    {
+        $request->validate([
+            'user_ids' => ['required', 'array', 'max:500', 'exists:users,id'],
+            'action' => ['required', 'string', 'in:suspend,unsuspend,ban,unban,verify,unverify'],
+        ]);
+        $userIds = (array) $request->input('user_ids');
+        $action = $request->string('action');
+        $users = User::whereIn('id', $userIds)->get();
+        $results = [];
+
+        foreach ($users as $user) {
+            match ($action) {
+                'suspend' => $user->update(['status' => UserStatus::Suspended]),
+                'unsuspend' => $user->update(['status' => UserStatus::Active]),
+                'ban' => $user->update(['status' => UserStatus::Banned]),
+                'unban' => $user->update(['status' => UserStatus::Active]),
+                'verify' => $user->update(['is_verified' => true]),
+                'unverify' => $user->update(['is_verified' => false]),
+            };
+            $audit->log('admin.user.bulk_'.$action, $request->user(), $user);
+            $results[] = ['user_id' => $user->id, 'status' => 'processed'];
+        }
+
+        return response()->json(['action' => $action, 'processed' => count($results), 'results' => $results]);
+    }
 }

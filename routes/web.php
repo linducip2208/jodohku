@@ -162,6 +162,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/profile/{user}/view-history', [\App\Http\Controllers\Member\ProfileController::class, 'viewHistory'])->name('member.profile.view-history');
     Route::get('/profile/{user}/viewers', [\App\Http\Controllers\Member\ProfileController::class, 'viewers'])->name('member.profile.viewers');
     Route::get('/profile/{user}/visible-to', [\App\Http\Controllers\Member\ProfileController::class, 'visibleTo'])->name('member.profile.visible-to');
+    Route::get('/profile/{user}/stats', [\App\Http\Controllers\Member\ProfileController::class, 'stats'])->name('member.profile.stats');
+    Route::get('/profile/blocking', [\App\Http\Controllers\Member\ProfileController::class, 'blocking'])->name('member.profile.blocking');
     Route::get('/profile/completeness', [\App\Http\Controllers\Member\ProfileController::class, 'completeness'])->name('member.profile.completeness');
     Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos'])->name('member.profile.photos');
     Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
@@ -174,6 +176,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/favorites', fn () => view('member.favorites'))->name('member.favorites');
 
     Route::get('/chat', fn () => view('member.chat.inbox'))->name('member.chat');
+    Route::post('/chat/create', [\App\Http\Controllers\Member\ChatController::class, 'create'])->name('member.chat.create');
+    Route::get('/chat/{conversation}/export', [\App\Http\Controllers\Member\ChatController::class, 'export'])->name('member.chat.export');
     Route::get('/chat/{conversation}', function (Conversation $conversation) {
         abort_unless($conversation->involves(Auth::id()), 403);
         return view('member.chat.show', ['conversation' => $conversation]);
@@ -242,6 +246,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     });
 
     Route::get('/settings', fn () => view('member.settings.index'))->name('member.settings');
+    Route::get('/settings/login-history', [\App\Http\Controllers\Member\SettingsController::class, 'loginHistory'])->name('settings.login-history');
+    Route::get('/settings/sessions', [\App\Http\Controllers\Member\SettingsController::class, 'sessions'])->name('settings.sessions');
     Route::post('/settings/profile', function (Request $r) {
         $u = Auth::user();
         $u->update($r->only(['display_name', 'city']));

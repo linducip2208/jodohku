@@ -573,4 +573,53 @@ class MatchingEngine
             return $row;
         });
     }
+
+    public function demographicBreakdown(User $user): array
+    {
+        $query = User::active()->where('id', '!=', $user->id);
+
+        $genderDist = $query->selectRaw('gender, count(*) as total')->groupBy('gender')->pluck('total', 'gender');
+        $ageBuckets = [
+            '17-20' => $query->whereBetween('date_of_birth', [now()->subYears(20)->toDateString(), now()->subYears(17)->toDateString()])->count(),
+            '21-25' => $query->whereBetween('date_of_birth', [now()->subYears(25)->toDateString(), now()->subYears(21)->toDateString()])->count(),
+            '26-30' => $query->whereBetween('date_of_birth', [now()->subYears(30)->toDateString(), now()->subYears(26)->toDateString()])->count(),
+            '31-35' => $query->whereBetween('date_of_birth', [now()->subYears(35)->toDateString(), now()->subYears(31)->toDateString()])->count(),
+            '36-45' => $query->whereBetween('date_of_birth', [now()->subYears(45)->toDateString(), now()->subYears(36)->toDateString()])->count(),
+            '46+' => $query->where('date_of_birth', '<=', now()->subYears(46)->toDateString())->count(),
+        ];
+        $verified = $query->where('is_verified', true)->count();
+        $premium = $query->where('is_premium', true)->count();
+        $online = $query->where('is_online', true)->count();
+        $total = $query->count();
+
+        $cityDist = $query->whereNotNull('city')->selectRaw('city, count(*) as total')->groupBy('city')->orderByDesc('total')->limit(20)->pluck('total', 'city');
+
+        return [
+            'total' => $total,
+            'gender' => $genderDist,
+            'age_buckets' => $ageBuckets,
+            'verified_count' => $verified,
+            'premium_count' => $premium,
+            'online_count' => $online,
+            'verified_pct' => $total > 0 ? round($verified / $total * 100, 1) : 0,
+            'premium_pct' => $total > 0 ? round($premium / $total * 100, 1) : 0,
+            'online_pct' => $total > 0 ? round($online / $total * 100, 1) : 0,
+            'top_cities' => $cityDist,
+        ];
+    }
+
+    public function updateWeights(array $weights): array
+    {
+        $defaults = [
+            'age' => 10, 'location' => 10, 'preference' => 20, 'personality' => 20,
+            'interest' => 10, 'lifestyle' => 10, 'goal' => 10, 'behavior' => 10,
+        ];
+        $valid = array_intersect_key($weights, $defaults);
+        if (empty($valid)) {
+            return $this->weights();
+        }
+        config(['matchmaking.weights' => $valid]);
+
+        return $this->weights();
+    }
 }
