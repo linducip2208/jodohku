@@ -159,6 +159,10 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
         return view('member.profile.show', ['profileUser' => $user, 'score' => $score]);
     })->name('member.profile');
+    Route::get('/profile/{user}/view-history', [\App\Http\Controllers\Member\ProfileController::class, 'viewHistory'])->name('member.profile.view-history');
+    Route::get('/profile/{user}/viewers', [\App\Http\Controllers\Member\ProfileController::class, 'viewers'])->name('member.profile.viewers');
+    Route::get('/profile/{user}/visible-to', [\App\Http\Controllers\Member\ProfileController::class, 'visibleTo'])->name('member.profile.visible-to');
+    Route::get('/profile/completeness', [\App\Http\Controllers\Member\ProfileController::class, 'completeness'])->name('member.profile.completeness');
     Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos'])->name('member.profile.photos');
     Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
@@ -190,6 +194,15 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         return back();
     });
     Route::post('/chat/{conversation}/attachments', [\App\Http\Controllers\Member\MessageController::class, 'upload'])->name('member.chat.attachments');
+    Route::get('/chat/conversations', [\App\Http\Controllers\Member\ChatController::class, 'conversations'])->name('member.chat.conversations');
+    Route::get('/chat/{conversation}/labels', [\App\Http\Controllers\Member\ChatController::class, 'labels'])->name('member.chat.labels');
+    Route::post('/chat/{conversation}/labels', [\App\Http\Controllers\Member\ChatController::class, 'addLabel'])->name('member.chat.labels.add');
+    Route::delete('/chat/{conversation}/labels/{labelId}', [\App\Http\Controllers\Member\ChatController::class, 'removeLabel'])->name('member.chat.labels.remove');
+    Route::post('/chat/{conversation}/mark-all-read', function (Conversation $conversation, \App\Services\ChatService $chat) {
+        abort_unless($conversation->involves(Auth::id()), 403);
+        $count = $chat->markAllRead(Auth::user());
+        return back()->with('status', "{$count} pesan ditandai dibaca.");
+    })->name('member.chat.mark-all-read');
     Route::post('/chat-requests/{user}', [\App\Http\Controllers\Member\ChatRequestController::class, 'store'])->name('member.chat-requests.store');
     Route::post('/chat/{conversation}/unmatch', function (Conversation $conversation) {
         try { $conversation->update(['is_blocked' => true]); } catch (\Throwable) {}
@@ -277,16 +290,22 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/events/{event}', function (Event $event) {
         return view('member.events.show', ['event' => $event]);
     })->name('member.events.show');
-    Route::post('/events/{id}/rsvp', function (int $id) {
-        try { \App\Models\EventMember::firstOrCreate(['event_id' => $id, 'user_id' => Auth::id()]); } catch (\Throwable) {}
-        return back()->with('status', 'RSVP berhasil 🎟️ Sampai jumpa di lokasi!');
-    });
+    Route::post('/events/{event}/join', [\App\Http\Controllers\Member\EventController::class, 'join'])->name('member.events.join');
+    Route::post('/events/{event}/leave', [\App\Http\Controllers\Member\EventController::class, 'leave'])->name('member.events.leave');
+    Route::post('/events/{event}/rsvp', [\App\Http\Controllers\Member\EventController::class, 'rsvp'])->name('member.events.rsvp');
+    Route::get('/events/{event}/attendees', [\App\Http\Controllers\Member\EventController::class, 'attendees'])->name('member.events.attendees');
+    Route::post('/events/nearby', [\App\Http\Controllers\Member\EventController::class, 'nearby'])->name('member.events.nearby');
+    Route::get('/events/status', function () {
+        $statuses = \App\Enums\EventStatus::cases();
+        return response()->json($statuses);
+    })->name('member.events.status');
 
     Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
     Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');
     Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
     Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
     Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');
+    Route::post('/forums/search', [\App\Http\Controllers\Member\ForumController::class, 'search'])->name('member.forums.search');
     Route::post('/forums/{slug}/threads', [\App\Http\Controllers\Member\ForumController::class, 'storeThread'])->name('member.forums.threads.store');
     Route::post('/forums/thread/{thread}/reply', [\App\Http\Controllers\Member\ForumController::class, 'reply'])->name('member.forums.thread.reply');
 });

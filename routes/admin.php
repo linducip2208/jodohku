@@ -102,6 +102,9 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::post('/users/{user}/unban', [UserController::class, 'unban'])->name('users.unban');
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
         Route::post('/users/{user}/credits', [UserController::class, 'adjustCredits'])->name('users.credits');
+        Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
+        Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
+        Route::post('/users/stop-impersonate', [UserController::class, 'stopImpersonate'])->name('users.stop-impersonate');
 
         Route::get('/matching/questions', [MatchingAdminController::class, 'questions'])->name('matching.questions');
         Route::post('/matching/questions', [MatchingAdminController::class, 'storeQuestion'])->name('matching.questions.store');

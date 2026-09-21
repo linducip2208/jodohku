@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\ProfilePrivacy;
 use App\Models\User;
+use App\Services\PhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -69,5 +70,50 @@ class ProfileController extends Controller
         });
 
         return response()->json(UserResource::make($user->fresh(['profile', 'photos', 'interests'])));
+    }
+
+    public function viewHistory(Request $request, User $user)
+    {
+        $this->authorize('view', $user);
+        $views = \App\Models\ProfileView::where('profile_user_id', $user->id)->with('viewer.profile')->latest('id')->paginate(25);
+
+        return response()->json($views);
+    }
+
+    public function viewers(Request $request, User $user)
+    {
+        $this->authorize('view', $user);
+        $views = \App\Models\ProfileView::where('profile_user_id', $user->id)->with('viewer.profile')->latest('id')->paginate(25);
+
+        return response()->json($views);
+    }
+
+    public function visibleTo(Request $request, User $user)
+    {
+        $this->authorize('view', $user);
+        $viewer = $request->user();
+        $privacy = $user->profilePrivacy;
+        $canView = $privacy ? $privacy->canSee($viewer, $privacy->photos_visibility) : true;
+        $photos = \App\Services\PhotoService::visibleTo($user, $viewer);
+
+        return response()->json(['can_view' => $canView, 'photos' => $photos, 'visibility' => $privacy?->photos_visibility?->value ?? 'public']);
+    }
+
+    public function completeness(Request $request)
+    {
+        $user = $request->user();
+        $profile = $user->profile;
+        $pct = $profile ? $profile->completenessScore() : 0;
+        $tips = [];
+        if (empty($user->avatar_path)) $tips[] = 'Tambahkan foto profil';
+        if (empty($profile?->bio)) $tips[] = 'Tulis bio menarik';
+        if (empty($profile?->occupation)) $tips[] = 'Isi pekerjaan';
+        if (empty($profile?->education)) $tips[] = 'Isi pendidikan';
+        if (empty($profile?->headline)) $tips[] = 'Tambahkan headline';
+        if (($user->interests()->count() ?? 0) === 0) $tips[] = 'Pilih minimal 3 minat';
+        if (empty($user->city)) $tips[] = 'Tambahkan lokasi';
+        if (empty($profile?->relationship_goal)) $tips[] = 'Tambahkan tujuan hubungan';
+
+        return response()->json(['completeness' => $pct, 'tips' => $tips, 'missing' => count($tips)]);
     }
 }

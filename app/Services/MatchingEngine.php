@@ -452,20 +452,86 @@ class MatchingEngine
                 $diffs[] = "Different cities: {$a->city} vs {$b->city}";
             }
         }
+        $aAge = $a->age();
+        $bAge = $b->age();
+        if ($aAge && $bAge) {
+            $diff = abs($aAge - $bAge);
+            if ($diff === 0) {
+                $common[] = "Same age ({$aAge})";
+            } else {
+                $diffs[] = "Age difference: {$diff} tahun";
+            }
+        }
+        $aHeight = $a->profile?->height_cm;
+        $bHeight = $b->profile?->height_cm;
+        if ($aHeight && $bHeight) {
+            $diff = abs($aHeight - $bHeight);
+            $diffs[] = "Height difference: {$diff} cm";
+        }
+        if ($a->profile?->occupation && $b->profile?->occupation) {
+            if (strtolower($a->profile->occupation) === strtolower($b->profile->occupation)) {
+                $common[] = "Same occupation: {$a->profile->occupation}";
+            } else {
+                $diffs[] = "Different work: {$a->profile->occupation} vs {$b->profile->occupation}";
+            }
+        }
+        if ($a->profile?->education && $b->profile?->education) {
+            if (strtolower($a->profile->education) === strtolower($b->profile->education)) {
+                $common[] = "Same education: {$a->profile->education}";
+            } else {
+                $diffs[] = "Different education: {$a->profile->education} vs {$b->profile->education}";
+            }
+        }
         foreach ($r['breakdown'] as $k => $v) {
             if ($v < 40) {
                 $diffs[] = "Low {$k} compatibility ({$v})";
             }
+        }
+        if (empty($diffs)) {
+            $common[] = "Hampir sempurna! Sangat cocok.";
         }
 
         return [
             'scores' => $r,
             'common' => $common,
             'differences' => $diffs,
+            'summary' => [
+                'mutual_score' => $r['mutual'],
+                'strength' => $r['mutual'] >= 80 ? 'Sangat Cocok' : ($r['mutual'] >= 60 ? 'Cocok' : ($r['mutual'] >= 40 ? 'Cukup Cocok' : 'Kurang Cocok')),
+                'recommendation' => $r['mutual'] >= 60 ? 'Layak untuk diajak ngobrol.' : 'Perlu lebih kenal sebelum ngobrol.',
+            ],
         ];
     }
 
-    /** Persist directional + canonical match_scores rows inside a transaction. */
+    public function scoreWithCache(User $a, User $b, int $ttl = 300): array
+    {
+        $cacheKey = "match:score:".min($a->id, $b->id).":".max($a->id, $b->id);
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($cached) {
+            return $cached;
+        }
+        $result = $this->scorePair($a, $b);
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $result, now()->addSeconds($ttl));
+
+        return $result;
+    }
+
+    public function batchScore(User $user, array $candidateIds, int $limit = 50): array
+    {
+        $candidates = User::whereIn('id', array_slice($candidateIds, 0, $limit))->get();
+        $results = [];
+        foreach ($candidates as $cand) {
+            if (! $this->passesHardFilter($user, $cand)) {
+                continue;
+            }
+            $score = $this->scorePair($user, $cand);
+            $results[$cand->id] = $score;
+        }
+        arsort($results);
+
+        return $results;
+    }
+
     public function persistScore(User $a, User $b): MatchScore
     {
         $r = $this->scorePair($a, $b);

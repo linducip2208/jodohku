@@ -45,6 +45,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos']);
         Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto']);
         Route::get('/profile/{user}', [ProfileController::class, 'show'])->middleware('blocked');
+        Route::get('/profile/{user}/view-history', [ProfileController::class, 'viewHistory']);
+        Route::get('/profile/{user}/viewers', [ProfileController::class, 'viewers']);
+        Route::get('/profile/{user}/visible-to', [ProfileController::class, 'visibleTo']);
+        Route::get('/profile/completeness', [ProfileController::class, 'completeness']);
 
         Route::get('/preferences', [PreferenceController::class, 'show']);
         Route::put('/preferences', [PreferenceController::class, 'update']);
@@ -55,6 +59,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/discover', [DiscoveryController::class, 'discover']);
         Route::get('/matches', [DiscoveryController::class, 'matches']);
         Route::get('/matches/{user}/explain', [DiscoveryController::class, 'explain']);
+        Route::post('/matches/score-cache', [DiscoveryController::class, 'scoreCache']);
+        Route::post('/matches/batch-score', [DiscoveryController::class, 'batchScore']);
         Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked']);
         Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
@@ -69,7 +75,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/conversations/{conversation}', [ChatController::class, 'show']);
         Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
         Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1,chat-send');
-        Route::post('/conversations/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
+        Route::post('/chat/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
+        Route::get('/chat/conversations', [ChatController::class, 'conversations']);
+        Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels']);
+        Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel']);
+        Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel']);
+        Route::post('/chat/{conversation}/mark-all-read', [ChatController::class, 'markRead']);
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);
@@ -85,8 +96,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/subscriptions', [AccountController::class, 'subscriptions']);
         Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:10,1,checkout');
         Route::post('/subscriptions/{subscription}/cancel', [AccountController::class, 'cancelSubscription']);
-        Route::get('/payments', [AccountController::class, 'payments']);
         Route::get('/payments/{payment}', [AccountController::class, 'payment']);
+        Route::get('/payments/{payment}/receipt', [AccountController::class, 'receipt']);
+        Route::post('/payments/{payment}/retry', [AccountController::class, 'retry']);
 
         Route::get('/wallet', [AccountController::class, 'wallet']);
         Route::get('/credit-products', [AccountController::class, 'creditProducts']);
@@ -115,5 +127,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])
             ->middleware('role:admin,superadmin');
+        Route::get('/admin/users/export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->middleware('role:admin,superadmin');
+        Route::post('/admin/users/impersonate', [\App\Http\Controllers\Admin\UserController::class, 'impersonate'])->middleware('role:admin,superadmin');
+        Route::post('/admin/users/stop-impersonate', [\App\Http\Controllers\Admin\UserController::class, 'stopImpersonate'])->middleware('role:admin,superadmin');
     });
 });

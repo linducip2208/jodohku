@@ -49,8 +49,7 @@ class ForumController extends Controller
 
     public function show(Request $request, int $thread)
     {
-        $t = ForumThread::with(['forum', 'user', 'visibleReplies.user'])
-            ->where('is_hidden', false)->findOrFail($thread);
+        $t = ForumThread::with(['forum', 'user', 'visibleReplies.user'])->where('is_hidden', false)->findOrFail($thread);
         $replies = $t->visibleReplies()->latest('id')->paginate(20);
 
         return $request->wantsJson()
@@ -70,5 +69,27 @@ class ForumController extends Controller
         }
 
         return response()->json($reply, 201);
+    }
+
+    public function search(Request $request)
+    {
+        $request->validate(['q' => ['required', 'string', 'max:255']]);
+        $q = $request->string('q');
+        $threads = ForumThread::where('is_hidden', false)
+            ->where(function ($query) use ($q) {
+                $query->where('title', 'like', "%{$q}%")->orWhere('body', 'like', "%{$q}%");
+            })
+            ->with('forum', 'user')
+            ->latest('id')
+            ->paginate(20);
+        $posts = \App\Models\Post::where('body', 'like', "%{$q}%")->with('user')->latest('id')->paginate(20);
+        $forums = \App\Models\Forum::where('is_active', true)
+            ->where(function ($query) use ($q) {
+                $query->where('name', 'like', "%{$q}%")->orWhere('description', 'like', "%{$q}%");
+            })
+            ->withCount(['visibleThreads'])
+            ->get();
+
+        return response()->json(['threads' => $threads, 'posts' => $posts, 'forums' => $forums]);
     }
 }

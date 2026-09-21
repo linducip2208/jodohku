@@ -336,4 +336,30 @@ class ChatService
 
         return $s->fresh();
     }
+
+    public function unreadTotal(User $user): int
+    {
+        return Message::whereIn('conversation_id', Conversation::forUser($user->id)->pluck('id'))
+            ->where('sender_id', '!=', $user->id)
+            ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
+            ->count();
+    }
+
+    public function markAllRead(User $user): int
+    {
+        $conversations = Conversation::forUser($user->id)->pluck('id');
+        $messages = Message::whereIn('conversation_id', $conversations)
+            ->where('sender_id', '!=', $user->id)
+            ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
+            ->get();
+        foreach ($messages as $m) {
+            $m->markReadBy($user);
+        }
+        ConversationMember::where('user_id', $user->id)->whereIn('conversation_id', $conversations)
+            ->update(['last_read_at' => now()]);
+
+        return $messages->count();
+    }
 }

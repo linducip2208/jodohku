@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -137,5 +138,52 @@ class UserController extends Controller
         return $request->wantsJson()
             ? response()->json($result)
             : back()->with('status', 'Photo '.$action.'d.');
+    }
+
+    public function export(Request $request)
+    {
+        $this->authorize('viewAdminOverview', \App\Models\User::class);
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="users-'.now()->format('Y-m-d').'.csv"',
+        ];
+        $columns = ['id', 'name', 'email', 'phone', 'display_name', 'gender', 'date_of_birth', 'city', 'status', 'role', 'is_verified', 'is_premium', 'is_online', 'created_at', 'last_active_at'];
+        $callback = function () use ($columns) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, $columns);
+            \App\Models\User::query()->with(['profile'])->chunkById(500, function ($users) use ($handle) {
+                foreach ($users as $u) {
+                    fputcsv($handle, [
+                        $u->id, $u->name, $u->email, $u->phone, $u->display_name, $u->gender, $u->date_of_birth, $u->city, $u->status, $u->role, $u->is_verified, $u->is_premium, $u->is_online, $u->created_at, $u->last_active_at,
+                    ]);
+                }
+            });
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function impersonate(Request $request, User $user)
+    {
+        $request->authorize('impersonate', $user);
+        if (! $request->user()->isAdmin()) {
+            abort(403, 'Admins only.');
+        }
+        session()->put('impersonating', $user->id);
+        Auth::login($user);
+
+        return response()->json(['message' => 'Now impersonating user #'.$user->id, 'user_id' => $user->id]);
+    }
+
+    public function stopImpersonate(Request $request)
+    {
+        if (! session()->has('impersonating')) {
+            abort(403, 'Not impersonating.');
+        }
+        $originalId = session()->pull('impersonating');
+        Auth::login(\App\Models\User::findOrFail($originalId));
+
+        return response()->json(['message' => 'Stopped impersonating.']);
     }
 }

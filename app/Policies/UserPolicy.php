@@ -40,4 +40,14 @@ class UserPolicy
     {
         return $user->isAdmin();
     }
+
+    public function impersonate(User $viewer, User $model): bool
+    {
+        return $viewer->isAdmin() && $viewer->id !== $model->id;
+    }
+
+    public function impersonateStop(User $viewer): bool
+    {
+        return $viewer->isAdmin();
+    }
 }

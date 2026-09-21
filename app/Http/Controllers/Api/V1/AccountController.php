@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Requests\CreditSpendRequest;
@@ -77,6 +78,38 @@ class AccountController extends Controller
         $this->authorize('view', $payment);
 
         return response()->json(PaymentResource::make($payment->load('items')));
+    }
+
+    public function receipt(Request $request, Payment $payment)
+    {
+        $this->authorize('view', $payment);
+        if ($payment->status !== PaymentStatus::Paid) {
+            return response()->json(['message' => 'Receipt available only for paid payments.'], 422);
+        }
+        $sub = $payment->subscription ? $payment->subscription->load('plan') : null;
+
+        return response()->json([
+            'payment' => $payment,
+            'items' => $payment->items,
+            'subscription' => $sub,
+            'receipt_number' => 'RT-'.$payment->invoice_number,
+            'issued_at' => $payment->paid_at,
+        ]);
+    }
+
+    public function retry(Request $request, Payment $payment, PaymentService $payments)
+    {
+        $this->authorize('update', $payment);
+        if ($payment->status !== PaymentStatus::Failed) {
+            return response()->json(['message' => 'Only failed payments can be retried.'], 422);
+        }
+        try {
+            $result = $payments->checkout($payment->user, ['subscription_plan' => $payment->subscription?->membership_plan?->code]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
+        }
+
+        return response()->json(['payment_id' => $result['payment']->id, 'gateway' => $result['gateway']], 201);
     }
 
     public function cancelSubscription(Request $request, int $subscription, SubscriptionService $subscriptions)

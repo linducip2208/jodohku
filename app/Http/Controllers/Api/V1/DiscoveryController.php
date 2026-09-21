@@ -46,6 +46,24 @@ class DiscoveryController extends Controller
         return response()->json($engine->explain($request->user(), $user));
     }
 
+    public function scoreCache(Request $request, User $user, MatchingEngine $engine)
+    {
+        $this->authorize('view', $user);
+        $ttl = (int) $request->input('ttl', 300);
+        $result = $engine->scoreWithCache($request->user(), $user, $ttl);
+
+        return response()->json($result);
+    }
+
+    public function batchScore(Request $request, MatchingEngine $engine)
+    {
+        $request->validate(['candidate_ids' => 'required|array', 'candidate_ids.*' => 'integer|exists:users,id', 'limit' => 'nullable|integer|min:1|max:100']);
+        $candidates = array_slice($request->input('candidate_ids'), 0, $request->input('limit', 50));
+        $result = $engine->batchScore($request->user(), $candidates, $request->input('limit', 50));
+
+        return response()->json($result);
+    }
+
     public function like(Request $request, User $user, LikeService $likes)
     {
         $this->authorize('view', $user);
