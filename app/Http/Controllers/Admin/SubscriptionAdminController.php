@@ -14,7 +14,7 @@ class SubscriptionAdminController extends Controller
     {
         $items = Subscription::with(['user', 'plan'])->latest('id')->paginate(25);
 
-        return $request->wantsJson() ? response()->json($items) : view('admin.subscriptions', ['items' => $items]);
+        return $request->wantsJson() ? response()->json($items) : view('admin.membership.subscriptions', ['items' => $items]);
     }
 
     public function cancel(Request $request, Subscription $subscription, SubscriptionService $subscriptions, AuditService $audit)

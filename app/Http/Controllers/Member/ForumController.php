@@ -16,7 +16,7 @@ class ForumController extends Controller
 
         return $request->wantsJson()
             ? response()->json($forums)
-            : view('member.forums', ['forums' => $forums]);
+            : view('member.forums.index', ['forums' => $forums]);
     }
 
     public function threads(Request $request, string $slug)
@@ -27,7 +27,7 @@ class ForumController extends Controller
 
         return $request->wantsJson()
             ? response()->json($threads)
-            : view('member.forum-threads', ['forum' => $forum, 'threads' => $threads]);
+            : view('member.forums.threads', ['forum' => $forum, 'threads' => $threads]);
     }
 
     public function storeThread(Request $request, string $slug)
@@ -55,7 +55,7 @@ class ForumController extends Controller
 
         return $request->wantsJson()
             ? response()->json(['thread' => $t, 'replies' => $replies])
-            : view('member.forum-thread', ['thread' => $t, 'replies' => $replies]);
+            : view('member.forums.thread', ['thread' => $t, 'replies' => $replies]);
     }
 
     public function reply(Request $request, int $thread)

@@ -15,7 +15,7 @@ class ChatAdminController extends Controller
     {
         $items = Conversation::with(['members.user'])->orderByDesc('last_message_at')->paginate(25);
 
-        return $request->wantsJson() ? response()->json($items) : view('admin.chat.active', ['items' => $items]);
+        return $request->wantsJson() ? response()->json($items) : view('admin.chat.conversations', ['items' => $items]);
     }
 
     public function reported(Request $request)

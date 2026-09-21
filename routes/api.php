@@ -14,14 +14,14 @@ use App\Http\Controllers\Member\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
-    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1,auth-register');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,auth-login');
 
     // Auth namespace aliases (used by clients + tests).
     Route::prefix('auth')->name('auth.')->group(function () {
-        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
-        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-        Route::post('/2fa/verify', [AuthController::class, 'verify2fa'])->middleware('throttle:10,1');
+        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1,auth-register');
+        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,auth-login');
+        Route::post('/2fa/verify', [AuthController::class, 'verify2fa'])->middleware('throttle:10,1,auth-2fa');
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('/logout', [AuthController::class, 'logout']);
             Route::get('/me', [AuthController::class, 'me']);
@@ -33,10 +33,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // Payment gateway webhooks are public; the gateway HMAC signature is the
     // source of truth (never browser redirects). Idempotent via event_id.
     Route::post('/webhooks/{gateway}', WebhookController::class)
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:60,1,webhooks')
         ->name('webhooks.handle');
 
-    Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:120,1,api'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
 
@@ -68,7 +68,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/conversations', [ChatController::class, 'conversations']);
         Route::get('/conversations/{conversation}', [ChatController::class, 'show']);
         Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
-        Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1,chat-send');
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);
@@ -81,17 +81,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/plans', [AccountController::class, 'plans']);
         Route::get('/subscriptions', [AccountController::class, 'subscriptions']);
-        Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:10,1');
+        Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:10,1,checkout');
         Route::post('/subscriptions/{subscription}/cancel', [AccountController::class, 'cancelSubscription']);
         Route::get('/payments', [AccountController::class, 'payments']);
         Route::get('/payments/{payment}', [AccountController::class, 'payment']);
 
         Route::get('/wallet', [AccountController::class, 'wallet']);
         Route::get('/credit-products', [AccountController::class, 'creditProducts']);
-        Route::post('/wallet/spend', [AccountController::class, 'spend'])->middleware('throttle:30,1');
+        Route::post('/wallet/spend', [AccountController::class, 'spend'])->middleware('throttle:30,1,wallet-spend');
 
-        Route::post('/verification', [AccountController::class, 'verify'])->middleware('throttle:5,1');
-        Route::post('/reports', [AccountController::class, 'report'])->middleware('throttle:10,1');
+        Route::post('/verification', [AccountController::class, 'verify'])->middleware('throttle:5,1,verification');
+        Route::post('/reports', [AccountController::class, 'report'])->middleware('throttle:10,1,reports');
         Route::post('/blocks/{user}', [AccountController::class, 'block']);
         Route::delete('/blocks/{user}', [AccountController::class, 'unblock']);
         Route::get('/blocks', [AccountController::class, 'blocks']);
@@ -106,9 +106,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/blog/{slug}', [BlogController::class, 'show']);
         Route::get('/forums', [ForumController::class, 'index']);
         Route::get('/forums/{slug}', [ForumController::class, 'threads']);
-        Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1');
+        Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1,forum-threads');
         Route::get('/forum-threads/{thread}', [ForumController::class, 'show']);
-        Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1');
+        Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1,forum-replies');
 
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])

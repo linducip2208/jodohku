@@ -64,6 +64,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('moderator', fn (User $u) => in_array($u->role, [UserRole::Moderator, UserRole::Admin, UserRole::Superadmin], true));
         Gate::define('admin', fn (User $u) => in_array($u->role, [UserRole::Admin, UserRole::Superadmin], true));
         Gate::define('superadmin', fn (User $u) => $u->role === UserRole::Superadmin);
+        // Any staff (operator/moderator/admin/superadmin) — read-only areas.
+        Gate::define('staff', fn (User $u) => in_array($u->role, [UserRole::Operator, UserRole::Moderator, UserRole::Admin, UserRole::Superadmin], true));
 
         // Events (Laravel 13 convention: Event::listen in AppServiceProvider)
         Event::subscribe(FireVirtualTrigger::class);

@@ -16,7 +16,7 @@ class NotificationController extends Controller
 
         return $request->wantsJson()
             ? response()->json(['unread' => $notifications->unreadCount($user), 'notifications' => NotificationResource::collection($items)->response()->getData()])
-            : view('member.notifications', ['notifications' => $items]);
+            : view('member.notifications.center', ['notifications' => $items]);
     }
 
     public function read(Request $request, string $id)

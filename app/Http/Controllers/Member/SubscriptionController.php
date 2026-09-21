@@ -18,7 +18,7 @@ class SubscriptionController extends Controller
 
         return $request->wantsJson()
             ? response()->json($plans)
-            : view('member.subscription.plans', ['plans' => $plans]);
+            : view('member.premium.plans', ['plans' => $plans]);
     }
 
     public function current(Request $request)

@@ -13,7 +13,7 @@ class SafetyController extends Controller
     {
         return $request->wantsJson()
             ? response()->json(['tips' => config('jodohku.safety_tips', []), 'support_email' => config('mail.support', 'support@jodohku.id')])
-            : view('member.safety');
+            : view('member.safety.center');
     }
 
     public function ads(Request $request, AdService $ads)

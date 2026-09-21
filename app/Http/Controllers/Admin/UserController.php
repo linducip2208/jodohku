@@ -29,14 +29,14 @@ class UserController extends Controller
         }
         $users = $query->paginate(25);
 
-        return $request->wantsJson() ? response()->json($users) : view('admin.users.index', ['users' => $users]);
+        return $request->wantsJson() ? response()->json($users) : view('admin.users', ['users' => $users]);
     }
 
     public function show(Request $request, User $user)
     {
         $user->load(['profile', 'photos', 'subscriptions.plan', 'payments', 'creditWallet', 'verificationRequests']);
 
-        return $request->wantsJson() ? response()->json($user) : view('admin.users.show', ['user' => $user]);
+        return $request->wantsJson() ? response()->json($user) : view('admin.users', ['users' => collect([$user])]);
     }
 
     public function update(AdminUserUpdateRequest $request, User $user, AuditService $audit)

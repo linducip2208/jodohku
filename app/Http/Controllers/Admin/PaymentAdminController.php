@@ -13,7 +13,7 @@ class PaymentAdminController extends Controller
     {
         $items = Payment::with(['user', 'items'])->latest('id')->paginate(25);
 
-        return $request->wantsJson() ? response()->json($items) : view('admin.payments', ['items' => $items]);
+        return $request->wantsJson() ? response()->json($items) : view('admin.membership.payments', ['items' => $items]);
     }
 
     public function show(Request $request, Payment $payment)

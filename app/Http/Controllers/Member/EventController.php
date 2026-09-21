@@ -14,14 +14,14 @@ class EventController extends Controller
 
         return $request->wantsJson()
             ? response()->json($events)
-            : view('member.events', ['events' => $events]);
+            : view('member.events.index', ['events' => $events]);
     }
 
     public function show(Request $request, Event $event)
     {
         return $request->wantsJson()
             ? response()->json($event->load('members'))
-            : view('member.event-show', ['event' => $event]);
+            : view('member.events.show', ['event' => $event]);
     }
 
     public function join(Request $request, Event $event)

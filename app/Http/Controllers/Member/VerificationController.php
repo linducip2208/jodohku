@@ -15,7 +15,7 @@ class VerificationController extends Controller
 
         return $request->wantsJson()
             ? response()->json($items)
-            : view('member.verification', ['requests' => $items]);
+            : view('member.verification.form', ['requests' => $items]);
     }
 
     public function store(VerificationSubmitRequest $request, VerificationService $verification)

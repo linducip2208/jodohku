@@ -11,6 +11,20 @@ use Illuminate\Support\Facades\Route;
 
 /* ---------- Landing ---------- */
 Route::get('/', fn () => view('welcome'))->name('landing');
+Route::get('/privacy', fn () => view('landing.privacy'))->name('legal.privacy');
+Route::get('/terms', fn () => view('landing.terms'))->name('legal.terms');
+Route::get('/contact', fn () => view('landing.contact'))->name('contact');
+Route::post('/contact', function (Request $r) {
+    $data = $r->validate([
+        'name' => ['required', 'string', 'max:120'],
+        'email' => ['required', 'email', 'max:190'],
+        'topic' => ['required', 'string', 'in:akun,pembayaran,moderasi,keamanan,kerjasama,lainnya'],
+        'message' => ['required', 'string', 'max:5000'],
+    ]);
+    \App\Models\ContactMessage::create($data + ['ip' => $r->ip()]);
+
+    return back()->with('status', 'Pesan terkirim. Tim kami akan membalas via email maksimal 2x24 jam.');
+})->middleware('throttle:5,1,contact')->name('contact.store');
 
 Route::get('/sitemap.xml', function () {
     $urls = [['loc' => url('/'), 'updated' => now()->toAtomString(), 'freq' => 'daily']];
@@ -118,14 +132,14 @@ Route::middleware('guest')->group(function () {
         Auth::login($user, true);
         $r->session()->regenerate();
         return redirect()->intended('/home');
-    })->name('2fa.verify')->middleware('throttle:10,1');
+    })->name('2fa.verify')->middleware('throttle:10,1,web-2fa');
     Route::post('/2fa/resend', function (Request $r) {
         $user = User::find($r->session()->get('2fa_pending_id'));
         if (! $user) { return redirect()->route('login'); }
         try { app(\App\Services\TwoFactorService::class)->sendChallenge($user); }
         catch (\RuntimeException $e) { return back()->with('status', $e->getMessage()); }
         return back()->with('status', 'Kode baru dikirim ke email.');
-    })->name('2fa.resend')->middleware('throttle:3,1');
+    })->name('2fa.resend')->middleware('throttle:3,1,web-2fa-resend');
 });
 
 /* ---------- Member ---------- */
@@ -156,6 +170,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
+    Route::get('/questionnaire', [\App\Http\Controllers\Member\QuestionnaireController::class, 'index'])->name('member.questionnaire');
+    Route::post('/questionnaire', [\App\Http\Controllers\Member\QuestionnaireController::class, 'store'])->name('member.questionnaire.store');
     Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked'])->name('member.who-liked');
     Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors'])->name('member.visitors');
     Route::get('/favorites', fn () => view('member.favorites'))->name('member.favorites');
@@ -277,34 +293,46 @@ Route::middleware('auth')->group(function () {
     Route::post('/forums/thread/{thread}/reply', [\App\Http\Controllers\Member\ForumController::class, 'reply'])->name('member.forums.thread.reply');
 });
 
-/* ---------- Admin (HTML views; admin.php holds controller/JSON routes — only non-duplicate URIs here) ---------- */
+/* ---------- Admin HTML views (role-gated mirrors of admin.php) ---------- */
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
-    foreach (['profiles' => 'admin.profiles', 'photos' => 'admin.photos', 'verification' => 'admin.verification', 'reports' => 'admin.reports', 'blocks' => 'admin.blocks'] as $uri => $view) {
-        Route::get('/' . $uri, fn () => view($view))->name(str_replace('.', '-', $uri));
-    }
-    Route::post('/verification/{id}/approve', function (int $id, \App\Services\VerificationService $svc) {
-        $req = VerificationRequest::findOrFail($id);
-        $svc->approve($req, Auth::user());
-        return back();
+    Route::middleware('can:moderator')->group(function () {
+        foreach (['profiles' => 'admin.profiles', 'photos' => 'admin.photos', 'verification' => 'admin.verification', 'reports' => 'admin.reports', 'blocks' => 'admin.blocks'] as $uri => $view) {
+            Route::get('/' . $uri, fn () => view($view))->name(str_replace('.', '-', $uri));
+        }
+        Route::post('/verification/{id}/approve', function (int $id, \App\Services\VerificationService $svc) {
+            $req = VerificationRequest::findOrFail($id);
+            $svc->approve($req, Auth::user());
+            return back();
+        });
+        Route::post('/verification/{id}/reject', function (int $id, \App\Services\VerificationService $svc) {
+            $req = VerificationRequest::findOrFail($id);
+            $svc->reject($req, Auth::user(), 'Tidak memenuhi syarat');
+            return back();
+        });
+        foreach (['conversations' => 'admin.chat.conversations', 'messages' => 'admin.chat.messages', 'requests' => 'admin.chat.requests'] as $uri => $view) {
+            Route::get('/chat/' . $uri, fn () => view($view))->name('chat-' . $uri);
+        }
+        foreach (['comments' => 'admin.community.comments', 'forums' => 'admin.community.forums', 'blogs' => 'admin.community.blogs'] as $uri => $view) {
+            Route::get('/community/' . $uri, fn () => view($view))->name('community-' . $uri);
+        }
+        Route::get('/inbox', fn () => view('admin.inbox'))->name('inbox');
     });
-    Route::post('/verification/{id}/reject', function (int $id, \App\Services\VerificationService $svc) {
-        $req = VerificationRequest::findOrFail($id);
-        $svc->reject($req, Auth::user(), 'Tidak memenuhi syarat');
-        return back();
+    Route::middleware('can:admin')->group(function () {
+        Route::get('/matching/options', fn () => view('admin.matching.options'))->name('matching-options');
+        foreach (['plans' => 'admin.membership.plans', 'subscriptions' => 'admin.membership.subscriptions', 'credits' => 'admin.membership.credits', 'products' => 'admin.membership.products', 'payments' => 'admin.membership.payments', 'gateways' => 'admin.membership.gateways', 'coupons' => 'admin.membership.coupons'] as $uri => $view) {
+            Route::get('/membership/' . $uri, fn () => view($view))->name('membership-' . $uri);
+        }
+        Route::get('/notifications', fn () => view('admin.notifications'))->name('notifications');
+        Route::post('/notifications/send', fn (Request $r) => back()->with('status', 'Broadcast dikirim ke segmen.'));
+        Route::get('/email', fn () => view('admin.email'))->name('email');
+        Route::get('/audit-logs', fn () => view('admin.audit-logs'))->name('audit-logs');
     });
-    Route::get('/matching/options', fn () => view('admin.matching.options'))->name('matching-options');
-    foreach (['conversations' => 'admin.chat.conversations', 'messages' => 'admin.chat.messages', 'requests' => 'admin.chat.requests', 'operators' => 'admin.chat.operators', 'virtual' => 'admin.chat.virtual'] as $uri => $view) {
-        Route::get('/chat/' . $uri, fn () => view($view))->name('chat-' . $uri);
-    }
-    foreach (['plans' => 'admin.membership.plans', 'subscriptions' => 'admin.membership.subscriptions', 'credits' => 'admin.membership.credits', 'products' => 'admin.membership.products', 'payments' => 'admin.membership.payments', 'gateways' => 'admin.membership.gateways', 'coupons' => 'admin.membership.coupons'] as $uri => $view) {
-        Route::get('/membership/' . $uri, fn () => view($view))->name('membership-' . $uri);
-    }
-    foreach (['comments' => 'admin.community.comments', 'forums' => 'admin.community.forums', 'blogs' => 'admin.community.blogs'] as $uri => $view) {
-        Route::get('/community/' . $uri, fn () => view($view))->name('community-' . $uri);
-    }
-    Route::get('/notifications', fn () => view('admin.notifications'))->name('notifications');
-    Route::post('/notifications/send', fn (Request $r) => back()->with('status', 'Broadcast dikirim ke segmen.'));
-    Route::get('/email', fn () => view('admin.email'))->name('email');
-    Route::get('/feature-flags', fn () => view('admin.feature-flags'))->name('feature-flags');
-    Route::get('/audit-logs', fn () => view('admin.audit-logs'))->name('audit-logs');
+    Route::middleware('can:superadmin')->group(function () {
+        Route::get('/feature-flags', fn () => view('admin.feature-flags'))->name('feature-flags');
+    });
+    Route::middleware('can:operator')->group(function () {
+        Route::get('/chat/virtual', fn () => view('admin.chat.virtual'))->name('chat-virtual');
+        Route::get('/chat/ai', fn () => view('admin.chat.ai'))->name('chat-ai');
+        Route::get('/chat/operators', fn () => view('admin.chat.operators'))->name('chat-operators');
+    });
 });

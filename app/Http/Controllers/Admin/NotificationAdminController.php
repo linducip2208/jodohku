@@ -11,8 +11,26 @@ use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationAdminController extends Controller
 {
-    public function broadcast(Request $request, NotificationService $notifications, AuditService $audit)
+    public function inbox(Request $request)
     {
+        $messages = \App\Models\ContactMessage::latest('id')->paginate(25);
+
+        return $request->wantsJson()
+            ? response()->json($messages)
+            : view('admin.inbox', ['messages' => $messages]);
+    }
+
+    public function handle(Request $request, int $message, AuditService $audit)
+    {
+        $m = \App\Models\ContactMessage::findOrFail($message);
+        $request->validate(['status' => ['required', 'string', 'in:handled,spam,open']]);
+        $m->update(['status' => $request->string('status'), 'handled_by' => $request->user()->id]);
+        $audit->log('admin.contact.handled', $request->user(), $m, [], ['status' => $m->status]);
+
+        return $request->wantsJson() ? response()->json($m->fresh()) : back()->with('status', 'Tiket diperbarui.');
+    }
+
+    public function broadcast(Request $request, NotificationService $notifications, AuditService $audit)    {
         $request->validate([
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string', 'max:1000'],

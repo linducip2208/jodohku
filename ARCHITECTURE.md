@@ -28,4 +28,16 @@ Reverb WS ───────┘         │            ├─▶ Jobs/Events/
 
 ## Keamanan
 
-Sanctum API + session web; Gate `member/premium/operator/moderator/admin/superadmin`; Policy `User/Conversation/Message/Payment/Report/VirtualConversation`; gateway sekret `Crypt` at-rest; audit tanpa sekret.
+Sanctum API + session web; Gate `member/premium/operator/moderator/admin/superadmin` + `staff`; Policy `User/Conversation/Message/Payment/Report/VirtualConversation`; gateway sekret `Crypt` at-rest; audit tanpa sekret.
+
+## RBAC zones (`routes/admin.php`, `routes/web.php` admin views, sidebar `@can`)
+
+- `staff` (semua staf): dashboard.
+- `moderator`: users baca/suspend/verify, foto, verifikasi, reports/blocks, moderasi, fraud, chat view, community, inbox.
+- `operator`: chat AI/virtual, trigger/schedule view, operator queue/takeover/pause/resume/close/assign.
+- `admin`: users tulis/ban/kredit, matching config, virtual CRUD, plans/subs/payments/gateways (lihat/toggle/prioritas), credits, kupon, gifts, boosts, ads, broadcast, analytics, AI usage, settings lihat, audit.
+- `superadmin`: kredensial & test gateway, settings tulis, feature flags.
+
+## Rate limiting (Laravel 13)
+
+Signature throttle untuk request terautentikasi berbasis user saja (tanpa path). Karena itu SEMUA limiter inline WAJIB punya prefix unik (`throttle:10,1,reports`) — tanpa prefix, bucket dibagi semua route dan limit terkecil mencekik seluruh API. Regression test: `ThrottleIsolationTest`.

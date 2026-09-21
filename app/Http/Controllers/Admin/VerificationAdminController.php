@@ -13,7 +13,7 @@ class VerificationAdminController extends Controller
     {
         $items = VerificationRequest::with(['user', 'documents'])->latest('id')->paginate(25);
 
-        return $request->wantsJson() ? response()->json($items) : view('admin.verifications', ['items' => $items]);
+        return $request->wantsJson() ? response()->json($items) : view('admin.verification', ['items' => $items]);
     }
 
     public function approve(Request $request, VerificationRequest $verification, VerificationService $service)

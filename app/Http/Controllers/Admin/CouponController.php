@@ -15,7 +15,7 @@ class CouponController extends Controller
 
         return $request->wantsJson()
             ? response()->json($coupons)
-            : view('admin.coupons', ['coupons' => $coupons]);
+            : view('admin.membership.coupons', ['coupons' => $coupons]);
     }
 
     public function store(Request $request, AuditService $audit)

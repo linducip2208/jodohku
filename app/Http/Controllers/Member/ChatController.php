@@ -53,7 +53,7 @@ class ChatController extends Controller
             return ConversationResource::collection($conversations)->response();
         }
 
-        return view('member.chat.index', ['conversations' => $conversations, 'filter' => $filter]);
+        return view('member.chat.inbox', ['conversations' => $conversations, 'filter' => $filter]);
     }
 
     public function show(Request $request, Conversation $conversation)

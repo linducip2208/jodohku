@@ -15,7 +15,7 @@ class SettingsController extends Controller
 
         return $request->wantsJson()
             ? response()->json($user)
-            : view('member.settings', ['user' => $user]);
+            : view('member.settings.index', ['user' => $user]);
     }
 
     public function update(Request $request)

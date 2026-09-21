@@ -14,7 +14,8 @@ Platform matchmaking + chat aman + verifikasi + virtual member transparan, diban
 - **Foto aman**: pipeline `PhotoService` (validasi MIME asli + dimensi, resize 1600 + thumbnail 400, deteksi duplikat SHA-256, status pending → antrian moderasi admin), foto pending tak terlihat publik.
 - **2FA email OTP**: `TwoFactorService` (kode 6 digit hash + TTL 10 mnt + throttle), wajib di login web & API bila aktif.
 - **SEO publik**: `/sitemap.xml` (blog + forum saja), `robots.txt` menutup area member/admin/API.
-- **Admin/operator**: gate `member/premium/operator/moderator/admin/superadmin`, policies, audit log tanpa-sekret, gateway secrets terenkripsi (`Crypt`).
+- **Admin/operator**: RBAC zona (`staff/moderator/operator/admin/superadmin` + policies, sidebar `@can`, secret gateway hanya superadmin), audit log tanpa-sekret, gateway secrets terenkripsi (`Crypt`).
+- **E2E teruji**: `EndToEndJourneyTest` (register → match → chat idempoten → webhook premium/kredit → block/report → moderasi + audit), `RbacTest`, `ThrottleIsolationTest`.
 
 ## Stack
 

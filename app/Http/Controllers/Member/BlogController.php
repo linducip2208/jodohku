@@ -14,7 +14,7 @@ class BlogController extends Controller
 
         return $request->wantsJson()
             ? response()->json($posts)
-            : view('member.blog', ['posts' => $posts]);
+            : view('member.blog.index', ['posts' => $posts]);
     }
 
     public function show(Request $request, string $slug)
@@ -24,6 +24,6 @@ class BlogController extends Controller
 
         return $request->wantsJson()
             ? response()->json($post->fresh())
-            : view('member.blog-show', ['post' => $post->fresh()]);
+            : view('member.blog.show', ['post' => $post->fresh()]);
     }
 }

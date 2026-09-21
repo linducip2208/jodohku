@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>@yield('title', 'Jodohku')</title>
 <meta name="description" content="Aplikasi kencan Jodohku — discover, matches, chat realtime.">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" href="/favicon.ico">
 @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
 @vite(['resources/css/app.css', 'resources/css/member.css', 'resources/js/app.js'])

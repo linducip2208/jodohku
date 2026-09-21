@@ -13,6 +13,11 @@ class PaymentGateway extends Model
 
     protected $fillable = ['code', 'name', 'description', 'is_active', 'sort_order'];
 
+    public function getRouteKeyName(): string
+    {
+        return 'code';
+    }
+
     protected function casts(): array
     {
         return ['is_active' => 'boolean'];

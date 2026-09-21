@@ -21,7 +21,7 @@ class ChatRequestController extends Controller
 
         return $request->wantsJson()
             ? response()->json($requests)
-            : view('member.chat.requests', ['requests' => $requests]);
+            : view('member.chat.inbox', ['requests' => $requests]);
     }
 
     public function store(Request $request, User $user, ChatService $chat)

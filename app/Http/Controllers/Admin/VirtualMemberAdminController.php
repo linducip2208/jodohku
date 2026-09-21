@@ -30,7 +30,7 @@ class VirtualMemberAdminController extends Controller
             'virtualCount' => User::whereIn('account_type', ['virtual', 'ai'])->count(),
         ];
 
-        return $request->wantsJson() ? response()->json($data) : view('admin.virtual.dashboard', $data);
+        return $request->wantsJson() ? response()->json($data) : view('admin.chat.virtual', $data);
     }
 
     public function index(Request $request)

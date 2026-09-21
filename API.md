@@ -19,6 +19,7 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/admin/gateways` | sanctum+`can:admin` | daftar gateway; sekret dimask `***encrypted***` |
 | POST | `/admin/gateways/{code}` | sanctum+`can:admin` | simpan setting; sekret dienkripsi `Crypt` |
 | POST | `/webhooks/{gateway}` | publik (HMAC) | `ipaymu/xendit/midtrans/tripay`; idempoten via `event_id` |
+| POST | `/admin/reports/{report}/resolve` | staff `moderator` | selesaikan laporan + audit log |
 | GET | `/blog`, `/blog/{slug}` | sanctum | artikel published (view_count auto-increment) |
 | GET | `/forums`, `/forums/{slug}` | sanctum | daftar forum & thread |
 | POST | `/forums/{slug}/threads` | sanctum | buat thread (throttle 10/mnt) |

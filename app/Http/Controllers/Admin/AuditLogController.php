@@ -12,6 +12,6 @@ class AuditLogController extends Controller
     {
         $items = AuditLog::with('actor')->latest('id')->paginate(50);
 
-        return $request->wantsJson() ? response()->json($items) : view('admin.audit', ['items' => $items]);
+        return $request->wantsJson() ? response()->json($items) : view('admin.audit-logs', ['items' => $items]);
     }
 }
