@@ -1,0 +1,3 @@
+<div class="card"><div class="card-header"><h3 class="card-title">{{ $title ?? 'Data' }}</h3>@if(!empty($createUrl))<div class="card-actions"><a href="{{ $createUrl }}" class="btn btn-primary btn-sm">Tambah</a></div>@endif</div>
+<div class="table-responsive"><table class="table table-vcenter"><thead><tr>@foreach($columns as $c)<th>{{ $c }}</th>@endforeach @if(!empty($actions))<th>Aksi</th>@endif</tr></thead>
+<tbody>@forelse($rows as $r)<tr>@foreach($columns as $k => $c)<td>{{ data_get($r, $k) ?? '—' }}</td>@endforeach @if(!empty($actions))<td>{!! $actions !!}</td>@endif</tr>@empty<tr><td colspan="20" class="text-secondary">Belum ada data.</td></tr>@endforelse</tbody></table></div></div>

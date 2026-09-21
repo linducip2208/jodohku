@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+
+class UserPolicy
+{
+    public function viewAny(?User $viewer): bool { return true; }
+
+    public function view(?User $viewer, User $model): bool
+    {
+        if (! $viewer) {
+            return false;
+        }
+        if ($viewer->id === $model->id) {
+            return true;
+        }
+        if ($viewer->isStaff()) {
+            return true;
+        }
+        if (\App\Models\Block::existsBetween((int) $viewer->id, (int) $model->id)) {
+            return false;
+        }
+
+        return $model->status->value === 'active';
+    }
+
+    public function update(User $user, User $model): bool
+    {
+        return $user->id === $model->id || $user->role->rank() >= \App\Enums\UserRole::Admin->rank();
+    }
+
+    public function delete(User $user, User $model): bool
+    {
+        return $user->role === \App\Enums\UserRole::Superadmin;
+    }
+
+    public function viewAdminOverview(User $user): bool
+    {
+        return $user->isAdmin();
+    }
+}

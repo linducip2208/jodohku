@@ -1,0 +1,34 @@
+@extends('layouts.member')
+@section('title', 'Pengaturan — Jodohku')
+@section('content')
+<h1 class="jk-h1">⚙️ Pengaturan</h1>
+@if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
+<div class="jk-section jk-form"><div class="jk-h2">Profil</div>
+<form method="POST" action="/settings/profile">@csrf
+<label>Nama tampilan</label><input name="display_name" value="{{ auth()->user()?->display_name }}">
+<label>Kota</label><input name="city" value="{{ auth()->user()?->city }}">
+<label>Bio</label><textarea name="bio" rows="3">{{ auth()->user()?->profile?->bio }}</textarea>
+<label>Pekerjaan</label><input name="occupation" value="{{ auth()->user()?->profile?->occupation }}">
+<label>Pendidikan</label><input name="education" value="{{ auth()->user()?->profile?->education }}">
+<button class="jk-submit" style="margin-top:12px" type="submit">Simpan Profil</button></form>
+</div>
+<div class="jk-section jk-form"><div class="jk-h2">Privasi &amp; Pencarian</div>
+<form method="POST" action="/settings/privacy">@csrf
+<label><input type="checkbox" name="hide_online" value="1"> Sembunyikan status online</label>
+<label><input type="checkbox" name="incognito" value="1"> Mode incognito (hanya terlihat oleh yang kamu like)</label>
+<label><input type="checkbox" name="hide_distance" value="1"> Sembunyikan jarak</label>
+<button class="jk-submit" style="margin-top:12px" type="submit">Simpan Privasi</button></form>
+</div>
+<div class="jk-section jk-form"><div class="jk-h2">Notifikasi</div>
+<form method="POST" action="/settings/notifications">@csrf
+<label><input type="checkbox" name="match" value="1" checked> Match baru</label>
+<label><input type="checkbox" name="message" value="1" checked> Pesan baru</label>
+<label><input type="checkbox" name="like" value="1" checked> Like baru</label>
+<button class="jk-submit" style="margin-top:12px" type="submit">Simpan Notifikasi</button></form>
+</div>
+<div class="jk-section"><div class="jk-h2">Langganan</div>
+<p class="jk-muted">Status: {{ auth()->user()?->isPremium() ? 'Premium aktif ⭐' : 'Gratis' }}</p>
+<a href="/premium">Kelola Premium →</a>
+<form method="POST" action="/logout" style="margin-top:12px">@csrf<button class="jk-btn jk-btn-pass" style="width:100%" type="submit">Keluar</button></form>
+</div>
+@endsection

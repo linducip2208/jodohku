@@ -1,0 +1,23 @@
+<div>
+<div class="jk-filterbar" wire:ignore.self>
+<input class="jk-input" style="width:70px" type="number" wire:model.live="minAge" placeholder="Min"><span class="jk-muted">–</span>
+<input class="jk-input" style="width:70px" type="number" wire:model.live="maxAge" placeholder="Maks">
+<select class="jk-select" wire:model.live="gender"><option value="">Semua gender</option><option value="female">Perempuan</option><option value="male">Laki-laki</option></select>
+<input class="jk-input" wire:model.live="city" placeholder="Kota">
+<input class="jk-input" wire:model.live="education" placeholder="Pendidikan">
+<select class="jk-select" wire:model.live="sort"><option value="compatibility">Skor tertinggi</option><option value="newest">Terbaru</option><option value="active">Terakhir aktif</option><option value="distance">Terdekat</option><option value="popularity">Populer</option></select>
+<label class="jk-pill"><input type="checkbox" wire:model.live="verified"> Verified</label>
+<label class="jk-pill"><input type="checkbox" wire:model.live="online"> Online</label>
+<label class="jk-pill"><input type="checkbox" wire:model.live="premium"> Premium</label>
+<button class="jk-btn jk-btn-pass" wire:click="resetFilters" style="flex:none">Reset</button>
+</div>
+@if($candidates->isEmpty())
+@include('components.empty', ['icon' => '🔍', 'title' => auth()->check() ? 'Belum ada kandidat — longgarkan filter' : 'Masuk untuk melihat kandidat', 'hint' => auth()->check() ? 'Coba naikkan jarak / rentang usia.' : 'Daftar gratis, 2 menit.'])
+@else
+<div class="jk-grid">
+@foreach($candidates as $c)
+@include('components.profile-card', ['user' => $c, 'score' => $c->compatibility_score ?? null])
+@endforeach
+</div>
+@endif
+</div>

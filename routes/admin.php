@@ -1,0 +1,140 @@
+<?php
+
+use App\Http\Controllers\Admin\AdController;
+use App\Http\Controllers\Admin\AiUsageController;
+use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BoostAdminController;
+use App\Http\Controllers\Admin\ChatAdminController;
+use App\Http\Controllers\Admin\CommunityAdminController;
+use App\Http\Controllers\Admin\CreditAdminController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FraudController;
+use App\Http\Controllers\Admin\GatewayController;
+use App\Http\Controllers\Admin\GiftAdminController;
+use App\Http\Controllers\Admin\MatchingAdminController;
+use App\Http\Controllers\Admin\ModerationController;
+use App\Http\Controllers\Admin\NotificationAdminController;
+use App\Http\Controllers\Admin\OperatorController;
+use App\Http\Controllers\Admin\PaymentAdminController;
+use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SubscriptionAdminController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VerificationAdminController;
+use App\Http\Controllers\Admin\VirtualMemberAdminController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'can:admin'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users/{user}/suspend', [UserController::class, 'suspend'])->name('users.suspend');
+    Route::post('/users/{user}/ban', [UserController::class, 'ban'])->name('users.ban');
+    Route::post('/users/{user}/unban', [UserController::class, 'unban'])->name('users.unban');
+    Route::post('/users/{user}/verify', [UserController::class, 'verify'])->name('users.verify');
+    Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::post('/users/{user}/credits', [UserController::class, 'adjustCredits'])->name('users.credits');
+
+    Route::get('/moderation', [ModerationController::class, 'queues'])->name('moderation.queues');
+    Route::post('/moderation/{queue}/decide', [ModerationController::class, 'decide'])->name('moderation.decide');
+
+    Route::get('/verifications', [VerificationAdminController::class, 'index'])->name('verifications');
+    Route::post('/verifications/{verification}/approve', [VerificationAdminController::class, 'approve'])->name('verifications.approve');
+    Route::post('/verifications/{verification}/reject', [VerificationAdminController::class, 'reject'])->name('verifications.reject');
+
+    Route::get('/fraud', [FraudController::class, 'index'])->name('fraud');
+    Route::get('/fraud/users/{user}/score', [FraudController::class, 'score'])->name('fraud.score');
+    Route::post('/fraud/{event}/resolve', [FraudController::class, 'resolve'])->name('fraud.resolve');
+
+    Route::get('/matching/questions', [MatchingAdminController::class, 'questions'])->name('matching.questions');
+    Route::post('/matching/questions', [MatchingAdminController::class, 'storeQuestion'])->name('matching.questions.store');
+    Route::put('/matching/questions/{question}', [MatchingAdminController::class, 'updateQuestion'])->name('matching.questions.update');
+    Route::delete('/matching/questions/{question}', [MatchingAdminController::class, 'destroyQuestion'])->name('matching.questions.destroy');
+    Route::match(['get', 'post'], '/matching/categories', [MatchingAdminController::class, 'categories'])->name('matching.categories');
+    Route::match(['get', 'post'], '/matching/versions', [MatchingAdminController::class, 'versions'])->name('matching.versions');
+    Route::match(['get', 'post', 'put'], '/matching/weights', [MatchingAdminController::class, 'weights'])->name('matching.weights');
+
+    Route::get('/chat/active', [ChatAdminController::class, 'active'])->name('chat.active');
+    Route::get('/chat/reported', [ChatAdminController::class, 'reported'])->name('chat.reported');
+    Route::get('/chat/ai', [ChatAdminController::class, 'virtual'])->name('chat.ai');
+    Route::get('/chat/flagged', [ChatAdminController::class, 'flagged'])->name('chat.flagged');
+    Route::get('/chat/search', [ChatAdminController::class, 'search'])->name('chat.search');
+
+    Route::get('/virtual/dashboard', [VirtualMemberAdminController::class, 'dashboard'])->name('virtual.dashboard');
+    Route::get('/virtual', [VirtualMemberAdminController::class, 'index'])->name('virtual.index');
+    Route::post('/virtual', [VirtualMemberAdminController::class, 'store'])->name('virtual.store');
+    Route::put('/virtual/{user}', [VirtualMemberAdminController::class, 'update'])->name('virtual.update');
+    Route::delete('/virtual/{user}', [VirtualMemberAdminController::class, 'destroy'])->name('virtual.destroy');
+    Route::match(['get', 'post'], '/virtual/personalities', [VirtualMemberAdminController::class, 'personalities'])->name('virtual.personalities');
+    Route::match(['get', 'post'], '/virtual/templates', [VirtualMemberAdminController::class, 'templates'])->name('virtual.templates');
+    Route::get('/virtual/triggers', [VirtualMemberAdminController::class, 'triggers'])->name('virtual.triggers');
+    Route::post('/virtual/triggers', [VirtualMemberAdminController::class, 'storeTrigger'])->name('virtual.triggers.store');
+    Route::get('/virtual/schedules', [VirtualMemberAdminController::class, 'schedules'])->name('virtual.schedules');
+
+    Route::get('/operators/queue', [OperatorController::class, 'queue'])->name('operators.queue');
+    Route::get('/operators/assignments', [OperatorController::class, 'assignments'])->name('operators.assignments');
+    Route::post('/operators/vc/{vc}/takeover', [OperatorController::class, 'takeover'])->name('operators.takeover');
+    Route::post('/operators/vc/{vc}/pause', [OperatorController::class, 'pause'])->name('operators.pause');
+    Route::post('/operators/vc/{vc}/resume', [OperatorController::class, 'resume'])->name('operators.resume');
+    Route::post('/operators/vc/{vc}/close', [OperatorController::class, 'close'])->name('operators.close');
+    Route::post('/operators/conversations/{conversation}/assign', [OperatorController::class, 'assign'])->name('operators.assign');
+
+    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
+    Route::put('/plans/{plan}', [PlanController::class, 'update'])->name('plans.update');
+    Route::delete('/plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy');
+
+    Route::get('/subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions');
+    Route::post('/subscriptions/{subscription}/cancel', [SubscriptionAdminController::class, 'cancel'])->name('subscriptions.cancel');
+    Route::post('/subscriptions/{subscription}/extend', [SubscriptionAdminController::class, 'extend'])->name('subscriptions.extend');
+
+    Route::get('/payments', [PaymentAdminController::class, 'index'])->name('payments');
+    Route::get('/payments/{payment}', [PaymentAdminController::class, 'show'])->name('payments.show');
+    Route::post('/payments/{payment}/refund', [PaymentAdminController::class, 'refund'])->name('payments.refund');
+
+    Route::get('/gateways', [GatewayController::class, 'index'])->name('gateways');
+    Route::post('/gateways/{gateway}/toggle', [GatewayController::class, 'toggle'])->name('gateways.toggle');
+    Route::post('/gateways/{gateway}/credentials', [GatewayController::class, 'credentials'])->name('gateways.credentials');
+    Route::post('/gateways/{gateway}/test', [GatewayController::class, 'test'])->name('gateways.test');
+    Route::post('/gateways/{gateway}/priority', [GatewayController::class, 'priority'])->name('gateways.priority');
+
+    Route::match(['get', 'post'], '/credits/products', [CreditAdminController::class, 'products'])->name('credits.products');
+    Route::put('/credits/products/{product}', [CreditAdminController::class, 'updateProduct'])->name('credits.products.update');
+    Route::get('/credits/transactions', [CreditAdminController::class, 'transactions'])->name('credits.transactions');
+
+    Route::get('/gifts', [GiftAdminController::class, 'index'])->name('gifts');
+    Route::post('/gifts', [GiftAdminController::class, 'store'])->name('gifts.store');
+    Route::put('/gifts/{gift}', [GiftAdminController::class, 'update'])->name('gifts.update');
+    Route::delete('/gifts/{gift}', [GiftAdminController::class, 'destroy'])->name('gifts.destroy');
+    Route::get('/gifts/transactions', [GiftAdminController::class, 'transactions'])->name('gifts.transactions');
+
+    Route::get('/boosts', [BoostAdminController::class, 'index'])->name('boosts');
+    Route::match(['get', 'post', 'put'], '/boosts/pricing', [BoostAdminController::class, 'pricing'])->name('boosts.pricing');
+
+    Route::get('/ads', [AdController::class, 'index'])->name('ads');
+    Route::post('/ads', [AdController::class, 'store'])->name('ads.store');
+    Route::put('/ads/{ad}', [AdController::class, 'update'])->name('ads.update');
+    Route::delete('/ads/{ad}', [AdController::class, 'destroy'])->name('ads.destroy');
+
+    Route::get('/community/posts', [CommunityAdminController::class, 'posts'])->name('community.posts');
+    Route::post('/community/posts/{post}/moderate', [CommunityAdminController::class, 'moderatePost'])->name('community.posts.moderate');
+    Route::match(['get', 'post'], '/community/groups', [CommunityAdminController::class, 'groups'])->name('community.groups');
+    Route::match(['get', 'post'], '/community/events', [CommunityAdminController::class, 'events'])->name('community.events');
+    Route::put('/community/events/{event}', [CommunityAdminController::class, 'updateEvent'])->name('community.events.update');
+
+    Route::post('/notifications/broadcast', [NotificationAdminController::class, 'broadcast'])->name('notifications.broadcast');
+
+    Route::get('/analytics', [AnalyticsController::class, 'overview'])->name('analytics');
+    Route::get('/analytics/funnel', [AnalyticsController::class, 'funnel'])->name('analytics.funnel');
+    Route::get('/ai-usage', [AiUsageController::class, 'index'])->name('ai-usage');
+
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::match(['get', 'post', 'put'], '/settings/flags', [SettingsController::class, 'flags'])->name('settings.flags');
+
+    Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+});

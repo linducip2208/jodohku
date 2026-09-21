@@ -1,0 +1,12 @@
+@extends('layouts.landing')
+@section('title', 'Jodohku — Temukan Jodohmu | Dating Indonesia')
+@section('content')
+@include('landing.partials.hero')
+@include('landing.partials.search')
+@include('landing.partials.how')
+@include('landing.partials.features')
+@include('landing.partials.stories')
+@include('landing.partials.membership')
+@include('landing.partials.faq')
+@include('landing.partials.cta')
+@endsection

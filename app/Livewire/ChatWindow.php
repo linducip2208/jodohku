@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Livewire;
+
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Services\ChatService;
+use Illuminate\Support\Str;
+use Livewire\Component;
+
+class ChatWindow extends Component
+{
+    public int $conversationId;
+    public string $body = '';
+    public ?int $replyToId = null;
+    public string $typingUsers = '';
+    public int $perPage = 30;
+
+    public function mount(int $conversationId): void
+    {
+        $this->conversationId = $conversationId;
+    }
+
+    protected function getListeners(): array
+    {
+        return [
+            'echo-message' => 'onEchoMessage',
+            'refresh-messages' => '$refresh',
+        ];
+    }
+
+    public function echoChannel(): string
+    {
+        return 'conversations.' . $this->conversationId;
+    }
+
+    public function onEchoMessage($payload = null): void
+    {
+        $cid = is_array($payload) ? ($payload['conversationId'] ?? null) : null;
+        if ($cid === null || (int) $cid === (int) $this->conversationId) {
+            $this->dispatch('$refresh');
+        }
+    }
+
+    public function send(ChatService $chat): void
+    {
+        $me = auth()->user();
+        if (!$me || trim($this->body) === '') return;
+        $conv = Conversation::find($this->conversationId);
+        if (!$conv) return;
+        try {
+            $chat->sendMessage($conv, $me, [
+                'body' => trim($this->body),
+                'reply_to_id' => $this->replyToId,
+            ], (string) Str::uuid());
+            $this->body = '';
+            $this->replyToId = null;
+        } catch (\Throwable $e) {
+            $this->addError('body', $e->getMessage());
+        }
+    }
+
+    public function react(int $messageId, string $emoji, ChatService $chat): void
+    {
+        $me = auth()->user();
+        if (!$me) return;
+        $m = Message::find($messageId);
+        if (!$m) return;
+        try { $chat->react($m, $me, $emoji); } catch (\Throwable) {}
+    }
+
+    public function delete(int $messageId, ChatService $chat): void
+    {
+        $me = auth()->user();
+        if (!$me) return;
+        $m = Message::find($messageId);
+        if (!$m) return;
+        try { $chat->deleteMessage($m, $me, 'for_me'); } catch (\Throwable) {}
+    }
+
+    public function markTyping(ChatService $chat, bool $isTyping = true): void
+    {
+        $me = auth()->user();
+        $conv = Conversation::find($this->conversationId);
+        if ($me && $conv) { try { $chat->typing($conv, $me, $isTyping); } catch (\Throwable) {} }
+    }
+
+    public function render(ChatService $chat)
+    {
+        $me = auth()->user();
+        $conv = Conversation::with(['users', 'members.user'])->find($this->conversationId);
+        $messages = collect();
+        $other = null;
+        if ($conv && $me) {
+            try {
+                $chat->markRead($conv, $me);
+                $messages = Message::where('conversation_id', $conv->id)->with(['sender', 'reactions', 'replyTo'])->latest('id')->take($this->perPage)->get()->reverse()->values();
+                $other = $conv->otherUser($me->id);
+            } catch (\Throwable) {}
+        }
+        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me]);
+    }
+}
