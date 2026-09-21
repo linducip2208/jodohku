@@ -51,4 +51,61 @@ class ModerationController extends Controller
             ? response()->json($report->fresh())
             : back()->with('status', 'Laporan diselesaikan.');
     }
+
+    public function words(Request $request)
+    {
+        $words = \App\Models\ProfanityWord::with('category')->latest('id')->paginate(50);
+
+        return $request->wantsJson()
+            ? response()->json($words)
+            : view('admin.moderation.words', ['words' => $words]);
+    }
+
+    public function storeWord(Request $request, AuditService $audit)
+    {
+        $data = $request->validate([
+            'word' => ['required', 'string', 'max:120', 'unique:profanity_words,word'],
+            'replacement' => ['nullable', 'string', 'max:120'],
+            'language' => ['required', 'string', 'in:id,en'],
+            'severity' => ['nullable', 'string', 'in:low,medium,high'],
+            'is_regex' => ['sometimes', 'boolean'],
+            'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
+        ]);
+        $word = \App\Models\ProfanityWord::create($data + ['is_active' => true]);
+        $this->bustDictionaryCache();
+        $audit->log('admin.profanity.created', $request->user(), $word);
+
+        return $request->wantsJson() ? response()->json($word, 201) : back()->with('status', 'Kata ditambahkan.');
+    }
+
+    public function updateWord(Request $request, \App\Models\ProfanityWord $word, AuditService $audit)
+    {
+        $before = $word->only(['word', 'replacement', 'is_active']);
+        $word->update($request->validate([
+            'replacement' => ['nullable', 'string', 'max:120'],
+            'severity' => ['nullable', 'string', 'in:low,medium,high'],
+            'is_regex' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
+            'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
+        ]));
+        $this->bustDictionaryCache();
+        $audit->log('admin.profanity.updated', $request->user(), $word, $before, []);
+
+        return $request->wantsJson() ? response()->json($word->fresh()) : back()->with('status', 'Kata diperbarui.');
+    }
+
+    public function destroyWord(Request $request, \App\Models\ProfanityWord $word, AuditService $audit)
+    {
+        $word->delete();
+        $this->bustDictionaryCache();
+        $audit->log('admin.profanity.deleted', $request->user(), $word);
+
+        return $request->wantsJson() ? response()->json(['message' => 'Deleted.']) : back()->with('status', 'Kata dihapus.');
+    }
+
+    protected function bustDictionaryCache(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('profanity_words:v2');
+        \Illuminate\Support\Facades\Cache::forget('profanity_words');
+    }
 }

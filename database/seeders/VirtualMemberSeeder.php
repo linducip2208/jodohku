@@ -75,7 +75,7 @@ class VirtualMemberSeeder extends Seeder
 
             ProfilePhoto::firstOrCreate(
                 ['user_id' => $user->id, 'path' => 'placeholders/virtual/'.strtolower(str_replace(' ', '-', $v['name'])).'.jpg'],
-                ['sort_order' => 0, 'is_primary' => true, 'is_approved' => true]
+                ['sort_order' => 0, 'is_primary' => true, 'is_approved' => true, 'status' => 'approved', 'width' => 800, 'height' => 800]
             );
 
             VirtualProfile::firstOrCreate(

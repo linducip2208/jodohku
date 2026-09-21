@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             VirtualMemberSeeder::class,
             TriggerSeeder::class,
             CouponBlogForumSeeder::class,
+            DemoInteractionSeeder::class,
         ]);
     }
 }

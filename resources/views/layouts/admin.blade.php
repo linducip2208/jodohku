@@ -23,7 +23,7 @@
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/verification*') ? ' active' : '' }}" href="/admin/verification"><span class="nav-link-icon"><i class="ti ti-badge-check"></i></span> Verification</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/reports*') ? ' active' : '' }}" href="/admin/reports"><span class="nav-link-icon"><i class="ti ti-flag"></i></span> Reports</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/blocks*') ? ' active' : '' }}" href="/admin/blocks"><span class="nav-link-icon"><i class="ti ti-ban"></i></span> Blocks</a></li>
-<li class="nav-item"><a class="nav-link{{ request()->is('admin/moderation*') ? ' active' : '' }}" href="/admin/moderation"><span class="nav-link-icon"><i class="ti ti-shield-check"></i></span> Moderation</a></li>
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/moderation*') ? ' active' : '' }}" href="/admin/moderation"><span class="nav-link-icon"><i class="ti ti-shield-check"></i></span> Moderation</a></li><li class="nav-item"><a class="nav-link{{ request()->is('admin/moderation/words*') ? ' active' : '' }}" href="/admin/moderation/words"><span class="nav-link-icon"><i class="ti ti-book"></i></span> Dictionary</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/fraud*') ? ' active' : '' }}" href="/admin/fraud"><span class="nav-link-icon"><i class="ti ti-alert-triangle"></i></span> Fraud</a></li>
 @endcan
 @can('admin')

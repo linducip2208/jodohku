@@ -43,6 +43,10 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth'])->group(funct
 
         Route::get('/moderation', [ModerationController::class, 'queues'])->name('moderation.queues');
         Route::post('/moderation/{queue}/decide', [ModerationController::class, 'decide'])->name('moderation.decide');
+        Route::get('/moderation/words', [ModerationController::class, 'words'])->name('moderation.words');
+        Route::post('/moderation/words', [ModerationController::class, 'storeWord'])->name('moderation.words.store');
+        Route::put('/moderation/words/{word}', [ModerationController::class, 'updateWord'])->name('moderation.words.update');
+        Route::delete('/moderation/words/{word}', [ModerationController::class, 'destroyWord'])->name('moderation.words.destroy');
         Route::post('/reports/{report}/resolve', [ModerationController::class, 'resolveReport'])->name('reports.resolve');
 
         Route::get('/verifications', [VerificationAdminController::class, 'index'])->name('verifications');

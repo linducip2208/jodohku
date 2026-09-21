@@ -13,3 +13,7 @@ Chat/API → `MessageModerationService` (tanpa AI) → keputusan + `moderation_l
 ## Uji
 
 `ProhibitedMessageModeratedTest`: profanity → `clean` termask; phone+WA+money → flag `phone_number`, `risk>0`, keputusan termoderasi.
+
+## Kamus admin + aturan cache
+
+Kamus ID/EN dikelola moderator via `/admin/moderation/words` (CRUD + `Dictionary` di sidebar); setiap perubahan bust cache. `ProfanityService` hanya cache **plain array** (`profanity_words:v2`) — model Eloquent dilarang melewati cache driver serializing (database/file/redis) karena unserialize menghasilkan `__PHP_Incomplete_Class` dan mematikan request (regression test di `ProfanityCensorTest`).

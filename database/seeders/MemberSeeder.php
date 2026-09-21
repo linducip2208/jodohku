@@ -80,7 +80,7 @@ class MemberSeeder extends Seeder
 
             ProfilePhoto::firstOrCreate(
                 ['user_id' => $user->id, 'path' => 'placeholders/members/'.strtolower(str_replace(' ', '-', $m['name'])).'.jpg'],
-                ['sort_order' => 0, 'is_primary' => true, 'is_approved' => true]
+                ['sort_order' => 0, 'is_primary' => true, 'is_approved' => true, 'status' => 'approved', 'width' => 800, 'height' => 800]
             );
 
             PartnerPreference::firstOrCreate(
