@@ -38,6 +38,9 @@
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/chat/messages*') ? ' active' : '' }}" href="/admin/chat/messages"><span class="nav-link-icon"><i class="ti ti-mail"></i></span> Messages</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/chat/requests*') ? ' active' : '' }}" href="/admin/chat/requests"><span class="nav-link-icon"><i class="ti ti-inbox"></i></span> Requests</a></li>
 @endcan
+@can('admin')
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/chat/settings*') ? ' active' : '' }}" href="/admin/chat/settings"><span class="nav-link-icon"><i class="ti ti-message-cog"></i></span> Chat Settings</a></li>
+@endcan
 @can('operator')
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/chat/operators*') ? ' active' : '' }}" href="/admin/chat/operators"><span class="nav-link-icon"><i class="ti ti-headset"></i></span> Operators</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/chat/virtual*') ? ' active' : '' }}" href="/admin/chat/virtual"><span class="nav-link-icon"><i class="ti ti-robot"></i></span> Virtual</a></li>

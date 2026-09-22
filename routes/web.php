@@ -12,6 +12,7 @@ use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\MessageController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\QuestionnaireController;
+use App\Http\Controllers\Member\SafetyController;
 use App\Http\Controllers\Member\SettingsController;
 use App\Models\Block;
 use App\Models\BlogPost;
@@ -32,11 +33,28 @@ use App\Services\TwoFactorService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
 /* ---------- Landing ---------- */
 Route::get('/', fn () => view('welcome'))->name('landing');
+
+/* ---------- Health (public, no secrets/internals) ---------- */
+Route::get('/health', function () {
+    $database = 'ok';
+    try {
+        DB::connection()->getPdo();
+    } catch (Throwable) {
+        $database = 'down';
+    }
+
+    return response()->json([
+        'status' => $database === 'ok' ? 'ok' : 'degraded',
+        'database' => $database,
+        'time' => now()->toIso8601String(),
+    ], $database === 'ok' ? 200 : 503);
+})->name('health');
 Route::get('/privacy', fn () => view('landing.privacy'))->name('legal.privacy');
 Route::get('/terms', fn () => view('landing.terms'))->name('legal.terms');
 Route::get('/contact', fn () => view('landing.contact'))->name('contact');
@@ -336,7 +354,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/settings/2fa/enable', [SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
     Route::post('/settings/2fa/disable', [SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
 
-    Route::get('/safety', fn () => view('member.safety.center'))->name('member.safety');
+    Route::get('/safety', [SafetyController::class, 'index'])->name('member.safety');
     Route::post('/safety/block', function (Request $r) {
         $id = (int) $r->input('user_id');
         try {

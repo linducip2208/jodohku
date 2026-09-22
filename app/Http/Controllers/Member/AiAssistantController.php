@@ -42,6 +42,22 @@ class AiAssistantController extends Controller
         return response()->json(['icebreakers' => $items]);
     }
 
+    public function taarufTopics(Request $request, User $user, AiChatAssistantService $assistant)
+    {
+        $this->authorize('view', $user);
+        $request->validate(['count' => ['nullable', 'integer', 'min:1', 'max:8']]);
+
+        try {
+            $items = $assistant->taarufTopics($request->user(), $user, (int) $request->input('count', 5));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        } catch (\Throwable) {
+            return response()->json(['message' => 'AI sedang sibuk. Coba lagi sebentar.'], 503);
+        }
+
+        return response()->json(['topics' => $items]);
+    }
+
     public function rewrite(Request $request, AiChatAssistantService $assistant)
     {
         $request->validate([

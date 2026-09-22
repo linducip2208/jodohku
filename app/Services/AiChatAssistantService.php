@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Conversation;
 use App\Models\ConversationMember;
+use App\Models\QuestionnaireAnswer;
 use App\Models\User;
 
 class AiChatAssistantService
@@ -120,6 +121,135 @@ class AiChatAssistantService
         }
 
         return ['has_updates' => true, 'count' => $items->count(), 'digest' => $digest];
+    }
+
+    /**
+     * Taaruf topic suggestions grounded ONLY on data both users can already
+     * see (shared interests, profile, preferences, questionnaire answers).
+     * Deterministic builder first; AI only rephrases when available.
+     *
+     * @return array<int, array{topic:string, why:string, question:string}>
+     */
+    public function taarufTopics(User $user, User $candidate, int $count = 5): array
+    {
+        $topics = $this->groundedTopics($user, $candidate);
+        $topics = array_slice($topics, 0, max(1, $count));
+
+        try {
+            $res = $this->ai->chat(
+                'Ubah topik berikut menjadi pertanyaan pembuka taaruf yang sopan dalam Bahasa Indonesia, satu per baris (maks '.count($topics)."):\n".
+                implode("\n", array_map(fn ($t, $i) => ($i + 1).'. '.$t['topic'].' ('.$t['why'].')', $topics, array_keys($topics))),
+                ['max_tokens' => 300], $user, 'taaruf_topics'
+            );
+            $lines = array_values(array_filter(array_map(fn ($l) => trim((string) preg_replace('/^[\d\-\.\)\s]+/', '', (string) $l)), preg_split('/\r?\n/', trim((string) $res['text'])))));
+            foreach ($topics as $i => $t) {
+                if (isset($lines[$i]) && $lines[$i] !== '') {
+                    $topics[$i]['question'] = $lines[$i];
+                }
+            }
+        } catch (\Throwable) {
+            // Deterministic fallback below is already complete.
+        }
+
+        return array_values($topics);
+    }
+
+    /** @return array<int, array{topic:string, why:string, question:string}> */
+    protected function groundedTopics(User $user, User $candidate): array
+    {
+        $topics = [];
+        $user->loadMissing(['profile', 'partnerPreference', 'interests']);
+        $candidate->loadMissing(['profile', 'partnerPreference', 'interests']);
+
+        $shared = $user->interests->pluck('name')->intersect($candidate->interests->pluck('name'))->values();
+        foreach ($shared->take(2) as $interest) {
+            $topics[] = [
+                'topic' => 'Minat yang sama: '.$interest,
+                'why' => 'Kalian berdua menyukai '.$interest,
+                'question' => 'Aku lihat kita sama-sama suka '.$interest.' — biasanya menikmati itu dengan cara apa?',
+            ];
+        }
+
+        $myGoal = $user->profile?->relationship_goal?->value ?? $user->profile?->relationship_goal;
+        $theirGoal = $candidate->profile?->relationship_goal?->value ?? $candidate->profile?->relationship_goal;
+        if ($myGoal && $theirGoal) {
+            $topics[] = [
+                'topic' => 'Visi pernikahan',
+                'why' => $myGoal === $theirGoal ? 'Tujuan hubungan kalian sama' : 'Tujuan hubungan kalian perlu diselaraskan',
+                'question' => 'Dalam 2 tahun ke depan, seperti apa gambaran pernikahan ideal menurutmu?',
+            ];
+        }
+        if ($user->profile?->want_children !== null || $candidate->profile?->want_children !== null) {
+            $topics[] = [
+                'topic' => 'Rencana anak',
+                'why' => 'Pandangan soal anak penting dibahas sejak taaruf',
+                'question' => 'Bagaimana pandanganmu tentang momongan setelah menikah nanti?',
+            ];
+        }
+        if ($user->city && $candidate->city) {
+            $same = strtolower($user->city) === strtolower($candidate->city);
+            $topics[] = [
+                'topic' => 'Tempat tinggal',
+                'why' => $same ? 'Sama-sama di '.$candidate->city : 'Beda kota ('.$user->city.' & '.$candidate->city.')',
+                'question' => $same
+                    ? 'Kalau sudah menikah nanti, kamu ingin tetap tinggal di '.$candidate->city.'?'
+                    : 'Bagaimana menurutmu soal relokasi setelah menikah nanti?',
+            ];
+        }
+        if ($candidate->profile?->occupation) {
+            $topics[] = [
+                'topic' => 'Pekerjaan & keuangan',
+                'why' => 'Pasangan bekerja sebagai '.$candidate->profile->occupation,
+                'question' => 'Bagaimana kamu biasanya mengatur keuangan keluarga? Joint atau masing-masing?',
+            ];
+        }
+
+        foreach ($this->questionnaireDiffs($user, $candidate, 2) as $diff) {
+            $topics[] = [
+                'topic' => 'Perbedaan pandangan: '.$diff['category'],
+                'why' => 'Jawaban kuesioner kalian berbeda di "'.$diff['question'].'"',
+                'question' => 'Aku penasaran dengan pandanganmu soal '.mb_strtolower($diff['question']),
+            ];
+        }
+
+        $topics[] = [
+            'topic' => 'Komunikasi',
+            'why' => 'Fondasi taaruf yang sehat',
+            'question' => 'Kalau ada masalah nanti, kamu lebih suka dibicarakan langsung atau diberi waktu dulu?',
+        ];
+
+        return $topics;
+    }
+
+    /** @return array<int, array{category:string, question:string}> */
+    public function questionnaireDiffs(User $a, User $b, int $limit = 3): array
+    {
+        $aAnswers = QuestionnaireAnswer::where('user_id', $a->id)->with('question')->get()->keyBy('question_id');
+        $bAnswers = QuestionnaireAnswer::where('user_id', $b->id)->with('question')->get()->keyBy('question_id');
+        $diffs = [];
+        foreach ($aAnswers as $qid => $ans) {
+            $other = $bAnswers->get($qid);
+            if (! $other) {
+                continue;
+            }
+            $mine = $ans->answer_value ?? $ans->answer_text ?? $ans->question_option_id;
+            $theirs = $other->answer_value ?? $other->answer_text ?? $other->question_option_id;
+            if ((string) $mine !== (string) $theirs) {
+                $cat = $ans->question?->category_key;
+                if ($cat instanceof \BackedEnum) {
+                    $cat = $cat->value;
+                }
+                $diffs[] = [
+                    'category' => $cat ?? $ans->question?->category?->slug ?? 'umum',
+                    'question' => $ans->question?->question_text ?? 'pertanyaan kuesioner',
+                ];
+            }
+            if (count($diffs) >= $limit) {
+                break;
+            }
+        }
+
+        return $diffs;
     }
 
     /** Short AI summary of a conversation thread for quick context. */

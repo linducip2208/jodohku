@@ -70,7 +70,7 @@ class ModerationController extends Controller
             'word' => ['required', 'string', 'max:120', 'unique:profanity_words,word'],
             'replacement' => ['nullable', 'string', 'max:120'],
             'language' => ['required', 'string', 'in:id,en'],
-            'severity' => ['nullable', 'string', 'in:low,medium,high'],
+            'severity' => ['nullable', 'integer', 'min:1', 'max:5'],
             'is_regex' => ['sometimes', 'boolean'],
             'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
         ]);
@@ -86,7 +86,7 @@ class ModerationController extends Controller
         $before = $word->only(['word', 'replacement', 'is_active']);
         $word->update($request->validate([
             'replacement' => ['nullable', 'string', 'max:120'],
-            'severity' => ['nullable', 'string', 'in:low,medium,high'],
+            'severity' => ['nullable', 'integer', 'min:1', 'max:5'],
             'is_regex' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
@@ -108,6 +108,7 @@ class ModerationController extends Controller
 
     protected function bustDictionaryCache(): void
     {
+        Cache::forget('profanity_words:v3');
         Cache::forget('profanity_words:v2');
         Cache::forget('profanity_words');
     }

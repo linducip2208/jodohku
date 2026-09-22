@@ -182,6 +182,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/ai/replies/{conversation}', [AccountController::class, 'suggestedReplies']);
         Route::post('/ai/matchmaker', [AccountController::class, 'matchmaker']);
         Route::post('/ai/rewrite', [AiAssistantController::class, 'rewrite'])->middleware('throttle:20,1,ai-rewrite');
+        Route::get('/ai/taaruf-topics/{user}', [AiAssistantController::class, 'taarufTopics'])->middleware('throttle:20,1,ai-topics');
         Route::get('/ai/openers/{user}', [AccountController::class, 'aiOpeners']);
         Route::get('/ai/digest/{conversation}', [AccountController::class, 'aiDigest']);
         Route::get('/ads', [SafetyController::class, 'ads']);
@@ -219,6 +220,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/courtships', [BiroJodohController::class, 'courtships']);
         Route::post('/courtships', [BiroJodohController::class, 'startCourtship'])->middleware('throttle:10,1,courtships');
+        Route::get('/courtships/journey/{partner}', [BiroJodohController::class, 'journey']);
         Route::get('/courtships/{courtship}', [BiroJodohController::class, 'showCourtship']);
         Route::post('/courtships/{courtship}/advance', [BiroJodohController::class, 'advanceCourtship']);
         Route::post('/courtships/{courtship}/withdraw', [BiroJodohController::class, 'withdrawCourtship']);
@@ -230,6 +232,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/counselors', [BiroJodohController::class, 'counselors']);
         Route::post('/consultations', [BiroJodohController::class, 'bookConsultation'])->middleware('throttle:10,1,consultations');
         Route::get('/consultations', [BiroJodohController::class, 'consultations']);
+        Route::get('/consultations/counseling', [BiroJodohController::class, 'counselorBookings']);
         Route::post('/consultations/{consultation}/confirm', [BiroJodohController::class, 'confirmConsultation']);
         Route::post('/consultations/{consultation}/complete', [BiroJodohController::class, 'completeConsultation']);
         Route::post('/consultations/{consultation}/cancel', [BiroJodohController::class, 'cancelConsultation']);

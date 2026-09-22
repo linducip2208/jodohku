@@ -3,6 +3,27 @@
 @section('content')
 <h1 class="jk-h1">🛡️ Pusat Keamanan</h1><p class="jk-muted">Blokir, laporkan, sembunyikan, incognito. Jangan pernah kirim uang ke orang baru kenal.</p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
+@if(!empty($safetyStatus))
+<div class="jk-section"><div class="jk-h2">Status Keamanan Akunmu</div>
+<table class="jk-table"><tbody>
+<tr><td>Email terverifikasi</td><td>{{ $safetyStatus['email_verified'] ? 'Ya' : 'Belum' }}</td></tr>
+<tr><td>Identitas terverifikasi</td><td>{{ $safetyStatus['is_verified'] ? 'Ya' : 'Belum' }}</td></tr>
+<tr><td>Verifikasi 2 langkah</td><td>{{ $safetyStatus['two_factor'] ? 'Aktif' : 'Mati' }} (<a href="/settings">atur</a>)</td></tr>
+<tr><td>Mode incognito</td><td>{{ $safetyStatus['incognito'] ? 'Aktif' : 'Mati' }}</td></tr>
+<tr><td>Pengajuan verifikasi</td><td>{{ count($safetyStatus['verification_requests'] ?? []) }} pengajuan</td></tr>
+<tr><td>Blokir &amp; laporan dibuat</td><td>{{ $safetyStatus['blocks_count'] }} blokir, {{ $safetyStatus['reports_count'] }} laporan</td></tr>
+</tbody></table>
+</div>
+@endif
+<div class="jk-section"><div class="jk-h2">Edukasi Aman</div>
+<ul class="jk-muted">
+<li>Jangan pernah kirim OTP, password, atau data bank ke siapa pun.</li>
+<li>Jangan transfer uang ke orang yang baru dikenal.</li>
+<li>Waspadai ajakan investasi dan pindah platform.</li>
+<li>Pertemuan pertama sebaiknya di tempat umum dan beri tahu keluarga.</li>
+<li>Laporkan akun mencurigakan — tim kami menindaklanjuti.</li>
+</ul>
+</div>
 <div class="jk-section jk-form"><div class="jk-h2">⛔ Blokir user</div>
 <form method="POST" action="/safety/block">@csrf<label>ID / Username user</label><input name="user_id" required placeholder="cth: 12"><button class="jk-submit" style="margin-top:10px" type="submit">Blokir</button></form></div>
 <div class="jk-section jk-form"><div class="jk-h2">🚩 Laporkan user</div>

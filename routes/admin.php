@@ -62,6 +62,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::get('/chat/reported', [ChatAdminController::class, 'reported'])->name('chat.reported');
         Route::get('/chat/flagged', [ChatAdminController::class, 'flagged'])->name('chat.flagged');
         Route::get('/chat/search', [ChatAdminController::class, 'search'])->name('chat.search');
+        Route::get('/chat/settings', [ChatAdminController::class, 'settings'])->middleware('can:admin')->name('chat.settings');
 
         Route::get('/community/posts', [CommunityAdminController::class, 'posts'])->name('community.posts');
         Route::post('/community/posts/{post}/moderate', [CommunityAdminController::class, 'moderatePost'])->name('community.posts.moderate');

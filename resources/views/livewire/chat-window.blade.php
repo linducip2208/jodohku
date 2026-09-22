@@ -4,7 +4,7 @@
 @else
 <div class="jk-section" style="display:flex;gap:12px;align-items:center">
 <div class="jk-avatar">@if($other?->avatarUrl())<img src="{{ $other->avatarUrl() }}" alt="Foto {{ $other->displayName() }}">@else{{ strtoupper(substr((string)($other?->displayName() ?? '?'),0,1)) }}@endif</div>
-<div style="flex:1"><strong>{{ $other?->displayName() ?? 'Member' }}</strong>
+<div style="flex:1"><strong>{{ $other?->displayName() ?? 'Member' }}</strong>@if(!empty($courtshipStage)) <span class="jk-pill" style="font-size:11px" title="Tahap taaruf berjalan">Taaruf: {{ $courtshipStage }}</span>@endif
 <div class="jk-muted" style="font-size:12px">@if($other?->is_online) <span style="color:#22c55e">● Online sekarang</span> @else Terakhir aktif {{ $other?->last_active_at?->diffForHumans() ?? '—' }} @endif · <span id="typingHint"></span></div></div>
 <div style="display:flex;gap:6px">
 <a class="jk-pill" href="/profile/{{ $other?->id }}">Profil</a>
@@ -13,6 +13,9 @@
 <form method="POST" action="/chat/{{ $conv->id }}/archive" style="display:inline">@csrf<button class="jk-pill" type="submit" title="Arsipkan">Arsip</button></form>
 </div>
 </div>
+@if(in_array($peerRisk ?? null, ['medium', 'high'], true))
+<div class="jk-alert err" role="alert">Perhatikan keamanan saat berkomunikasi. Jangan kirim uang atau kode OTP kepada orang lain.</div>
+@endif
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px" id="msgList">
 @foreach($messages as $m)
 @php $mine = $me && $m->sender_id === $me->id; @endphp

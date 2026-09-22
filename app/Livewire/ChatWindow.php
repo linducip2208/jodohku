@@ -2,7 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Enums\CourtshipStatus;
 use App\Models\Conversation;
+use App\Models\Courtship;
+use App\Models\FraudRiskScore;
 use App\Models\Message;
 use App\Services\ChatService;
 use App\Services\GiftService;
@@ -144,6 +147,8 @@ class ChatWindow extends Component
         $other = null;
         $canSeeReads = false;
         $giftCatalog = collect();
+        $courtshipStage = null;
+        $peerRisk = null;
         if ($conv && $me) {
             try {
                 $chat->markRead($conv, $me);
@@ -151,10 +156,18 @@ class ChatWindow extends Component
                 $other = $conv->otherUser($me->id);
                 $canSeeReads = (bool) ($membership->currentFeatures($me)['has_read_receipts'] ?? false);
                 $giftCatalog = $gifts->catalog();
+                if ($other) {
+                    $courtship = Courtship::where(fn ($q) => $q
+                        ->where(fn ($qq) => $qq->where('initiator_id', $me->id)->where('partner_id', $other->id))
+                        ->orWhere(fn ($qq) => $qq->where('initiator_id', $other->id)->where('partner_id', $me->id)))
+                        ->where('status', CourtshipStatus::Active)->latest('id')->first();
+                    $courtshipStage = $courtship?->stage->label();
+                    $peerRisk = FraudRiskScore::where('user_id', $other->id)->latest('id')->value('level');
+                }
             } catch (\Throwable) {
             }
         }
 
-        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog]);
+        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog, 'courtshipStage' => $courtshipStage, 'peerRisk' => $peerRisk]);
     }
 }

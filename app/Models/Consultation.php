@@ -12,7 +12,7 @@ class Consultation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'counselor_id', 'user_id', 'topic', 'notes',
+        'counselor_id', 'user_id', 'topic', 'notes', 'share_report', 'shared_report_id',
         'scheduled_at', 'duration_minutes', 'status', 'decided_at',
     ];
 
@@ -22,7 +22,13 @@ class Consultation extends Model
             'status' => ConsultationStatus::class,
             'scheduled_at' => 'datetime',
             'decided_at' => 'datetime',
+            'share_report' => 'boolean',
         ];
+    }
+
+    public function sharedReport(): BelongsTo
+    {
+        return $this->belongsTo(CompatibilityReport::class, 'shared_report_id');
     }
 
     public function counselor(): BelongsTo

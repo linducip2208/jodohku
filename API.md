@@ -34,6 +34,10 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/conversations/{conversation}/calls` | sanctum | riwayat call |
 | POST | `/calls/{call}/accept`, `/reject`, `/cancel`, `/end` | sanctum | kelola call (tagihan per menit dibulatkan ke atas) |
 | POST/DELETE | `/courtships/{id}/chaperone` | sanctum | tambah/hapus wali read-only (mulai tahap taaruf) |
+| GET | `/courtships/journey/{partner}` | sanctum | marriage journey dari data aktual (match/chat/stage/konseling/wali/nikah) |
+| GET | `/consultations/counseling` | sanctum+konselor | booking yang ditugaskan + laporan yang dibagikan eksplisit |
+| GET | `/ai/taaruf-topics/{user}` | sanctum | topik taaruf grounded + pertanyaan siap pakai |
+| GET | `/health` | publik | status aplikasi + database (tanpa secrets) |
 | POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload) |
 | POST | `/conversations/{conversation}/typing` | sanctum | indikator mengetik (broadcast Reverb) |
 | PATCH | `/conversations/{conversation}/settings` | sanctum | `is_muted/is_pinned/is_archived/theme/nickname` |

@@ -49,6 +49,7 @@ Migrasi: `database/migrations/*`. Fresh seed: `php artisan migrate:fresh --seed`
 - `events.latitude/longitude` decimal nullable (`2026_09_22_000002`, MySQL 8 + SQLite) untuk `nearby()`; `forum_threads.views_count` (`2026_09_22_000001`).
 - Biro jodoh (`2026_09_22_000003`): `courtships` (initiator/partner/match/conversation, stage, status, wali + approval, stage_history); `counselors` unik `user_id`; `consultations` (counselor/user/topic/jadwal/status); `compatibility_reports` unik `(user_id,candidate_id)`; `success_stories` (status + published_at).
 - Ekspansi chat (`2026_09_22_000004` + `000005`): `scheduled_messages` (status + send_at, idempoten via client_message_id); `calls` (voice/video, status, durasi, token tertagih); `poll_votes` unik `(message_id,user_id)`; `conversations.disappears_in_seconds`; settings `chat.free/premium_messages_per_peer` (1/30) + `calls.voice/video_per_minute` (5/10).
+- Consent konselor (`2026_09_22_000006`): `consultations.share_report` + FK `shared_report_id` (nullOnDelete); settings `moderation.warn_risk` (35).
 
 ## kupon, blog & forum (`2026_09_21_000100`)
 

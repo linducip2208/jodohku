@@ -44,6 +44,7 @@ class SettingsSeeder extends Seeder
             // moderation
             ['group' => 'moderation', 'key' => 'auto_block_risk', 'value' => '85', 'type' => 'integer'],
             ['group' => 'moderation', 'key' => 'auto_flag_risk', 'value' => '60', 'type' => 'integer'],
+            ['group' => 'moderation', 'key' => 'warn_risk', 'value' => '35', 'type' => 'integer'],
             ['group' => 'moderation', 'key' => 'ai_review_enabled', 'value' => '1', 'type' => 'boolean'],
             // payment
             ['group' => 'payment', 'key' => 'default_gateway', 'value' => 'midtrans', 'type' => 'string'],

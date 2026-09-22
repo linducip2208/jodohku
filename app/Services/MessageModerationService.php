@@ -6,6 +6,7 @@ use App\Enums\ModerationAction;
 use App\Models\Message;
 use App\Models\ModerationLog;
 use App\Models\ModerationQueue;
+use App\Models\Setting;
 use App\Models\User;
 
 class MessageModerationService
@@ -29,9 +30,12 @@ class MessageModerationService
 
         $prof = $this->profanity->censor($body);
         $clean = $prof['clean'];
-        if ($prof['count'] > 0) {
-            $flags[] = 'profanity:'.implode(',', array_slice($prof['hits'], 0, 5));
-            $risk += min(40, 12 + $prof['count'] * 8);
+        $hitCount = $prof['count'] + count($prof['obfuscated'] ?? []);
+        if ($hitCount > 0) {
+            $cat = $prof['categories'][0] ?? 'profanity';
+            $flags[] = $cat.':'.implode(',', array_slice(array_merge($prof['hits'], array_map(fn ($w) => $w.'~', $prof['obfuscated'] ?? [])), 0, 5));
+            // High-severity categories (sexual/hate) escalate much faster.
+            $risk += $prof['max_severity'] >= 4 ? 30 + $hitCount * 5 : min(40, 12 + $hitCount * 8);
         }
 
         $scam = $this->scam->analyze($body);
@@ -51,11 +55,14 @@ class MessageModerationService
             $risk += 8;
         }
 
+        $blockAt = max(1, (int) Setting::get('auto_block_risk', 85, 'moderation'));
+        $flagAt = max(1, (int) Setting::get('auto_flag_risk', 60, 'moderation'));
+        $warnAt = max(1, (int) Setting::get('warn_risk', 35, 'moderation'));
         $decision = match (true) {
-            $risk >= 85 => 'block',
-            $risk >= 60 => 'flag',
-            $risk >= 35 => 'warning',
-            $prof['count'] > 0 => 'mask',
+            $risk >= $blockAt => 'block',
+            $risk >= $flagAt => 'flag',
+            $risk >= $warnAt => 'warning',
+            $hitCount > 0 => 'mask',
             default => 'allow',
         };
 
@@ -98,6 +105,9 @@ class MessageModerationService
 
     public function needsAiReview(int $risk, array $flags = []): bool
     {
+        if (! Setting::get('ai_review_enabled', true, 'moderation')) {
+            return false;
+        }
         if ($risk >= 60) {
             return true;
         }

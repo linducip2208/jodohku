@@ -4,16 +4,36 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ad;
+use App\Models\Block;
+use App\Models\Report;
 use App\Services\AdService;
+use App\Services\TwoFactorService;
+use App\Services\VerificationService;
 use Illuminate\Http\Request;
 
 class SafetyController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, VerificationService $verification, TwoFactorService $tfa)
     {
+        $user = $request->user();
+        $status = $user ? [
+            'email_verified' => (bool) $user->hasVerifiedEmail(),
+            'is_verified' => (bool) $user->is_verified,
+            'two_factor' => $tfa->isEnabled($user),
+            'incognito' => (bool) ($user->profilePrivacy?->is_incognito ?? false),
+            'verification_requests' => $verification->statusFor($user),
+            'blocks_count' => Block::where('blocker_id', $user->id)->count(),
+            'reports_count' => Report::where('reporter_id', $user->id)->count(),
+        ] : null;
+        $payload = [
+            'tips' => config('jodohku.safety_tips', []),
+            'support_email' => config('mail.support', 'support@jodohku.id'),
+            'status' => $status,
+        ];
+
         return $request->wantsJson()
-            ? response()->json(['tips' => config('jodohku.safety_tips', []), 'support_email' => config('mail.support', 'support@jodohku.id')])
-            : view('member.safety.center');
+            ? response()->json($payload)
+            : view('member.safety.center', ['safetyStatus' => $status]);
     }
 
     public function ads(Request $request, AdService $ads)

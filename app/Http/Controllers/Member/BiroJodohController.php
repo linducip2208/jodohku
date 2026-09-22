@@ -9,10 +9,13 @@ use App\Models\Conversation;
 use App\Models\Counselor;
 use App\Models\Courtship;
 use App\Models\User;
+use App\Models\UserMatch;
 use App\Services\CompatibilityReportService;
 use App\Services\ConsultationService;
 use App\Services\CourtshipService;
+use App\Services\MarriageJourneyService;
 use App\Services\SuccessStoryService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 
 class BiroJodohController extends Controller
@@ -54,6 +57,22 @@ class BiroJodohController extends Controller
         $this->authorize('view', $courtship);
 
         return response()->json($courtship->load(['initiator', 'partner', 'match', 'conversation']));
+    }
+
+    public function journey(Request $request, User $partner, MarriageJourneyService $journey)
+    {
+        $this->authorize('view', $partner);
+        $me = $request->user();
+        abort_unless((int) $me->id === (int) $partner->id || $me->isStaff()
+            || Courtship::where(fn ($q) => $q
+                ->where(fn ($qq) => $qq->where('initiator_id', $me->id)->where('partner_id', $partner->id))
+                ->orWhere(fn ($qq) => $qq->where('initiator_id', $partner->id)->where('partner_id', $me->id)))
+                ->exists()
+            || UserMatch::where(fn ($q) => $q->where('user_a_id', $me->id)->orWhere('user_b_id', $me->id))
+                ->where(fn ($q) => $q->where('user_a_id', $partner->id)->orWhere('user_b_id', $partner->id))
+                ->exists(), 403);
+
+        return response()->json($journey->journey($me, $partner));
     }
 
     public function advanceCourtship(Request $request, Courtship $courtship, CourtshipService $courtships)
@@ -140,15 +159,26 @@ class BiroJodohController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
             'scheduled_at' => ['required', 'date', 'after:now'],
             'duration_minutes' => ['nullable', 'integer', 'min:15', 'max:180'],
+            'share_report' => ['nullable', 'boolean'],
+            'shared_report_id' => ['nullable', 'integer', 'exists:compatibility_reports,id'],
         ]);
         $counselor = Counselor::findOrFail($request->integer('counselor_id'));
         try {
-            $consultation = $consultations->book($request->user(), $counselor, $request->only(['topic', 'notes', 'scheduled_at', 'duration_minutes']));
+            $consultation = $consultations->book($request->user(), $counselor, $request->only(['topic', 'notes', 'scheduled_at', 'duration_minutes', 'share_report', 'shared_report_id']));
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json($consultation->load(['counselor.user']), 201);
+    }
+
+    public function counselorBookings(Request $request, ConsultationService $consultations)
+    {
+        try {
+            return response()->json($consultations->forCounselorUser($request->user(), (int) $request->query('per_page', 20)));
+        } catch (ModelNotFoundException) {
+            abort(403, 'Counselor account required.');
+        }
     }
 
     public function consultations(Request $request, ConsultationService $consultations)

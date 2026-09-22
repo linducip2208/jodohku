@@ -9,11 +9,21 @@ use App\Models\ConversationMember;
 use App\Models\Courtship;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Notifications\CourtshipStageChanged;
 use Illuminate\Support\Facades\DB;
 
 class CourtshipService
 {
-    public function __construct(protected AuditService $audit) {}
+    public function __construct(protected AuditService $audit, protected NotificationService $notifications) {}
+
+    protected function otherParty(Courtship $courtship, User $actor): ?User
+    {
+        $otherId = (int) $courtship->initiator_id === (int) $actor->id
+            ? (int) $courtship->partner_id
+            : (int) $courtship->initiator_id;
+
+        return User::find($otherId);
+    }
 
     protected function guardPair(User $a, User $b): void
     {
@@ -113,6 +123,9 @@ class CourtshipService
                 $courtship->update(['status' => CourtshipStatus::Completed, 'completed_at' => now()]);
             }
             $this->audit->log('courtship.advanced', $user, $courtship, [], ['stage' => $next->value]);
+            if ($other = $this->otherParty($courtship, $user)) {
+                $this->notifications->send($other, new CourtshipStageChanged($courtship->fresh(), 'advanced'));
+            }
 
             return $courtship->fresh();
         });
@@ -172,6 +185,9 @@ class CourtshipService
         $this->ensureActive($courtship);
         $courtship->update(['status' => CourtshipStatus::Withdrawn, 'completed_at' => now()]);
         $this->audit->log('courtship.withdrawn', $user, $courtship);
+        if ($other = $this->otherParty($courtship, $user)) {
+            $this->notifications->send($other, new CourtshipStageChanged($courtship->fresh(), 'withdrawn'));
+        }
 
         return $courtship->fresh();
     }

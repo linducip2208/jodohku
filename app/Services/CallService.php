@@ -9,11 +9,12 @@ use App\Models\Call;
 use App\Models\Conversation;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\MissedCall;
 use Illuminate\Support\Facades\DB;
 
 class CallService
 {
-    public function __construct(protected CreditService $credits, protected AuditService $audit) {}
+    public function __construct(protected CreditService $credits, protected AuditService $audit, protected NotificationService $notifications) {}
 
     public function ratePerMinute(string $type): int
     {
@@ -156,8 +157,11 @@ class CallService
             return 0;
         }
         Call::whereIn('id', $ids)->update(['status' => CallStatus::Missed->value, 'ended_at' => now()]);
-        foreach (Call::whereIn('id', $ids)->get() as $call) {
+        foreach (Call::whereIn('id', $ids)->with('receiver', 'caller')->get() as $call) {
             event(new CallStatusChanged($call, 'missed'));
+            if ($call->receiver) {
+                $this->notifications->send($call->receiver, new MissedCall($call));
+            }
         }
 
         return $ids->count();
