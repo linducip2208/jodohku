@@ -29,7 +29,10 @@ class AiModerationService
             return ['verdict' => 'allow', 'confidence' => 0.0, 'reason' => 'ai-unavailable'];
         }
 
-        $verdict = str_contains(strtolower($text), 'block') ? 'block' : (str_contains(strtolower($text), 'warn') ? 'warn' : 'allow');
+        $verdict = 'allow';
+        if (preg_match('/VERDICT\s*=\s*(allow|warn|block)/i', $text, $vm)) {
+            $verdict = strtolower($vm[1]);
+        }
         preg_match('/CONF\s*=\s*([0-9.]+)/i', $text, $m);
         $conf = isset($m[1]) ? min(1, max(0, (float) $m[1])) : 0.5;
         preg_match('/REASON\s*=\s*(.+)/i', $text, $r);

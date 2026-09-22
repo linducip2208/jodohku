@@ -16,7 +16,13 @@ class NewMessage extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database'];
+        $prefs = $notifiable->notificationPreference;
+        if (! $prefs || $prefs->email_messages) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     public function toDatabase(object $notifiable): array

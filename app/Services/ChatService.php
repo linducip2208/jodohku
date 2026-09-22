@@ -131,7 +131,7 @@ class ChatService
                 'sender_id' => $sender->id,
                 'body' => $finalBody,
                 'type' => $data['type'] ?? 'text',
-                'status' => $mod['decision'] === 'flag' ? MessageStatus::Sent : MessageStatus::Sent,
+                'status' => MessageStatus::Sent,
                 'client_message_id' => $clientId,
                 'reply_to_id' => $data['reply_to_id'] ?? null,
                 'metadata' => array_merge($data['metadata'] ?? [], [
@@ -402,8 +402,10 @@ class ChatService
             ->with('sender')->latest('id')->limit($limit)->get()
             ->groupBy('conversation_id');
 
-        return $messages->map(function ($items, $convId) {
-            $conv = Conversation::with(['members.user'])->find($convId);
+        $conversations = Conversation::whereIn('id', $messages->keys())->with(['members.user'])->get()->keyBy('id');
+
+        return $messages->map(function ($items, $convId) use ($conversations) {
+            $conv = $conversations->get($convId);
 
             return [
                 'conversation_id' => (int) $convId,
@@ -472,6 +474,7 @@ class ChatService
             throw new \RuntimeException('Not a member.');
         }
         $messages = $conversation->messages()->with(['sender', 'attachments', 'reactions'])
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
             ->orderBy('id')->get();
 
         return [

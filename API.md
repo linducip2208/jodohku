@@ -20,7 +20,30 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | POST | `/admin/gateways/{code}` | sanctum+`can:admin` | simpan setting; sekret dienkripsi `Crypt` |
 | POST | `/conversations/{conversation}/messages` | sanctum | kirim pesan (`client_message_id` idempoten) |
 | POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload) |
-| POST | `/chat-requests/{user}` | sanctum | kirim permintaan chat (idempoten pending, cap harian) |
+| POST | `/conversations/{conversation}/typing` | sanctum | indikator mengetik (broadcast Reverb) |
+| PATCH | `/conversations/{conversation}/settings` | sanctum | `is_muted/is_pinned/is_archived/theme/nickname` |
+| GET | `/conversations/{conversation}/search?q=` | sanctum | cari dalam satu percakapan (abaikan pesan terhapus) |
+| GET | `/conversations/{conversation}/export` | sanctum | ekspor thread (abaikan pesan terhapus) |
+| POST | `/chat/{conversation}/mark-all-read` | sanctum | tandai semua dibaca (global user) |
+| GET/POST/DELETE | `/chat/{conversation}/labels[/{labelId}]` | sanctum | kelola label pribadi |
+| POST/DELETE | `/messages/{message}/reactions` | sanctum | tambah/hapus reaksi emoji (idempoten) |
+| DELETE | `/matches/{user}` | sanctum | unmatch (nonaktif + `unmatched_at`) |
+| POST | `/chat-requests/{user}` | sanctum | kirim permintaan chat (idempoten pending dua arah, tolak bila diblokir, cap harian) |
+| GET | `/forums/search?q=` | sanctum | cari thread + post + forum |
+| POST | `/events/{event}/rsvp` | sanctum | `{status: confirmed/declined/maybe}` (default confirmed) |
+| POST | `/ai/rewrite` | sanctum | tulis ulang draf (`tone`: friendly/funny/formal/romantic/confident) |
+| GET | `/ads?placement=` | sanctum | iklan servable (aktif + dalam jadwal) |
+| GET | `/ads/stats` | sanctum | impresi/klik/CTR per placement |
+| POST | `/ads/{ad}/impression`, `/ads/{ad}/click` | sanctum | catat view/klik (hanya bila servable) |
+| GET | `/boost/status`, `/boosts/history` | sanctum | status live + sisa waktu; riwayat boost |
+| POST | `/coupons/quote` | sanctum | validasi kupon + hitung diskon tanpa checkout |
+| POST | `/checkout/quote` | sanctum | preview total (garansi sama dengan checkout) |
+| GET | `/payments`, `/payments/summary` | sanctum | riwayat pembayaran + ringkasan bulan berjalan |
+| GET | `/verification/status` | sanctum | status pengajuan verifikasi per tipe |
+| GET | `/wallet/summary` | sanctum | saldo + lifetime + arus bulan berjalan |
+| GET | `/wallet/transactions?type=&from=&to=` | sanctum | filter tipe + rentang tanggal |
+| GET | `/subscriptions/trial-eligibility` | sanctum | cek jatah trial (sekali selamanya) |
+| POST | `/subscriptions/switch` | sanctum | ganti plan segera |
 | POST | `/webhooks/{gateway}` | publik (HMAC, fail-closed) | `ipaymu/xendit/midtrans/tripay`; idempoten via `event_id`; tanpa signature → 400 |
 | POST | `/admin/reports/{report}/resolve` | staff `moderator` | selesaikan laporan + audit log |
 | GET | `/blog`, `/blog/{slug}` | sanctum | artikel published (view_count auto-increment) |

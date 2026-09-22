@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ChatRequestStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendMessageRequest;
 use App\Http\Resources\ConversationResource;
@@ -137,6 +138,13 @@ class ChatController extends Controller
         $user = $request->user();
         $action = $request->string('action')->toString();
 
+        if ($chatRequest->isExpired() && $chatRequest->status === ChatRequestStatus::Pending) {
+            $chatRequest->update(['status' => ChatRequestStatus::Expired, 'responded_at' => now()]);
+        }
+        if ($chatRequest->status->isFinal()) {
+            return response()->json(['message' => 'Request is no longer pending.'], 422);
+        }
+
         if ($action === 'cancel' && (int) $chatRequest->sender_id === (int) $user->id) {
             $chatRequest->update(['status' => 'cancelled', 'responded_at' => now()]);
 
@@ -193,8 +201,128 @@ class ChatController extends Controller
             'body' => $message->body,
             'type' => $message->type,
             'metadata' => ['forwarded_from' => $message->conversation->id, 'original_message_id' => $message->id],
+            'attachments' => $message->attachments->map(fn ($a) => [
+                'file_path' => $a->file_path,
+                'file_name' => $a->file_name,
+                'mime_type' => $a->mime_type,
+                'file_size' => $a->file_size,
+                'width' => $a->width,
+                'height' => $a->height,
+                'duration_seconds' => $a->duration_seconds,
+            ])->all(),
         ]);
 
         return response()->json(MessageResource::make($forwarded->load(['sender', 'attachments'])), 201);
+    }
+
+    public function react(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        $request->validate(['emoji' => ['required', 'string', 'max:20']]);
+        try {
+            $reaction = $chat->react($message, $request->user(), $request->string('emoji')->toString());
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return response()->json($reaction, 201);
+    }
+
+    public function unreact(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        $request->validate(['emoji' => ['required', 'string', 'max:20']]);
+        $chat->unreact($message, $request->user(), $request->string('emoji')->toString());
+
+        return response()->json(['message' => 'Removed.']);
+    }
+
+    public function typing(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('send', $conversation);
+        $request->validate(['is_typing' => ['nullable', 'boolean']]);
+        try {
+            $chat->typing($conversation, $request->user(), $request->boolean('is_typing', true));
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function setting(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('manage', $conversation);
+        $request->validate([
+            'key' => ['required', 'string', 'in:is_muted,is_pinned,is_archived,theme,nickname'],
+            'value' => ['nullable'],
+        ]);
+        try {
+            $setting = $chat->setting($conversation, $request->user(), $request->string('key')->toString(), $request->input('value'));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($setting);
+    }
+
+    public function searchInConversation(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        $request->validate(['q' => ['required', 'string', 'max:255']]);
+        try {
+            $items = $chat->search($conversation, $request->user(), $request->string('q')->toString());
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return response()->json(MessageResource::collection($items));
+    }
+
+    public function export(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        try {
+            return response()->json($chat->export($conversation, $request->user()));
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+    }
+
+    public function labels(Request $request, Conversation $conversation)
+    {
+        $this->authorize('view', $conversation);
+
+        return response()->json($conversation->labels()->where('user_id', $request->user()->id)->get());
+    }
+
+    public function addLabel(Request $request, Conversation $conversation)
+    {
+        $this->authorize('manage', $conversation);
+        $request->validate(['label' => ['required', 'string', 'max:60'], 'color' => ['nullable', 'string', 'max:7']]);
+        $label = $conversation->labels()->firstOrCreate(
+            ['conversation_id' => $conversation->id, 'user_id' => $request->user()->id, 'label' => $request->string('label')->toString()],
+            ['color' => $request->input('color', '#888888')]
+        );
+
+        return response()->json($label, 201);
+    }
+
+    public function removeLabel(Request $request, Conversation $conversation, $labelId = null)
+    {
+        $this->authorize('manage', $conversation);
+        $id = (int) ($labelId ?? $request->input('label_id', 0));
+        abort_unless($id > 0, 422, 'label_id required.');
+        $label = $conversation->labels()->where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
+        $label->delete();
+
+        return response()->json(['message' => 'Label removed.']);
+    }
+
+    public function markAllRead(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+
+        return response()->json(['marked' => $chat->markAllRead($request->user())]);
     }
 }

@@ -33,11 +33,13 @@ class AiService
         }
         $perMin = (int) config('ai.rate_limits.per_user_per_minute', 10);
         $key = 'ai:rate:'.$user->id.':'.now()->format('YmdHi');
-        $count = (int) Cache::get($key, 0);
-        if ($count >= $perMin) {
+        $count = (int) Cache::increment($key);
+        if ($count === 1) {
+            Cache::put($key, 1, 65);
+        }
+        if ($count > $perMin) {
             throw new \RuntimeException('AI rate limit exceeded. Try again in a minute.');
         }
-        Cache::put($key, $count + 1, 65);
     }
 
     /** Grounded chat completion with guardrails + cost logging. */

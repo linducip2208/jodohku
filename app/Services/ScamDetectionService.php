@@ -22,8 +22,9 @@ class ScamDetectionService
         $score = 0;
         $lower = mb_strtolower($text);
 
-        // Phone numbers (ID + international)
-        if (preg_match('/(\+?62[\s\-]?\d[\d\s\-]{7,14}\d|08[\d\s\-]{8,14}|\+?\d[\d\s\-]{9,15})/', $text)) {
+        // Phone numbers (ID + international with explicit country code; plain digit
+        // strings no longer match to avoid false positives on ordinary numbers)
+        if (preg_match('/(\+62[\s\-]?\d[\s\d\-]{7,14}\d|08[\d\s\-]{8,14}|\+\d[\d\s\-]{8,14}\d)/', $text)) {
             $flags[] = 'phone_number';
             $score += 25;
         }
@@ -51,24 +52,22 @@ class ScamDetectionService
             $flags[] = 'suspicious_tld';
             $score += 20;
         }
-        // Investment / money lure
+        // Investment / money lure (every matched keyword counts; capped by min(100))
         foreach ($this->investmentKeywords as $kw) {
             if (str_contains($lower, $kw)) {
                 $flags[] = 'investment_lure:'.$kw;
                 $score += 15;
-                break;
             }
         }
         if (preg_match('/\b(transfer|kirim\s+uang|bayar\s+dulu|admin\s+fee|fee\s+\d|bonus\s+\d+%|gajian|hadiah\s+uang)\b/i', $text)) {
             $flags[] = 'money_request';
             $score += 25;
         }
-        // Credential phishing
+        // Credential phishing (every matched keyword counts; capped by min(100))
         foreach ($this->credentialKeywords as $kw) {
             if (str_contains($lower, $kw)) {
                 $flags[] = 'credential_phish:'.$kw;
                 $score += 30;
-                break;
             }
         }
         // Urgency / threat

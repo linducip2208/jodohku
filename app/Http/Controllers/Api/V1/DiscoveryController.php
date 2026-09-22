@@ -118,8 +118,11 @@ class DiscoveryController extends Controller
     {
         $this->authorize('view', $user);
         $request->validate(['message' => ['nullable', 'string', 'max:500']]);
-
-        return response()->json($likes->superLike($request->user(), $user, $request->input('message')), 201);
+        try {
+            return response()->json($likes->superLike($request->user(), $user, $request->input('message')), 201);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage(), 'upgrade' => true], 403);
+        }
     }
 
     public function favorite(Request $request, User $user, LikeService $likes)
@@ -138,7 +141,11 @@ class DiscoveryController extends Controller
 
     public function rewind(Request $request, LikeService $likes)
     {
-        return response()->json($likes->rewind($request->user()) ?? ['message' => 'Nothing to rewind.']);
+        try {
+            return response()->json($likes->rewind($request->user()) ?? ['message' => 'Nothing to rewind.']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        }
     }
 
     public function stats(Request $request)
@@ -153,7 +160,7 @@ class DiscoveryController extends Controller
             'likes_given_total' => Like::where('liker_id', $user->id)->count(),
             'likes_received_today' => Like::where('liked_id', $user->id)->whereDate('created_at', $today)->count(),
             'likes_received_total' => Like::where('liked_id', $user->id)->count(),
-            'matches_today' => UserMatch::where('user_a_id', $user->id)->orWhere('user_b_id', $user->id)->whereDate('matched_at', '>=', $today)->count(),
+            'matches_today' => UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->whereDate('matched_at', $today)->where('is_active', true)->count(),
             'matches_total' => UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
             'rewinds_total' => Rewind::where('user_id', $user->id)->whereNull('undone_at')->count(),
             'favorites_total' => Favorite::where('user_id', $user->id)->count(),

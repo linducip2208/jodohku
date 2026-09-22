@@ -51,8 +51,13 @@ class AiChatAssistantService
             return ["Halo {$candidate->displayName()}! Salam kenal 👋", 'Boleh kenalan? Profilmu menarik!', 'Hai! Lagi sibuk apa akhir-akhir ini?'];
         }
         $lines = array_values(array_filter(array_map(fn ($l) => trim(preg_replace('/^[\d\-\.\)\s]+/', '', (string) $l)), preg_split('/\r?\n/', trim((string) $res['text'])))));
+        $lines = array_slice($lines, 0, $count);
+        if (count($lines) < $count) {
+            // Pad short AI output with grounded deterministic openers.
+            $lines = array_slice(array_values(array_unique(array_merge($lines, $this->openers($user, $candidate, $count)))), 0, $count);
+        }
 
-        return array_slice($lines, 0, $count);
+        return $lines ?: ['Boleh kenalan? Profilmu menarik!'];
     }
 
     public function rewrite(string $draft, string $tone = 'friendly', ?User $user = null): string

@@ -52,4 +52,23 @@ class BoostService
     {
         return Boost::where('user_id', $user->id)->live()->exists();
     }
+
+    /** Rich live status: active boost with remaining time, if any. */
+    public function status(User $user): array
+    {
+        $active = Boost::where('user_id', $user->id)->live()->latest('id')->first();
+
+        return [
+            'live' => $active !== null,
+            'boost_id' => $active?->id,
+            'starts_at' => $active?->starts_at,
+            'ends_at' => $active?->ends_at,
+            'remaining_seconds' => $active && $active->ends_at ? max(0, now()->diffInSeconds($active->ends_at, false)) : 0,
+        ];
+    }
+
+    public function history(User $user, int $perPage = 20)
+    {
+        return Boost::where('user_id', $user->id)->latest('id')->paginate($perPage);
+    }
 }

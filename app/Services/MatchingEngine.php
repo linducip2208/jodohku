@@ -575,62 +575,43 @@ class MatchingEngine
         $r = $this->scorePair($a, $b);
 
         return DB::transaction(function () use ($a, $b, $r) {
+            // Canonical single-row guarantee: exactly one row per pair (min,max).
             [$c1, $c2] = self::canonical((int) $a->id, (int) $b->id);
-            $isCanonicalOrder = ((int) $a->id === $c1);
 
-            $row = MatchScore::updateOrCreate(
-                ['user_id' => $a->id, 'candidate_id' => $b->id],
+            return MatchScore::updateOrCreate(
+                ['user_id' => $c1, 'candidate_id' => $c2],
                 [
                     'questionnaire_score' => $r['breakdown']['personality'] ?? 0,
                     'interest_score' => $r['breakdown']['interest'] ?? 0,
                     'preference_score' => $r['breakdown']['preference'] ?? 0,
                     'activity_score' => $r['breakdown']['behavior'] ?? 0,
-                    'total_score' => $r['a_to_b'],
+                    'total_score' => $r['mutual'],
                     'breakdown' => $r,
                     'computed_at' => now(),
                 ]
             );
-
-            // Canonical single-row guarantee: also upsert the canonical orientation
-            // so (min,max) always exists for fast pair lookups.
-            if (! $isCanonicalOrder) {
-                MatchScore::updateOrCreate(
-                    ['user_id' => $c1, 'candidate_id' => $c2],
-                    [
-                        'questionnaire_score' => $r['breakdown']['personality'] ?? 0,
-                        'interest_score' => $r['breakdown']['interest'] ?? 0,
-                        'preference_score' => $r['breakdown']['preference'] ?? 0,
-                        'activity_score' => $r['breakdown']['behavior'] ?? 0,
-                        'total_score' => $r['mutual'],
-                        'breakdown' => $r,
-                        'computed_at' => now(),
-                    ]
-                );
-            }
-
-            return $row;
         });
     }
 
     public function demographicBreakdown(User $user): array
     {
-        $query = User::active()->where('id', '!=', $user->id);
+        $base = fn () => User::active()->where('id', '!=', $user->id);
 
-        $genderDist = $query->selectRaw('gender, count(*) as total')->groupBy('gender')->pluck('total', 'gender');
+        $genderDist = $base()->selectRaw('gender, count(*) as total')->groupBy('gender')->pluck('total', 'gender');
         $ageBuckets = [
-            '17-20' => $query->whereBetween('date_of_birth', [now()->subYears(20)->toDateString(), now()->subYears(17)->toDateString()])->count(),
-            '21-25' => $query->whereBetween('date_of_birth', [now()->subYears(25)->toDateString(), now()->subYears(21)->toDateString()])->count(),
-            '26-30' => $query->whereBetween('date_of_birth', [now()->subYears(30)->toDateString(), now()->subYears(26)->toDateString()])->count(),
-            '31-35' => $query->whereBetween('date_of_birth', [now()->subYears(35)->toDateString(), now()->subYears(31)->toDateString()])->count(),
-            '36-45' => $query->whereBetween('date_of_birth', [now()->subYears(45)->toDateString(), now()->subYears(36)->toDateString()])->count(),
-            '46+' => $query->where('date_of_birth', '<=', now()->subYears(46)->toDateString())->count(),
+            '17-20' => $base()->whereBetween('date_of_birth', [now()->subYears(20)->toDateString(), now()->subYears(17)->toDateString()])->count(),
+            '21-25' => $base()->whereBetween('date_of_birth', [now()->subYears(25)->toDateString(), now()->subYears(21)->toDateString()])->count(),
+            '26-30' => $base()->whereBetween('date_of_birth', [now()->subYears(30)->toDateString(), now()->subYears(26)->toDateString()])->count(),
+            '31-35' => $base()->whereBetween('date_of_birth', [now()->subYears(35)->toDateString(), now()->subYears(31)->toDateString()])->count(),
+            '36-45' => $base()->whereBetween('date_of_birth', [now()->subYears(45)->toDateString(), now()->subYears(36)->toDateString()])->count(),
+            '46+' => $base()->where('date_of_birth', '<=', now()->subYears(46)->toDateString())->count(),
         ];
-        $verified = $query->where('is_verified', true)->count();
-        $premium = $query->where('is_premium', true)->count();
-        $online = $query->where('is_online', true)->count();
-        $total = $query->count();
+        $verified = $base()->where('is_verified', true)->count();
+        $premium = $base()->where('is_premium', true)->count();
+        $online = $base()->where('is_online', true)->count();
+        $total = $base()->count();
 
-        $cityDist = $query->whereNotNull('city')->selectRaw('city, count(*) as total')->groupBy('city')->orderByDesc('total')->limit(20)->pluck('total', 'city');
+        $cityDist = $base()->whereNotNull('city')->selectRaw('city, count(*) as total')->groupBy('city')->orderByDesc('total')->limit(20)->pluck('total', 'city');
 
         return [
             'total' => $total,

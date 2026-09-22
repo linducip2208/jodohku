@@ -50,12 +50,15 @@ class TwoFactorService
 
     public function verify(User $user, string $code): bool
     {
+        if (! $this->isEnabled($user)) {
+            return false;
+        }
+        if (RateLimiter::tooManyAttempts('2fa-verify:'.$user->id, 5)) {
+            throw new \RuntimeException('Terlalu banyak percobaan. Coba lagi dalam 5 menit.');
+        }
         $hash = Cache::get($this->key($user));
         if (! $hash || ! Hash::check(trim($code), $hash)) {
             RateLimiter::hit('2fa-verify:'.$user->id, 300);
-            if (RateLimiter::tooManyAttempts('2fa-verify:'.$user->id, 5)) {
-                throw new \RuntimeException('Terlalu banyak percobaan. Coba lagi dalam 5 menit.');
-            }
 
             return false;
         }

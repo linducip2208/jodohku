@@ -13,19 +13,25 @@ use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
-    public function index(Request $request, ChatService $chat)
+    /** Peer user ids tied to pending chat requests (either direction). */
+    protected function requestPeerIds(User $user)
     {
-        $user = $request->user();
-        $filter = $request->query('filter', 'all');
-        $search = $request->query('q');
+        return ChatRequest::where(fn ($q) => $q->where('sender_id', $user->id)->orWhere('receiver_id', $user->id))
+            ->where('status', 'pending')->get()
+            ->map(fn ($r) => (int) $r->sender_id === (int) $user->id ? (int) $r->receiver_id : (int) $r->sender_id)
+            ->unique()->values();
+    }
 
-        $query = Conversation::forUser($user->id)->with(['members.user', 'latestMessages'])->orderByDesc('last_message_at');
+    /** Shared inbox filter arms so index()/conversations() can never drift apart. */
+    protected function applyInboxFilter($query, string $filter, User $user): void
+    {
+        $requestPeerIds = $this->requestPeerIds($user);
 
         match ($filter) {
             'unread' => $query->whereHas('messages', fn ($q) => $q->where('sender_id', '!=', $user->id)
                 ->whereDoesntHave('reads', fn ($r) => $r->where('user_id', $user->id))),
             'matches' => $query->whereNotNull('match_id'),
-            'requests' => $query->whereIn('id', ChatRequest::where('receiver_id', $user->id)->where('status', 'pending')->pluck('id')),
+            'requests' => $query->whereHas('members', fn ($q) => $q->whereIn('user_id', $requestPeerIds)),
             'favorites' => $query->whereHas('members', fn ($q) => $q->whereIn('user_id', Favorite::where('user_id', $user->id)->pluck('favorited_id'))),
             'archived' => $query->whereHas('settings', fn ($q) => $q->where('user_id', $user->id)->where('is_archived', true)),
             'muted' => $query->whereHas('settings', fn ($q) => $q->where('user_id', $user->id)->where('is_muted', true)),
@@ -38,14 +44,26 @@ class ChatController extends Controller
             'attachments' => $query->whereHas('messages.attachments'),
             default => null,
         };
+    }
 
+    protected function applyInboxSearch($query, ?string $search): void
+    {
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhereHas('members.user', fn ($u) => $u->where('display_name', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
             });
         }
+    }
 
+    public function index(Request $request, ChatService $chat)
+    {
+        $user = $request->user();
+        $filter = $request->query('filter', 'all');
+
+        $query = Conversation::forUser($user->id)->with(['members.user', 'latestMessages'])->orderByDesc('last_message_at');
+        $this->applyInboxFilter($query, $filter, $user);
+        $this->applyInboxSearch($query, $request->query('q'));
         $conversations = $query->paginate(20);
 
         if ($request->wantsJson()) {
@@ -106,19 +124,20 @@ class ChatController extends Controller
     {
         $this->authorize('manage', $conversation);
         $request->validate(['label' => ['required', 'string', 'max:60'], 'color' => ['nullable', 'string', 'max:7']]);
-        $chat->setting($conversation, $request->user(), 'nickname', $request->string('label'));
         $label = $conversation->labels()->firstOrCreate(
-            ['conversation_id' => $conversation->id, 'user_id' => $request->user()->id],
-            ['label' => $request->string('label'), 'color' => $request->input('color', '#888888')]
+            ['conversation_id' => $conversation->id, 'user_id' => $request->user()->id, 'label' => $request->string('label')],
+            ['color' => $request->input('color', '#888888')]
         );
 
         return response()->json($label, 201);
     }
 
-    public function removeLabel(Request $request, Conversation $conversation)
+    public function removeLabel(Request $request, Conversation $conversation, $labelId = null)
     {
         $this->authorize('manage', $conversation);
-        $label = $conversation->labels()->where('id', $request->integer('label_id'))->where('user_id', $request->user()->id)->firstOrFail();
+        $id = (int) ($labelId ?? $request->input('label_id', 0));
+        abort_unless($id > 0, 422, 'label_id required.');
+        $label = $conversation->labels()->where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
         $label->delete();
 
         return response()->json(['message' => 'Label removed.']);
@@ -136,25 +155,10 @@ class ChatController extends Controller
         if ($archived) {
             $query->whereHas('settings', fn ($q) => $q->where('user_id', $user->id)->where('is_archived', true));
         } else {
-            match ($filter) {
-                'unread' => $query->whereHas('messages', fn ($q) => $q->where('sender_id', '!=', $user->id)->whereDoesntHave('reads', fn ($r) => $r->where('user_id', $user->id))),
-                'matches' => $query->whereNotNull('match_id'),
-                'requests' => $query->whereIn('id', ChatRequest::where('receiver_id', $user->id)->where('status', 'pending')->pluck('id')),
-                'favorites' => $query->whereHas('members', fn ($q) => $q->whereIn('user_id', Favorite::where('user_id', $user->id)->pluck('favorited_id'))),
-                'muted' => $query->whereHas('settings', fn ($q) => $q->where('user_id', $user->id)->where('is_muted', true)),
-                'online' => $query->whereHas('members', fn ($q) => $q->where('user_id', '!=', $user->id)->whereHas('user', fn ($u) => $u->where('is_online', true))),
-                'verified' => $query->whereHas('members', fn ($q) => $q->where('user_id', '!=', $user->id)->whereHas('user', fn ($u) => $u->where('is_verified', true))),
-                'premium' => $query->whereHas('members', fn ($q) => $q->where('user_id', '!=', $user->id)->whereHas('user', fn ($u) => $u->where('is_premium', true))),
-                'attachments' => $query->whereHas('messages.attachments'),
-                default => null,
-            };
+            $this->applyInboxFilter($query, $filter, $user);
         }
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")->orWhereHas('members.user', fn ($u) => $u->where('display_name', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
-            });
-        }
+        $this->applyInboxSearch($query, $search);
 
         $conversations = $query->paginate(20);
 

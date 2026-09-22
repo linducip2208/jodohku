@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Block;
 use App\Models\Conversation;
 use App\Models\Gift;
 use App\Models\GiftTransaction;
@@ -49,6 +50,12 @@ class GiftService
     {
         if (! config('jodohku.features.gifts', true)) {
             throw new \RuntimeException('Gifts feature disabled.');
+        }
+        if ((int) $sender->id === (int) $receiver->id) {
+            throw new \InvalidArgumentException('Cannot send a gift to yourself.');
+        }
+        if (Block::existsBetween((int) $sender->id, (int) $receiver->id)) {
+            throw new \RuntimeException('Cannot send a gift to this user.');
         }
 
         return DB::transaction(function () use ($sender, $receiver, $giftCode, $quantity, $conversation, $message, $note) {

@@ -95,14 +95,14 @@ class AnalyticsController extends Controller
             ->orderByDesc('total')->limit($limit)->get();
         $messagers = Message::with('sender')->selectRaw('sender_id, COUNT(*) as total')->groupBy('sender_id')
             ->orderByDesc('total')->limit($limit)->get();
-        $viewed = ProfileView::with('viewer')->selectRaw('viewer_id, COUNT(*) as total')->groupBy('viewer_id')
+        $viewed = ProfileView::with('profileUser')->selectRaw('profile_user_id, COUNT(*) as total')->groupBy('profile_user_id')
             ->orderByDesc('total')->limit($limit)->get();
 
         return response()->json([
             'most_liked' => $likesReceived->map(fn ($r) => ['user_id' => $r->liked_id, 'name' => $r->liked?->displayName(), 'count' => $r->total])->values(),
             'most_active_likers' => $likesGiven->map(fn ($r) => ['user_id' => $r->liker_id, 'name' => $r->liker?->displayName(), 'count' => $r->total])->values(),
             'most_chatty' => $messagers->map(fn ($r) => ['user_id' => $r->sender_id, 'name' => $r->sender?->displayName(), 'count' => $r->total])->values(),
-            'most_profile_viewed' => $viewed->map(fn ($r) => ['user_id' => $r->viewer_id, 'name' => $r->viewer?->displayName(), 'count' => $r->total])->values(),
+            'most_profile_viewed' => $viewed->map(fn ($r) => ['user_id' => $r->profile_user_id, 'name' => $r->profileUser?->displayName(), 'count' => $r->total])->values(),
         ]);
     }
 
@@ -124,8 +124,17 @@ class AnalyticsController extends Controller
         $likes = $series(Like::where('created_at', '>', $since));
         $matches = $series(UserMatch::where('created_at', '>', $since));
         $messages = $series(Message::where('created_at', '>', $since));
-        $dau = User::whereNull('deleted_at')->where('last_active_at', '>', $since)
-            ->selectRaw('DATE(last_active_at) d, COUNT(*) c')->groupBy('d')->pluck('c', 'd');
+
+        // DAU = distinct users who sent a message, gave a like, or registered that day.
+        $activeByDay = [];
+        $collect = function ($rows, $dayCol, $userCol) use (&$activeByDay) {
+            foreach ($rows as $row) {
+                $activeByDay[$row->$dayCol][$row->$userCol] = true;
+            }
+        };
+        $collect(Message::where('created_at', '>', $since)->selectRaw('DATE(created_at) d, sender_id u')->distinct()->get(), 'd', 'u');
+        $collect(Like::where('created_at', '>', $since)->selectRaw('DATE(created_at) d, liker_id u')->distinct()->get(), 'd', 'u');
+        $collect(User::where('created_at', '>', $since)->selectRaw('DATE(created_at) d, id u')->distinct()->get(), 'd', 'u');
 
         $rows = [];
         foreach ($daysList as $day => $_) {
@@ -134,7 +143,7 @@ class AnalyticsController extends Controller
                 'likes' => (int) ($likes[$day] ?? 0),
                 'matches' => (int) ($matches[$day] ?? 0),
                 'messages' => (int) ($messages[$day] ?? 0),
-                'dau' => (int) ($dau[$day] ?? 0),
+                'dau' => count($activeByDay[$day] ?? []),
             ];
         }
 
@@ -144,15 +153,31 @@ class AnalyticsController extends Controller
     /** Signup-to-first-match conversion & engagement by cohort. */
     public function cohorts(Request $request)
     {
-        $cohorts = User::whereNull('deleted_at')->selectRaw('DATE(created_at) d, COUNT(*) registered')->groupBy('d')
+        $cohortRows = User::whereNull('deleted_at')->selectRaw('DATE(created_at) d, COUNT(*) registered')->groupBy('d')
             ->orderByDesc('d')->limit(30)->get();
-        $cohorts = $cohorts->map(function ($c) {
-            $ids = User::whereNull('deleted_at')->whereDate('created_at', $c->d)->pluck('id');
-            $matched = UserMatch::whereIn('user_a_id', $ids)->orWhereIn('user_b_id', $ids)->distinct()
-                ->pluck('user_a_id', 'user_b_id');
-            $matchedCount = $matched->unique()->count();
-            $messaged = Message::whereIn('sender_id', $ids)->distinct()->count('sender_id');
-            $paid = Payment::whereIn('user_id', $ids)->where('status', 'paid')->distinct()->count('user_id');
+        if ($cohortRows->isEmpty()) {
+            return response()->json([]);
+        }
+        $oldest = $cohortRows->min('d');
+
+        $usersByDay = User::whereNull('deleted_at')->whereDate('created_at', '>=', $oldest)
+            ->selectRaw('DATE(created_at) d, id')->get()->groupBy('d')->map(fn ($g) => $g->pluck('id')->all());
+        $allIds = $usersByDay->flatten()->unique()->values();
+
+        $matchedByDay = [];
+        UserMatch::where(fn ($q) => $q->whereIn('user_a_id', $allIds)->orWhereIn('user_b_id', $allIds))
+            ->select(['user_a_id', 'user_b_id'])->get()->each(function ($m) use (&$matchedByDay) {
+                $matchedByDay[$m->user_a_id] = true;
+                $matchedByDay[$m->user_b_id] = true;
+            });
+        $messagedIds = Message::whereIn('sender_id', $allIds)->distinct()->pluck('sender_id')->flip();
+        $paidIds = Payment::whereIn('user_id', $allIds)->where('status', 'paid')->distinct()->pluck('user_id')->flip();
+
+        $cohorts = $cohortRows->map(function ($c) use ($usersByDay, $matchedByDay, $messagedIds, $paidIds) {
+            $ids = $usersByDay->get($c->d, []);
+            $matchedCount = collect($ids)->filter(fn ($id) => isset($matchedByDay[$id]))->count();
+            $messaged = collect($ids)->filter(fn ($id) => $messagedIds->has($id))->count();
+            $paid = collect($ids)->filter(fn ($id) => $paidIds->has($id))->count();
 
             return [
                 'cohort_date' => $c->d,

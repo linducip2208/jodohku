@@ -52,13 +52,16 @@ class OperatorService
         return DB::transaction(function () use ($conversation, $operator, $virtualProfileId) {
             OperatorAssignment::where('conversation_id', $conversation->id)->where('is_active', true)->update(['is_active' => false, 'released_at' => now()]);
 
-            return OperatorAssignment::create([
+            $assignment = OperatorAssignment::create([
                 'operator_id' => $operator->id,
                 'conversation_id' => $conversation->id,
                 'virtual_profile_id' => $virtualProfileId,
                 'assigned_at' => now(),
                 'is_active' => true,
             ]);
+            $this->audit->log('operator.assign', $operator, $conversation);
+
+            return $assignment;
         });
     }
 

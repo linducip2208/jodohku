@@ -54,9 +54,10 @@ class FraudDetectionService
             $signals['new_account_spam'] = true;
             $score += 20;
         }
-        // Device reuse
-        if ($device) {
-            $sameDevice = FraudRiskScore::where('device_fingerprint', substr((string) $device, 0, 255))
+        // Device reuse (lookup and storage must use the same truncation)
+        $fingerprint = $device ? mb_substr((string) $device, 0, 500) : null;
+        if ($fingerprint) {
+            $sameDevice = FraudRiskScore::where('device_fingerprint', $fingerprint)
                 ->where('user_id', '!=', $user->id)->count();
             if ($sameDevice > 0) {
                 $signals['device_reuse'] = $sameDevice;
@@ -67,14 +68,14 @@ class FraudDetectionService
         $score = min(100, $score);
         $level = $score >= 70 ? 'high' : ($score >= 35 ? 'medium' : 'low');
 
-        DB::transaction(function () use ($user, $score, $level, $signals, $ip, $device) {
+        DB::transaction(function () use ($user, $score, $level, $signals, $ip, $fingerprint) {
             FraudRiskScore::create([
                 'user_id' => $user->id,
                 'score' => $score,
                 'level' => $level,
                 'signals' => $signals,
                 'ip_address' => $ip,
-                'device_fingerprint' => $device ? substr((string) $device, 0, 500) : null,
+                'device_fingerprint' => $fingerprint,
                 'scored_at' => now(),
             ]);
             if ($level !== 'low') {

@@ -231,6 +231,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
     Route::get('/chat', fn () => view('member.chat.inbox'))->name('member.chat');
     Route::post('/chat/create', [ChatController::class, 'create'])->name('member.chat.create');
+    Route::get('/chat/conversations', [ChatController::class, 'conversations'])->name('member.chat.conversations');
     Route::get('/chat/{conversation}/export', [ChatController::class, 'export'])->name('member.chat.export');
     Route::get('/chat/{conversation}', function (Conversation $conversation) {
         abort_unless($conversation->involves(Auth::id()), 403);
@@ -256,7 +257,6 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         return back();
     });
     Route::post('/chat/{conversation}/attachments', [MessageController::class, 'upload'])->name('member.chat.attachments');
-    Route::get('/chat/conversations', [ChatController::class, 'conversations'])->name('member.chat.conversations');
     Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels'])->name('member.chat.labels');
     Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel'])->name('member.chat.labels.add');
     Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel'])->name('member.chat.labels.remove');
@@ -388,6 +388,11 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     });
 
     Route::get('/events', fn () => view('member.events.index'))->name('member.events');
+    Route::get('/events/status', function () {
+        $statuses = EventStatus::cases();
+
+        return response()->json($statuses);
+    })->name('member.events.status');
     Route::get('/events/{event}', function (Event $event) {
         return view('member.events.show', ['event' => $event]);
     })->name('member.events.show');
@@ -396,11 +401,6 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->name('member.events.rsvp');
     Route::get('/events/{event}/attendees', [EventController::class, 'attendees'])->name('member.events.attendees');
     Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
-    Route::get('/events/status', function () {
-        $statuses = EventStatus::cases();
-
-        return response()->json($statuses);
-    })->name('member.events.status');
 
     Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
     Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');

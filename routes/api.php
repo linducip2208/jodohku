@@ -9,11 +9,13 @@ use App\Http\Controllers\Api\V1\DiscoveryController;
 use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BlogController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\ForumController;
 use App\Http\Controllers\Member\MatchController;
+use App\Http\Controllers\Member\SafetyController;
 use App\Http\Controllers\Member\SettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -68,6 +70,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/matches/batch-score', [DiscoveryController::class, 'batchScore']);
         Route::get('/matches/stats', [DiscoveryController::class, 'stats']);
         Route::get('/matches/history', [DiscoveryController::class, 'history']);
+        Route::delete('/matches/{user}', [MatchController::class, 'destroy']);
         Route::get('/who-liked', [MatchController::class, 'whoLiked']);
         Route::get('/visitors', [MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
@@ -92,11 +95,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels']);
         Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel']);
         Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel']);
-        Route::post('/chat/{conversation}/mark-all-read', [ChatController::class, 'markRead']);
+        Route::post('/chat/{conversation}/mark-all-read', [ChatController::class, 'markAllRead']);
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
+        Route::post('/conversations/{conversation}/typing', [ChatController::class, 'typing']);
+        Route::patch('/conversations/{conversation}/settings', [ChatController::class, 'setting']);
+        Route::get('/conversations/{conversation}/search', [ChatController::class, 'searchInConversation']);
+        Route::get('/conversations/{conversation}/export', [ChatController::class, 'export']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);
         Route::get('/messages/{message}/reactions', [ChatController::class, 'reactions']);
+        Route::post('/messages/{message}/reactions', [ChatController::class, 'react']);
+        Route::delete('/messages/{message}/reactions', [ChatController::class, 'unreact']);
         Route::post('/conversations', [ChatController::class, 'create']);
         Route::post('/messages/{message}/forward', [ChatController::class, 'forward']);
 
@@ -114,17 +123,22 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/subscriptions/history', [AccountController::class, 'subscriptionHistory']);
         Route::post('/subscriptions/{subscription}/cancel', [AccountController::class, 'cancelSubscription']);
 
+        Route::get('/payments', [AccountController::class, 'payments']);
+        Route::get('/payments/summary', [AccountController::class, 'paymentSummary']);
         Route::get('/payments/{payment}', [AccountController::class, 'payment']);
         Route::get('/payments/{payment}/receipt', [AccountController::class, 'receipt']);
-        Route::get('/payments/summary', [AccountController::class, 'paymentSummary']);
         Route::post('/payments/{payment}/retry', [AccountController::class, 'retry']);
 
         Route::get('/wallet', [AccountController::class, 'wallet']);
+        Route::get('/wallet/summary', [AccountController::class, 'walletSummary']);
         Route::get('/wallet/transactions', [AccountController::class, 'transactions']);
+        Route::get('/subscriptions/trial-eligibility', [AccountController::class, 'trialEligibility']);
+        Route::post('/subscriptions/switch', [AccountController::class, 'switchSubscription']);
         Route::get('/credit-products', [AccountController::class, 'creditProducts']);
         Route::post('/wallet/spend', [AccountController::class, 'spend'])->middleware('throttle:30,1,wallet-spend');
 
         Route::post('/verification', [AccountController::class, 'verify'])->middleware('throttle:5,1,verification');
+        Route::get('/verification/status', [AccountController::class, 'verificationStatus']);
         Route::post('/reports', [AccountController::class, 'report'])->middleware('throttle:10,1,reports');
         Route::post('/blocks/{user}', [AccountController::class, 'block']);
         Route::delete('/blocks/{user}', [AccountController::class, 'unblock']);
@@ -136,11 +150,20 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/gifts/sent', [AccountController::class, 'giftsSent']);
         Route::get('/gifts/stats', [AccountController::class, 'giftsStats']);
         Route::post('/boost', [AccountController::class, 'boost']);
+        Route::get('/boost/status', [AccountController::class, 'boostStatus']);
+        Route::get('/boosts/history', [AccountController::class, 'boostHistory']);
+        Route::post('/coupons/quote', [AccountController::class, 'quoteCoupon']);
         Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:30,1,checkout');
+        Route::post('/checkout/quote', [AccountController::class, 'checkoutQuote'])->middleware('throttle:30,1,checkout');
         Route::get('/ai/replies/{conversation}', [AccountController::class, 'suggestedReplies']);
         Route::post('/ai/matchmaker', [AccountController::class, 'matchmaker']);
+        Route::post('/ai/rewrite', [AiAssistantController::class, 'rewrite'])->middleware('throttle:20,1,ai-rewrite');
         Route::get('/ai/openers/{user}', [AccountController::class, 'aiOpeners']);
         Route::get('/ai/digest/{conversation}', [AccountController::class, 'aiDigest']);
+        Route::get('/ads', [SafetyController::class, 'ads']);
+        Route::get('/ads/stats', [SafetyController::class, 'adStats']);
+        Route::post('/ads/{ad}/impression', [SafetyController::class, 'adImpression']);
+        Route::post('/ads/{ad}/click', [SafetyController::class, 'adClick']);
         Route::get('/settings', [AccountController::class, 'settings']);
 
         Route::get('/blog', [BlogController::class, 'index']);
@@ -149,6 +172,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/blog/{slug}', [BlogController::class, 'show']);
         Route::get('/blog/{slug}/related', [BlogController::class, 'related']);
         Route::get('/forums', [ForumController::class, 'index']);
+        Route::get('/forums/search', [ForumController::class, 'search']);
         Route::get('/forums/trending', [ForumController::class, 'trending']);
         Route::get('/forums/popular', [ForumController::class, 'popular']);
         Route::get('/forums/{slug}', [ForumController::class, 'threads']);
@@ -162,6 +186,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/events/{event}', [EventController::class, 'show']);
         Route::post('/events/{event}/join', [EventController::class, 'join'])->middleware('throttle:20,1,events');
         Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
+        Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
         Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
 
         // Staff overview for dashboards / monitoring clients.

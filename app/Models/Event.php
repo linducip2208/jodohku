@@ -17,6 +17,7 @@ class Event extends Model
 
     protected $fillable = [
         'host_id', 'title', 'slug', 'description', 'cover_path', 'city',
+        'latitude', 'longitude',
         'venue', 'starts_at', 'ends_at', 'capacity', 'price', 'status',
         'is_online', 'online_url',
     ];
@@ -27,6 +28,8 @@ class Event extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'price' => 'decimal:2',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
             'status' => EventStatus::class,
             'is_online' => 'boolean',
         ];

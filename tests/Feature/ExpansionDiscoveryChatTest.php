@@ -123,8 +123,9 @@ class ExpansionDiscoveryChatTest extends TestCase
         $this->assertEquals(['unlimited_rewind' => true], $matrix->first()['features']);
 
         $free = $service->currentFeatures($user);
-        $this->assertEquals(config('jodohku.free_daily_likes', 20), $free['daily_likes_limit']);
+        $this->assertEquals(config('jodohku.limits.free_daily_likes', 20), $free['daily_likes_limit']);
         $this->assertFalse($free['has_incognito']);
+        $this->assertSame(0, $free['monthly_super_likes']);
     }
 
     public function test_ai_openers_grounded_on_shared_interests(): void

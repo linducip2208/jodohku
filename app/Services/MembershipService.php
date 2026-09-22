@@ -48,7 +48,9 @@ class MembershipService
         $plan = $user->activeSubscription()?->plan;
         if (! $plan) {
             return [
-                'daily_likes_limit' => config('jodohku.free_daily_likes', 20),
+                'daily_likes_limit' => (int) config('jodohku.limits.free_daily_likes', 20),
+                'monthly_super_likes' => 0,
+                'monthly_boosts' => 0,
                 'has_read_receipts' => false,
                 'has_incognito' => false,
             ];
@@ -56,8 +58,11 @@ class MembershipService
 
         return [
             'daily_likes_limit' => $plan->daily_likes_limit,
+            'monthly_super_likes' => $plan->monthly_super_likes,
+            'monthly_boosts' => $plan->monthly_boosts,
             'has_read_receipts' => (bool) $plan->has_read_receipts,
             'has_incognito' => (bool) $plan->has_incognito,
+            'features' => $plan->features ?? [],
         ];
     }
 }

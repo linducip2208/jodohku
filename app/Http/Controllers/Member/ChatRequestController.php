@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Member;
 
+use App\Enums\ChatRequestStatus;
 use App\Events\ChatRequestCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChatRequestActionRequest;
+use App\Models\Block;
 use App\Models\ChatRequest;
 use App\Models\User;
 use App\Services\ChatService;
@@ -38,7 +40,15 @@ class ChatRequestController extends Controller
                 : back()->withErrors(['chat_request' => 'Batas permintaan chat harian tercapai.']);
         }
 
-        $existing = ChatRequest::where('sender_id', $me->id)->where('receiver_id', $user->id)
+        if (Block::existsBetween((int) $me->id, (int) $user->id)) {
+            return $request->wantsJson()
+                ? response()->json(['message' => 'Tidak dapat mengirim permintaan chat.'], 403)
+                : back()->withErrors(['chat_request' => 'Tidak dapat mengirim permintaan chat.']);
+        }
+
+        $existing = ChatRequest::where(fn ($q) => $q
+            ->where(fn ($qq) => $qq->where('sender_id', $me->id)->where('receiver_id', $user->id))
+            ->orWhere(fn ($qq) => $qq->where('sender_id', $user->id)->where('receiver_id', $me->id)))
             ->where('status', 'pending')->first();
         if ($existing) {
             return $request->wantsJson()
@@ -71,6 +81,14 @@ class ChatRequestController extends Controller
             abort(403);
         }
         $action = $request->string('action')->toString();
+
+        // Terminal states can never be transitioned again; expired counts as closed.
+        if ($chatRequest->isExpired() && $chatRequest->status === ChatRequestStatus::Pending) {
+            $chatRequest->update(['status' => ChatRequestStatus::Expired, 'responded_at' => now()]);
+        }
+        if ($chatRequest->status->isFinal()) {
+            return response()->json(['message' => 'Permintaan sudah tidak berlaku.'], 422);
+        }
 
         if ($action === 'cancel') {
             if ((int) $chatRequest->sender_id !== (int) $user->id) {

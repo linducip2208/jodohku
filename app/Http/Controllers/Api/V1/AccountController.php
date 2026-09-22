@@ -15,14 +15,17 @@ use App\Http\Resources\PaymentResource;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Block;
 use App\Models\Conversation;
+use App\Models\Coupon;
 use App\Models\CreditProduct;
 use App\Models\CreditTransaction;
+use App\Models\MembershipPlan;
 use App\Models\Payment;
 use App\Models\Report;
 use App\Models\User;
 use App\Services\AiChatAssistantService;
 use App\Services\AiMatchmakerService;
 use App\Services\BoostService;
+use App\Services\CouponService;
 use App\Services\CreditService;
 use App\Services\GiftService;
 use App\Services\MembershipService;
@@ -58,11 +61,11 @@ class AccountController extends Controller
     {
         try {
             $result = $payments->checkout($request->user(), array_filter([
-                'gateway' => $request->string('gateway'),
+                'gateway' => $request->string('gateway')->toString(),
                 'subscription_plan' => $request->input('subscription_plan', $request->input('plan_code')),
                 'credit_product' => $request->input('credit_product'),
                 'coupon_code' => $request->input('coupon_code'),
-            ]));
+            ], fn ($v) => $v !== null && $v !== ''));
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
@@ -70,6 +73,31 @@ class AccountController extends Controller
         }
 
         return response()->json(['payment_id' => $result['payment']->id, 'gateway' => $result['gateway']], 201);
+    }
+
+    public function checkoutQuote(Request $request, PaymentService $payments)
+    {
+        $request->validate([
+            'gateway' => ['nullable', 'string', 'max:30'],
+            'subscription_plan' => ['nullable', 'string', 'max:60'],
+            'plan_code' => ['nullable', 'string', 'max:60'],
+            'credit_product' => ['nullable', 'string', 'max:60'],
+            'coupon_code' => ['nullable', 'string', 'max:60'],
+        ]);
+        try {
+            $quote = $payments->estimate($request->user(), array_filter([
+                'gateway' => $request->input('gateway'),
+                'subscription_plan' => $request->input('subscription_plan', $request->input('plan_code')),
+                'credit_product' => $request->input('credit_product'),
+                'coupon_code' => $request->input('coupon_code'),
+            ], fn ($v) => $v !== null && $v !== ''));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
+        }
+
+        return response()->json($quote);
     }
 
     public function payments(Request $request)
@@ -103,12 +131,34 @@ class AccountController extends Controller
 
     public function retry(Request $request, Payment $payment, PaymentService $payments)
     {
-        $this->authorize('update', $payment);
+        $this->authorize('view', $payment);
         if ($payment->status !== PaymentStatus::Failed) {
             return response()->json(['message' => 'Only failed payments can be retried.'], 422);
         }
+        // Rebuild the full original order (plan + credits + coupon + gateway).
+        $order = ['gateway' => $payment->gateway];
+        foreach ($payment->items as $item) {
+            if ($item->item_type === 'subscription' && $item->item_id) {
+                $plan = MembershipPlan::find($item->item_id);
+                if ($plan) {
+                    $order['subscription_plan'] = $plan->code;
+                }
+            }
+            if ($item->item_type === 'credits' && $item->item_id) {
+                $product = CreditProduct::find($item->item_id);
+                if ($product) {
+                    $order['credit_product'] = $product->code;
+                }
+            }
+            if ($item->item_type === 'discount' && $item->item_id) {
+                $coupon = Coupon::find($item->item_id);
+                if ($coupon) {
+                    $order['coupon_code'] = $coupon->code;
+                }
+            }
+        }
         try {
-            $result = $payments->checkout($payment->user, ['subscription_plan' => $payment->subscription?->membership_plan?->code]);
+            $result = $payments->checkout($payment->user, $order);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 503);
         }
@@ -150,6 +200,11 @@ class AccountController extends Controller
         $req = $verification->submit($request->user(), $request->string('type'), (array) $request->input('documents', []), $request->input('notes'));
 
         return response()->json($req, 201);
+    }
+
+    public function verificationStatus(Request $request, VerificationService $verification)
+    {
+        return response()->json(['requests' => $verification->statusFor($request->user())]);
     }
 
     public function report(ReportRequest $request)
@@ -270,6 +325,31 @@ class AccountController extends Controller
         return response()->json($boost->activate($request->user()), 201);
     }
 
+    public function boostStatus(Request $request, BoostService $boost)
+    {
+        return response()->json($boost->status($request->user()));
+    }
+
+    public function boostHistory(Request $request, BoostService $boost)
+    {
+        return response()->json($boost->history($request->user(), (int) $request->query('per_page', 20)));
+    }
+
+    public function quoteCoupon(Request $request, CouponService $coupons)
+    {
+        $request->validate([
+            'coupon_code' => ['required', 'string', 'max:60'],
+            'subtotal' => ['required', 'numeric', 'min:0'],
+        ]);
+        try {
+            $quote = $coupons->quote($request->user(), (string) $request->input('coupon_code'), (float) $request->input('subtotal'));
+        } catch (\RuntimeException|\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($quote);
+    }
+
     public function suggestedReplies(Request $request, Conversation $conversation, AiChatAssistantService $assistant)
     {
         $this->authorize('view', $conversation);
@@ -289,14 +369,53 @@ class AccountController extends Controller
 
     public function transactions(Request $request, CreditService $credits)
     {
-        $type = $request->query('type');
+        $request->validate([
+            'type' => ['nullable', 'string', 'max:30'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
         $query = CreditTransaction::where('user_id', $request->user()->id)->with('user');
-        if ($type) {
-            $query->where('type', $type);
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type'));
+        }
+        if ($request->filled('from')) {
+            $query->where('created_at', '>=', $request->date('from')->startOfDay());
+        }
+        if ($request->filled('to')) {
+            $query->where('created_at', '<=', $request->date('to')->endOfDay());
         }
         $items = $query->latest('id')->paginate(25);
 
         return response()->json($items);
+    }
+
+    public function walletSummary(Request $request, CreditService $credits)
+    {
+        return response()->json($credits->summary($request->user()));
+    }
+
+    public function trialEligibility(Request $request, SubscriptionService $subscriptions, MembershipService $membership)
+    {
+        $request->validate(['plan_code' => ['nullable', 'string', 'max:60']]);
+        $plan = $request->filled('plan_code') ? $membership->find($request->string('plan_code')) : null;
+        if ($request->filled('plan_code') && ! $plan) {
+            return response()->json(['message' => 'Plan not found.'], 404);
+        }
+
+        return response()->json(['eligible' => $subscriptions->trialEligible($request->user(), $plan)]);
+    }
+
+    public function switchSubscription(Request $request, SubscriptionService $subscriptions, MembershipService $membership)
+    {
+        $request->validate(['plan_code' => ['required', 'string', 'max:60']]);
+        $plan = $membership->findOrFail($request->string('plan_code'));
+        try {
+            $sub = $subscriptions->switchPlan($request->user(), $plan);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($sub, 201);
     }
 
     public function subscriptionHistory(Request $request)

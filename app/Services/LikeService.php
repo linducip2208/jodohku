@@ -90,16 +90,44 @@ class LikeService
                 return true; // idempotent
             }
             $like->delete();
-            // Deactivate match if it was solely from these likes and now not mutual
-            $reverseExists = Like::where('liker_id', $liked->id)->where('liked_id', $liker->id)->exists();
-            if (! $reverseExists) {
-                [$a, $b] = UserMatch::canonical((int) $liker->id, (int) $liked->id);
-                UserMatch::where('user_a_id', $a)->where('user_b_id', $b)->where('is_active', true)
-                    ->update(['is_active' => false, 'unmatched_at' => now()]);
-            }
+            $this->deactivateActiveMatch($liker, $liked);
 
             return true;
         });
+    }
+
+    /**
+     * Removing your like always ends mutuality: a one-sided like can never
+     * sustain a match, so any active match for the pair is deactivated.
+     */
+    protected function deactivateActiveMatch(User $a, User $b): void
+    {
+        [$u1, $u2] = UserMatch::canonical((int) $a->id, (int) $b->id);
+        UserMatch::where('user_a_id', $u1)->where('user_b_id', $u2)->where('is_active', true)
+            ->update(['is_active' => false, 'unmatched_at' => now()]);
+    }
+
+    /** Monthly super-like quota from the sender's plan; free members get a small daily quota. */
+    protected function enforceSuperLikeLimit(User $sender): void
+    {
+        if ($sender->isPremium()) {
+            $quota = (int) (app(MembershipService::class)->currentFeatures($sender)['monthly_super_likes'] ?? 0);
+            if ($quota <= 0) {
+                return; // premium without explicit quota: unlimited
+            }
+            $used = SuperLike::where('sender_id', $sender->id)
+                ->where('created_at', '>=', now()->startOfMonth())->count();
+            if ($used >= $quota) {
+                throw new \RuntimeException('Monthly super like quota reached.');
+            }
+
+            return;
+        }
+        $limit = (int) config('jodohku.limits.free_daily_super_likes', 1);
+        $used = SuperLike::where('sender_id', $sender->id)->whereDate('created_at', today())->count();
+        if ($used >= $limit) {
+            throw new \RuntimeException('Daily super like limit reached. Upgrade to Premium for more.');
+        }
     }
 
     public function pass(User $user, User $target): bool
@@ -107,7 +135,10 @@ class LikeService
         $this->guard($user, $target);
 
         return DB::transaction(function () use ($user, $target) {
-            Like::where('liker_id', $user->id)->where('liked_id', $target->id)->delete();
+            $hadLike = Like::where('liker_id', $user->id)->where('liked_id', $target->id)->delete() > 0;
+            if ($hadLike) {
+                $this->deactivateActiveMatch($user, $target);
+            }
             Rewind::create([
                 'user_id' => $user->id,
                 'target_type' => User::class,
@@ -122,16 +153,15 @@ class LikeService
     public function superLike(User $sender, User $receiver, ?string $message = null): array
     {
         $this->guard($sender, $receiver);
+        $this->enforceSuperLikeLimit($sender);
 
         return DB::transaction(function () use ($sender, $receiver, $message) {
-            $sl = SuperLike::create([
-                'sender_id' => $sender->id,
-                'receiver_id' => $receiver->id,
-                'message' => $message,
-                'used_at' => now(),
-            ]);
+            $sl = SuperLike::firstOrCreate(
+                ['sender_id' => $sender->id, 'receiver_id' => $receiver->id, 'used_at' => now()->startOfDay()],
+                ['message' => $message, 'used_at' => now()]
+            );
             $result = $this->like($sender, $receiver, true);
-            $result['super_like'] = $sl;
+            $result['super_like'] = $sl->fresh();
 
             return $result;
         });
@@ -151,9 +181,28 @@ class LikeService
         return (bool) Favorite::where('user_id', $user->id)->where('favorited_id', $target->id)->delete();
     }
 
+    /** Plans may grant unlimited rewind via the `unlimited_rewind` feature flag. */
+    protected function hasUnlimitedRewind(User $user): bool
+    {
+        if (! $user->isPremium()) {
+            return false;
+        }
+        $features = app(MembershipService::class)->currentFeatures($user)['features'] ?? [];
+
+        return (bool) ($features['unlimited_rewind'] ?? false);
+    }
+
     /** Undo the last pass/like action. */
     public function rewind(User $user): ?array
     {
+        $cooldown = (int) config('jodohku.limits.rewind_cooldown_minutes', 5);
+        if ($cooldown > 0 && ! $this->hasUnlimitedRewind($user)) {
+            $lastUndoAt = Rewind::where('user_id', $user->id)->whereNotNull('undone_at')->max('undone_at');
+            if ($lastUndoAt && now()->diffInMinutes($lastUndoAt) < $cooldown) {
+                throw new \RuntimeException('Rewind is on cooldown. Try again in a few minutes.');
+            }
+        }
+
         return DB::transaction(function () use ($user) {
             $last = Rewind::where('user_id', $user->id)->whereNull('undone_at')->latest('id')->first();
             if (! $last) {
@@ -162,8 +211,12 @@ class LikeService
                 if (! $like) {
                     return null;
                 }
+                $target = User::find($like->liked_id);
                 $targetId = $like->liked_id;
                 $like->delete();
+                if ($target) {
+                    $this->deactivateActiveMatch($user, $target);
+                }
                 Rewind::create(['user_id' => $user->id, 'target_type' => Like::class, 'target_id' => $like->id, 'undone_at' => now()]);
 
                 return ['undone' => 'like', 'target_id' => $targetId];

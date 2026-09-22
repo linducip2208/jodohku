@@ -49,8 +49,21 @@ class CommunityAdminController extends Controller
     public function events(Request $request)
     {
         if ($request->isMethod('post')) {
-            $request->validate(['title' => ['required', 'string', 'max:190'], 'starts_at' => ['required', 'date']]);
-            $e = Event::create($request->all());
+            $e = Event::create($request->validate([
+                'title' => ['required', 'string', 'max:190'],
+                'description' => ['nullable', 'string'],
+                'city' => ['nullable', 'string', 'max:100'],
+                'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+                'venue' => ['nullable', 'string', 'max:200'],
+                'starts_at' => ['required', 'date'],
+                'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+                'capacity' => ['nullable', 'integer', 'min:1'],
+                'price' => ['nullable', 'numeric', 'min:0'],
+                'status' => ['nullable', 'string', 'in:draft,published,ongoing,completed,cancelled'],
+                'is_online' => ['nullable', 'boolean'],
+                'online_url' => ['nullable', 'string', 'max:500'],
+            ]) + ['host_id' => $request->user()->id]);
 
             return response()->json($e, 201);
         }
@@ -60,8 +73,23 @@ class CommunityAdminController extends Controller
 
     public function updateEvent(Request $request, Event $event, AuditService $audit)
     {
-        $event->update($request->all());
-        $audit->log('admin.event.updated', $request->user(), $event);
+        $before = $event->only(['title', 'status', 'starts_at']);
+        $event->update($request->validate([
+            'title' => ['sometimes', 'string', 'max:190'],
+            'description' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'venue' => ['nullable', 'string', 'max:200'],
+            'starts_at' => ['sometimes', 'date'],
+            'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['sometimes', 'string', 'in:draft,published,ongoing,completed,cancelled'],
+            'is_online' => ['nullable', 'boolean'],
+            'online_url' => ['nullable', 'string', 'max:500'],
+        ]));
+        $audit->log('admin.event.updated', $request->user(), $event, $before, []);
 
         return response()->json($event->fresh());
     }

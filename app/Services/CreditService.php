@@ -74,4 +74,24 @@ class CreditService
     {
         return $this->record($user, CreditTxnType::Expire, $amount, 'Credit expiry');
     }
+
+    /** Wallet snapshot: balance, lifetime totals, and this-month flow. */
+    public function summary(User $user): array
+    {
+        $wallet = $this->wallet($user);
+        $monthStart = now()->startOfMonth();
+        $earnedMonth = (int) CreditTransaction::where('user_id', $user->id)
+            ->where('created_at', '>=', $monthStart)->where('amount', '>', 0)->sum('amount');
+        $spentMonth = (int) CreditTransaction::where('user_id', $user->id)
+            ->where('created_at', '>=', $monthStart)->where('amount', '<', 0)->sum('amount');
+
+        return [
+            'balance' => (int) $wallet->balance,
+            'lifetime_earned' => (int) $wallet->lifetime_earned,
+            'lifetime_spent' => (int) $wallet->lifetime_spent,
+            'earned_this_month' => $earnedMonth,
+            'spent_this_month' => abs($spentMonth),
+            'month' => now()->format('Y-m'),
+        ];
+    }
 }

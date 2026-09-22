@@ -26,42 +26,86 @@ class PaymentService
     ) {}
 
     /**
+     * Price preview without persisting anything: items, subtotal, discount, total.
+     *
+     * @param  array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string}  $order
+     */
+    public function estimate(User $user, array $order): array
+    {
+        $quote = $this->quoteOrder($user, $order);
+        $this->gateways->driver($quote['gateway']);
+
+        return [
+            'gateway' => $quote['gateway'],
+            'currency' => config('payments.currency', 'IDR'),
+            'items' => $quote['items'],
+            'subtotal' => $quote['amount'],
+            'discount' => $quote['discount'],
+            'coupon' => $quote['coupon']?->code,
+            'total' => $quote['total'],
+        ];
+    }
+
+    /**
+     * Shared pricing math for estimate() and checkout() so previews
+     * can never drift from what is actually charged.
+     */
+    protected function quoteOrder(User $user, array $order): array
+    {
+        $gatewayCode = $order['gateway'] ?? config('payments.default', 'midtrans');
+        $items = $order['items'] ?? [];
+        $amount = 0;
+
+        $plan = null;
+        if (! empty($order['subscription_plan'])) {
+            $plan = MembershipPlan::where('code', $order['subscription_plan'])->firstOrFail();
+            $amount += (float) $plan->price;
+            $items[] = ['item_type' => 'subscription', 'item_id' => $plan->id, 'name' => $plan->name, 'quantity' => 1, 'unit_price' => (float) $plan->price, 'subtotal' => (float) $plan->price];
+        }
+        $product = null;
+        if (! empty($order['credit_product'])) {
+            $product = CreditProduct::where('code', $order['credit_product'])->firstOrFail();
+            $amount += (float) $product->price;
+            $items[] = ['item_type' => 'credits', 'item_id' => $product->id, 'name' => $product->name, 'quantity' => 1, 'unit_price' => (float) $product->price, 'subtotal' => (float) $product->price];
+        }
+        if (empty($items)) {
+            throw new \InvalidArgumentException('Order must contain items.');
+        }
+
+        // Coupon is validated BEFORE the payment row exists so failures
+        // never leave orphan pending payments.
+        $coupon = null;
+        $discount = 0.0;
+        if (! empty($order['coupon_code'])) {
+            ['coupon' => $coupon, 'discount' => $discount] = $this->coupons->quote($user, (string) $order['coupon_code'], (float) $amount);
+            if ($discount > 0) {
+                $items[] = ['item_type' => 'discount', 'item_id' => $coupon->id, 'name' => 'Coupon '.$coupon->code, 'quantity' => 1, 'unit_price' => -$discount, 'subtotal' => -$discount];
+            }
+        }
+
+        return [
+            'gateway' => $gatewayCode,
+            'items' => $items,
+            'amount' => (float) $amount,
+            'discount' => (float) $discount,
+            'coupon' => $coupon,
+            'total' => round(max((float) $amount - $discount, 0), 2),
+        ];
+    }
+
+    /**
      * @param  array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string}  $order
      */
     public function checkout(User $user, array $order): array
     {
         return DB::transaction(function () use ($user, $order) {
-            $gatewayCode = $order['gateway'] ?? config('payments.default', 'midtrans');
-            $items = $order['items'] ?? [];
-            $amount = 0;
-
-            $plan = null;
-            if (! empty($order['subscription_plan'])) {
-                $plan = MembershipPlan::where('code', $order['subscription_plan'])->firstOrFail();
-                $amount += (float) $plan->price;
-                $items[] = ['item_type' => 'subscription', 'item_id' => $plan->id, 'name' => $plan->name, 'quantity' => 1, 'unit_price' => (float) $plan->price, 'subtotal' => (float) $plan->price];
-            }
-            $product = null;
-            if (! empty($order['credit_product'])) {
-                $product = CreditProduct::where('code', $order['credit_product'])->firstOrFail();
-                $amount += (float) $product->price;
-                $items[] = ['item_type' => 'credits', 'item_id' => $product->id, 'name' => $product->name, 'quantity' => 1, 'unit_price' => (float) $product->price, 'subtotal' => (float) $product->price];
-            }
-            if (empty($items)) {
-                throw new \InvalidArgumentException('Order must contain items.');
-            }
-
-            // Coupon is validated BEFORE the payment row exists so failures
-            // never leave orphan pending payments.
-            $coupon = null;
-            $discount = 0.0;
-            if (! empty($order['coupon_code'])) {
-                ['coupon' => $coupon, 'discount' => $discount] = $this->coupons->quote($user, (string) $order['coupon_code'], (float) $amount);
-                if ($discount > 0) {
-                    $items[] = ['item_type' => 'discount', 'item_id' => $coupon->id, 'name' => 'Coupon '.$coupon->code, 'quantity' => 1, 'unit_price' => -$discount, 'subtotal' => -$discount];
-                }
-            }
-            $total = round(max((float) $amount - $discount, 0), 2);
+            $quote = $this->quoteOrder($user, $order);
+            $gatewayCode = $quote['gateway'];
+            $items = $quote['items'];
+            $amount = $quote['amount'];
+            $coupon = $quote['coupon'];
+            $discount = $quote['discount'];
+            $total = $quote['total'];
 
             $payment = Payment::create([
                 'user_id' => $user->id,

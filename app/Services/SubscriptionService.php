@@ -67,6 +67,21 @@ class SubscriptionService
         });
     }
 
+    /** Trial once ever: eligible only if the user never consumed a trial. */
+    public function trialEligible(User $user, ?MembershipPlan $plan = null): bool
+    {
+        return ! Subscription::where('user_id', $user->id)->whereNotNull('trial_ends_at')->exists();
+    }
+
+    /** Immediate plan switch: activate the new plan (overlapping actives expire). */
+    public function switchPlan(User $user, MembershipPlan $plan, array $opts = []): Subscription
+    {
+        $sub = $this->activate($user, $plan, $opts);
+        $this->audit->log('subscription.switched', $user, $sub, [], ['plan' => $plan->code]);
+
+        return $sub;
+    }
+
     public function expireDue(int $batch = 200): int
     {
         $count = 0;

@@ -23,7 +23,23 @@ class VerificationService
                 ->whereIn('status', [VerificationStatus::Pending->value, VerificationStatus::UnderReview->value])
                 ->first();
             if ($existing) {
-                return $existing; // idempotent
+                // Idempotent, but still attach newly supplied documents/notes.
+                foreach ($documents as $doc) {
+                    if (empty($doc['file_path'])) {
+                        continue;
+                    }
+                    $existing->documents()->create([
+                        'document_type' => $doc['document_type'] ?? $typeVal,
+                        'file_path' => $doc['file_path'],
+                        'mime_type' => $doc['mime_type'] ?? null,
+                        'extracted_data' => $doc['extracted_data'] ?? null,
+                    ]);
+                }
+                if ($notes !== null && $notes !== $existing->notes) {
+                    $existing->update(['notes' => $notes]);
+                }
+
+                return $existing->fresh();
             }
             $req = VerificationRequest::create([
                 'user_id' => $user->id,
@@ -68,6 +84,13 @@ class VerificationService
 
             return $ok;
         });
+    }
+
+    /** Latest verification request per type for a member (status visibility). */
+    public function statusFor(User $user): array
+    {
+        return VerificationRequest::where('user_id', $user->id)->with('documents')
+            ->latest('id')->get()->groupBy('type')->map(fn ($g) => $g->first())->values()->all();
     }
 
     /** Expire stale pending/under-review requests past expires_at. */

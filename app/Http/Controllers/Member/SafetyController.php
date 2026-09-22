@@ -37,4 +37,11 @@ class SafetyController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    public function adStats(Request $request, AdService $ads)
+    {
+        $request->validate(['placement' => ['nullable', 'string', 'max:60']]);
+
+        return response()->json($ads->stats($request->input('placement')));
+    }
 }

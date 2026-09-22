@@ -45,7 +45,8 @@ Migrasi: `database/migrations/*`. Fresh seed: `php artisan migrate:fresh --seed`
 
 ## sosial & settings (`081200`)
 
-- `gifts` unik `code`; `gift_transactions`; `events/slug` unik; `event_members/groups/group_members/posts/comments/post_likes/ads/*` constraint standar; `settings` unik `(group,key)`; `audit_logs` index polimorfik.
+- `gifts` unik `code`; `gift_transactions`; `events/slug` unik; `event_members` unik `(event_id,user_id)` + `event_members/groups/group_members/posts/comments/post_likes/ads/*` constraint standar; `settings` unik `(group,key)`; `audit_logs` index polimorfik.
+- `events.latitude/longitude` decimal nullable (`2026_09_22_000002`, MySQL 8 + SQLite) untuk `nearby()`; `forum_threads.views_count` (`2026_09_22_000001`).
 
 ## kupon, blog & forum (`2026_09_21_000100`)
 
