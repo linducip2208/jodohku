@@ -32,7 +32,7 @@ class ChatAttachmentTest extends TestCase
 
     public function test_image_upload_creates_typed_message_with_attachment(): void
     {
-        Storage::fake('public');
+        Storage::fake('chat');
         $a = User::factory()->create();
         $b = User::factory()->create();
         $conv = $this->conv($a, $b);
@@ -45,7 +45,7 @@ class ChatAttachmentTest extends TestCase
         $this->assertEquals('image', $res->json('type'));
         $msgId = $res->json('id');
         $this->assertDatabaseHas('message_attachments', ['message_id' => $msgId]);
-        Storage::disk('public')->assertExists(
+        Storage::disk('chat')->assertExists(
             MessageAttachment::where('message_id', $msgId)->firstOrFail()->file_path
         );
 
@@ -60,7 +60,7 @@ class ChatAttachmentTest extends TestCase
 
     public function test_executable_spoof_rejected_and_stranger_forbidden(): void
     {
-        Storage::fake('public');
+        Storage::fake('chat');
         $a = User::factory()->create();
         $b = User::factory()->create();
         $c = User::factory()->create();

@@ -55,6 +55,13 @@ class CallService
         }
 
         return DB::transaction(function () use ($caller, $conversation, $peer, $type) {
+            // Serialize concurrent invites for the same conversation.
+            Conversation::whereKey($conversation->id)->lockForUpdate()->first();
+            $busy = Call::where('conversation_id', $conversation->id)
+                ->whereIn('status', [CallStatus::Ringing->value, CallStatus::Ongoing->value])->exists();
+            if ($busy) {
+                throw new \RuntimeException('A call is already active in this conversation.');
+            }
             $call = Call::create([
                 'conversation_id' => $conversation->id,
                 'caller_id' => $caller->id,

@@ -18,6 +18,12 @@ return [
         'max_attachments' => 5,
     ],
 
+    'attachments' => [
+        // Private disk: files are served only through the authorized
+        // download route, never via direct public URLs.
+        'disk' => env('CHAT_ATTACHMENTS_DISK', 'chat'),
+    ],
+
     'chat_request' => [
         'expiry_hours' => 72,
         'require_request_without_match' => false,

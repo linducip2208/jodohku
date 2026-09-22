@@ -5,6 +5,7 @@ namespace App\Enums;
 enum ScheduledMessageStatus: string
 {
     case Pending = 'pending';
+    case Sending = 'sending';
     case Sent = 'sent';
     case Cancelled = 'cancelled';
     case Failed = 'failed';
@@ -13,6 +14,7 @@ enum ScheduledMessageStatus: string
     {
         return match ($this) {
             self::Pending => 'Pending',
+            self::Sending => 'Sending',
             self::Sent => 'Sent',
             self::Cancelled => 'Cancelled',
             self::Failed => 'Failed',

@@ -141,7 +141,7 @@
 <form wire:submit.prevent="sendPoll" style="display:flex;flex-direction:column;gap:6px">
 <label class="jk-muted" style="font-size:11px" for="poll-q">Polling baru (satu opsi per baris, min 2)</label>
 <input id="poll-q" class="jk-input" wire:model="pollQuestion" placeholder="Pertanyaan polling..." maxlength="300">
-<textarea class="jk-input" wire:model="pollOptions" rows="2" placeholder="Opsi 1&#10;Opsi 2"></textarea>
+<textarea class="jk-input" wire:model="pollOptions" rows="2" placeholder="Opsi 1&#10;Opsi 2" aria-label="Opsi polling, satu per baris"></textarea>
 <div><button class="jk-pill" type="submit">Kirim Polling</button></div>
 </form>
 @error('pollQuestion')<div class="jk-alert err">{{ $message }}</div>@enderror

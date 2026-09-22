@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 class MessageController extends Controller
 {
     /** Authorized attachment download: only conversation members (or staff). */
-    public function download(Request $request, MessageAttachment $attachment)
+    public function download(Request $request, MessageAttachment $attachment, ChatService $chat)
     {
         $message = $attachment->message;
         abort_unless($message, 404);
@@ -24,9 +24,10 @@ class MessageController extends Controller
         abort_unless($conversation, 404);
         $user = $request->user();
         abort_unless($conversation->involves((int) $user->id) || $user->isStaff(), 403);
-        abort_unless(Storage::disk('public')->exists($attachment->file_path), 404);
+        $disk = $chat->attachmentDiskFor($attachment->file_path);
+        abort_unless($disk, 404);
 
-        return Storage::disk('public')->download($attachment->file_path, $attachment->file_name ?? basename($attachment->file_path));
+        return Storage::disk($disk)->download($attachment->file_path, $attachment->file_name ?? basename($attachment->file_path));
     }
 
     public function index(Request $request, Conversation $conversation)

@@ -101,7 +101,7 @@ class RepairChatApiTest extends TestCase
 
     public function test_forward_carries_attachments(): void
     {
-        Storage::fake('public');
+        Storage::fake('chat');
         [$a, $b, $conv] = $this->pair();
         $c = User::factory()->create();
         $conv2 = app(ChatService::class)->findOrCreateDirect($a, $c);
@@ -162,6 +162,23 @@ class RepairChatApiTest extends TestCase
         // Second transition on terminal state is rejected.
         $this->actingAs($b)->postJson("/api/v1/chat-requests/{$req->id}/action", ['action' => 'decline'])
             ->assertStatus(422);
+    }
+
+    public function test_attachment_download_requires_membership(): void
+    {
+        Storage::fake('chat');
+        [$a, $b, $conv] = $this->pair();
+        $msg = app(ChatService::class)->sendAttachment($conv, $a, UploadedFile::fake()->image('foto.jpg'), 'lihat ini');
+        $attId = $msg->attachments()->first()->id;
+
+        // Member downloads fine.
+        $this->actingAs($a)->get("/chat/attachments/{$attId}")->assertOk();
+        $this->actingAs($b)->get("/chat/attachments/{$attId}")->assertOk();
+        // Stranger is forbidden even with the direct id.
+        $this->actingAs(User::factory()->create())->get("/chat/attachments/{$attId}")->assertForbidden();
+        // Guest redirected to login.
+        $this->app['auth']->forgetGuards();
+        $this->get("/chat/attachments/{$attId}")->assertRedirect();
     }
 
     public function test_export_excludes_cleared_history(): void

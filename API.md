@@ -38,7 +38,8 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/consultations/counseling` | sanctum+konselor | booking yang ditugaskan + laporan yang dibagikan eksplisit |
 | GET | `/ai/taaruf-topics/{user}` | sanctum | topik taaruf grounded + pertanyaan siap pakai |
 | GET | `/health` | publik | status aplikasi + database (tanpa secrets) |
-| POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload) |
+| POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload; disk privat) |
+| GET | `/chat/attachments/{attachment}` | sanctum+policy | unduh lampiran (hanya member percakapan/staff; fallback baca file lama publik) |
 | POST | `/conversations/{conversation}/typing` | sanctum | indikator mengetik (broadcast Reverb) |
 | PATCH | `/conversations/{conversation}/settings` | sanctum | `is_muted/is_pinned/is_archived/theme/nickname` |
 | GET | `/conversations/{conversation}/search?q=` | sanctum | cari dalam satu percakapan (abaikan pesan terhapus) |

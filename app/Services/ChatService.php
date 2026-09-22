@@ -321,7 +321,8 @@ class ChatService
             throw new \InvalidArgumentException('File type not allowed.');
         }
 
-        $path = $file->store("chat-attachments/{$conversation->id}", 'public');
+        $disk = (string) config('chat.attachments.disk', 'chat');
+        $path = $file->store("chat-attachments/{$conversation->id}", $disk);
         $meta = [
             'file_path' => $path,
             'file_name' => $file->getClientOriginalName(),
@@ -663,6 +664,26 @@ class ChatService
         return implode("\n", $lines)."\n";
     }
 
+    /** Disks searched for attachment files: private first, public legacy. */
+    public function attachmentDisks(): array
+    {
+        return array_values(array_unique([(string) config('chat.attachments.disk', 'chat'), 'public']));
+    }
+
+    public function attachmentDiskFor(string $path): ?string
+    {
+        foreach ($this->attachmentDisks() as $disk) {
+            try {
+                if (Storage::disk($disk)->exists($path)) {
+                    return $disk;
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        return null;
+    }
+
     /** Hard-delete messages past the conversation disappearing-message TTL. */
     public function pruneDisappearing(int $batch = 200): int
     {
@@ -680,9 +701,11 @@ class ChatService
             }
             $paths = MessageAttachment::whereIn('message_id', $ids)->pluck('file_path')->all();
             foreach ($paths as $path) {
-                try {
-                    Storage::disk('public')->delete($path);
-                } catch (\Throwable) {
+                foreach ($this->attachmentDisks() as $disk) {
+                    try {
+                        Storage::disk($disk)->delete($path);
+                    } catch (\Throwable) {
+                    }
                 }
             }
             MessageAttachment::whereIn('message_id', $ids)->delete();
@@ -752,9 +775,22 @@ class ChatService
     {
         $sent = 0;
         $failed = 0;
-        $due = ScheduledMessage::where('status', ScheduledMessageStatus::Pending)
-            ->where('send_at', '<=', now())->limit($batch)->get();
-        foreach ($due as $item) {
+        // Requeue claims abandoned by crashed workers.
+        ScheduledMessage::where('status', ScheduledMessageStatus::Sending)
+            ->where('updated_at', '<', now()->subMinutes(10))->update(['status' => ScheduledMessageStatus::Pending]);
+        $ids = ScheduledMessage::where('status', ScheduledMessageStatus::Pending)
+            ->where('send_at', '<=', now())->limit($batch)->pluck('id');
+        foreach ($ids as $id) {
+            // Atomic per-row claim: concurrent dispatchers cannot double-send.
+            $claimed = ScheduledMessage::where('id', $id)->where('status', ScheduledMessageStatus::Pending)
+                ->update(['status' => ScheduledMessageStatus::Sending]);
+            if (! $claimed) {
+                continue;
+            }
+            $item = ScheduledMessage::find($id);
+            if (! $item) {
+                continue;
+            }
             try {
                 $conversation = $item->conversation;
                 $sender = $item->sender;
