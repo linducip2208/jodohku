@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Member;
 
+use App\Exceptions\ChatQuotaExceededException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendMessageRequest;
 use App\Http\Resources\MessageResource;
@@ -27,6 +28,8 @@ class MessageController extends Controller
         $this->authorize('send', $conversation);
         try {
             $message = $chat->sendMessage($conversation, $request->user(), $request->validated(), $request->input('client_message_id'));
+        } catch (ChatQuotaExceededException $e) {
+            return response()->json(['message' => $e->getMessage(), 'upgrade' => ! $e->isPremium, 'limit' => $e->limit], 429);
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

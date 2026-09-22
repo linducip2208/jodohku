@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 /** @mixin Message */
 class MessageResource extends JsonResource
@@ -22,6 +23,12 @@ class MessageResource extends JsonResource
             'status' => $this->status?->value ?? $this->status,
             'client_message_id' => $this->client_message_id,
             'reply_to_id' => $this->reply_to_id,
+            'reply_to' => $this->whenLoaded('replyTo', fn () => $this->replyTo ? [
+                'id' => $this->replyTo->id,
+                'sender_id' => $this->replyTo->sender_id,
+                'body' => Str::limit((string) $this->replyTo->body, 160),
+                'type' => $this->replyTo->type,
+            ] : null),
             'is_edited' => (bool) $this->is_edited,
             'is_ai_generated' => (bool) $this->is_ai_generated,
             'attachments' => $this->whenLoaded('attachments'),

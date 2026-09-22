@@ -19,6 +19,7 @@ class Conversation extends Model
     protected $fillable = [
         'ulid', 'type', 'title', 'match_id', 'created_by',
         'is_pinned', 'is_archived', 'is_blocked', 'last_message_at',
+        'disappears_in_seconds',
     ];
 
     protected function casts(): array

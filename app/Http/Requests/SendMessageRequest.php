@@ -15,7 +15,7 @@ class SendMessageRequest extends FormRequest
     {
         return [
             'body' => ['nullable', 'string', 'max:2000'],
-            'type' => ['nullable', 'string', 'in:text,image,video,audio,file,gift,system'],
+            'type' => ['nullable', 'string', 'in:text,image,video,audio,file,gift,system,sticker,poll'],
             'client_message_id' => ['nullable', 'string', 'max:64'],
             'reply_to_id' => ['nullable', 'integer', 'exists:messages,id'],
             'metadata' => ['nullable', 'array'],

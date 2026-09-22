@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Block;
 use App\Models\Conversation;
+use App\Models\ConversationMember;
 use App\Models\User;
 
 class ConversationPolicy
@@ -24,6 +25,11 @@ class ConversationPolicy
     public function send(User $user, Conversation $conversation): bool
     {
         if (! $conversation->involves((int) $user->id) || $conversation->is_blocked) {
+            return false;
+        }
+        $role = ConversationMember::where('conversation_id', $conversation->id)
+            ->where('user_id', $user->id)->value('role');
+        if (($role ?? 'member') === 'chaperone') {
             return false;
         }
         $other = $conversation->otherMember((int) $user->id);

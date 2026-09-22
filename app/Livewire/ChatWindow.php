@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\ChatService;
+use App\Services\GiftService;
+use App\Services\MembershipService;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
@@ -15,6 +17,8 @@ class ChatWindow extends Component
     public string $body = '';
 
     public ?int $replyToId = null;
+
+    public string $giftCode = '';
 
     public string $typingUsers = '';
 
@@ -84,6 +88,26 @@ class ChatWindow extends Component
         }
     }
 
+    public function sendGift(GiftService $gifts): void
+    {
+        $me = auth()->user();
+        $conv = Conversation::find($this->conversationId);
+        if (! $me || ! $conv || trim($this->giftCode) === '') {
+            return;
+        }
+        $other = $conv->otherUser($me->id);
+        if (! $other) {
+            return;
+        }
+        try {
+            $gifts->send($me, $other, trim($this->giftCode), 1, $conv);
+            $this->giftCode = '';
+            $this->dispatch('refresh-messages');
+        } catch (\Throwable $e) {
+            $this->addError('giftCode', $e->getMessage());
+        }
+    }
+
     public function delete(int $messageId, ChatService $chat): void
     {
         $me = auth()->user();
@@ -112,21 +136,25 @@ class ChatWindow extends Component
         }
     }
 
-    public function render(ChatService $chat)
+    public function render(ChatService $chat, MembershipService $membership, GiftService $gifts)
     {
         $me = auth()->user();
         $conv = Conversation::with(['users', 'members.user'])->find($this->conversationId);
         $messages = collect();
         $other = null;
+        $canSeeReads = false;
+        $giftCatalog = collect();
         if ($conv && $me) {
             try {
                 $chat->markRead($conv, $me);
                 $messages = Message::where('conversation_id', $conv->id)->with(['sender', 'reactions', 'replyTo', 'attachments', 'reads'])->latest('id')->take($this->perPage)->get()->reverse()->values();
                 $other = $conv->otherUser($me->id);
+                $canSeeReads = (bool) ($membership->currentFeatures($me)['has_read_receipts'] ?? false);
+                $giftCatalog = $gifts->catalog();
             } catch (\Throwable) {
             }
         }
 
-        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me]);
+        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog]);
     }
 }

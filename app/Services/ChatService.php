@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\AccountType;
 use App\Enums\ConversationType;
 use App\Enums\MessageStatus;
+use App\Enums\ScheduledMessageStatus;
 use App\Events\MessageRead as MessageReadEvent;
 use App\Events\MessageReceived;
 use App\Events\MessageSent;
 use App\Events\TypingIndicator;
+use App\Exceptions\ChatQuotaExceededException;
 use App\Jobs\ProcessMessageModeration;
 use App\Jobs\SendChatNotification;
 use App\Models\Block;
@@ -20,10 +23,15 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageDeletion;
 use App\Models\MessageReaction;
+use App\Models\PollVote;
+use App\Models\ScheduledMessage;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserMatch;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ChatService
@@ -71,6 +79,76 @@ class ChatService
         });
     }
 
+    /**
+     * Per-peer message quota: free members get a small allowance per counterpart
+     * user, premium members get a larger one. Configurable via settings
+     * (group `chat`: free_messages_per_peer / premium_messages_per_peer).
+     */
+    public function messageLimitFor(User $sender): int
+    {
+        return $sender->isPremium()
+            ? max(1, (int) Setting::get('premium_messages_per_peer', 30, 'chat'))
+            : max(1, (int) Setting::get('free_messages_per_peer', 1, 'chat'));
+    }
+
+    /** Messages the sender already sent to the peer across their shared conversations. */
+    public function sentToPeerCount(int $senderId, int $peerId): int
+    {
+        $mine = ConversationMember::where('user_id', $senderId)->pluck('conversation_id');
+        $theirs = ConversationMember::where('user_id', $peerId)->pluck('conversation_id');
+        $shared = $mine->intersect($theirs);
+        if ($shared->isEmpty()) {
+            return 0;
+        }
+
+        return Message::where('sender_id', $senderId)->whereIn('conversation_id', $shared)->count();
+    }
+
+    public function messageQuotaRemaining(User $sender, User $peer): array
+    {
+        $limit = $this->messageLimitFor($sender);
+        $used = $this->sentToPeerCount((int) $sender->id, (int) $peer->id);
+
+        return [
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => max(0, $limit - $used),
+            'is_premium' => (bool) $sender->isPremium(),
+        ];
+    }
+
+    protected function quotaApplies(User $sender): bool
+    {
+        if ($sender->isStaff()) {
+            return false;
+        }
+        $type = $sender->account_type;
+
+        return $type instanceof AccountType ? $type->isHuman() : $type === null || $type === 'real';
+    }
+
+    protected function enforcePeerQuota(Conversation $conversation, User $sender): void
+    {
+        if (! $this->quotaApplies($sender)) {
+            return;
+        }
+        $other = $conversation->relationLoaded('members')
+            ? $conversation->members->first(fn ($m) => (int) $m->user_id !== (int) $sender->id && ($m->role ?? 'member') !== 'chaperone')
+            : ConversationMember::where('conversation_id', $conversation->id)->where('user_id', '!=', (int) $sender->id)
+                ->where(fn ($q) => $q->where('role', '!=', 'chaperone')->orWhereNull('role'))->first();
+        if (! $other) {
+            $other = $conversation->otherMember((int) $sender->id);
+        }
+        if (! $other || ! $other->user) {
+            return;
+        }
+        $limit = $this->messageLimitFor($sender);
+        $used = $this->sentToPeerCount((int) $sender->id, (int) $other->user->id);
+        if ($used >= $limit) {
+            throw new ChatQuotaExceededException($limit, (bool) $sender->isPremium());
+        }
+    }
+
     protected function checkRateLimit(User $sender): void
     {
         $isPremium = $sender->isPremium();
@@ -94,6 +172,12 @@ class ChatService
         if (! $conversation->involves((int) $sender->id)) {
             throw new \RuntimeException('Not a conversation member.');
         }
+        $myMembership = $conversation->relationLoaded('members')
+            ? $conversation->members->firstWhere('user_id', (int) $sender->id)
+            : ConversationMember::where('conversation_id', $conversation->id)->where('user_id', $sender->id)->first();
+        if ($myMembership && ($myMembership->role ?? 'member') === 'chaperone') {
+            throw new \RuntimeException('Chaperones can only read, not send.');
+        }
         if ($conversation->is_blocked) {
             throw new \RuntimeException('Conversation is blocked.');
         }
@@ -111,6 +195,7 @@ class ChatService
         if (mb_strlen($body) > $maxLen) {
             throw new \InvalidArgumentException('Message too long.');
         }
+        $data = $this->validateSpecialType($data);
 
         // Idempotency on (conversation_id, client_message_id)
         $clientId = $clientMessageId ?? (string) ($data['client_message_id'] ?? (string) Str::uuid());
@@ -118,6 +203,7 @@ class ChatService
         if ($existing) {
             return $existing;
         }
+        $this->enforcePeerQuota($conversation, $sender);
 
         return DB::transaction(function () use ($conversation, $sender, $data, $body, $clientId) {
             $mod = $this->moderation->moderate($body, $sender, null);
@@ -466,6 +552,229 @@ class ChatService
     public function createConversation(User $a, User $b): Conversation
     {
         return $this->findOrCreateDirect($a, $b);
+    }
+
+    /** Built-in sticker catalog (unicode, no assets needed). */
+    public function stickers(): array
+    {
+        return config('chat.stickers', []);
+    }
+
+    /** Chat theme presets usable via conversation settings (`theme` key). */
+    public function themes(): array
+    {
+        return config('chat.themes', []);
+    }
+
+    protected function validateSpecialType(array $data): array
+    {
+        $type = $data['type'] ?? 'text';
+        if ($type === 'sticker') {
+            $allowed = collect($this->stickers())->pluck('emoji')->all();
+            if (! in_array(trim((string) ($data['body'] ?? '')), $allowed, true)) {
+                throw new \InvalidArgumentException('Unknown sticker.');
+            }
+        }
+        if ($type === 'poll') {
+            $options = $data['metadata']['options'] ?? null;
+            if (! is_array($options) || count($options) < 2 || count($options) > 4) {
+                throw new \InvalidArgumentException('Poll needs 2-4 options.');
+            }
+            $clean = [];
+            foreach ($options as $opt) {
+                $opt = trim(mb_substr((string) $opt, 0, 120));
+                if ($opt === '') {
+                    throw new \InvalidArgumentException('Poll options cannot be empty.');
+                }
+                $clean[] = $opt;
+            }
+            if (mb_strlen(trim((string) ($data['body'] ?? ''))) > 300) {
+                throw new \InvalidArgumentException('Poll question too long.');
+            }
+            $data['metadata']['options'] = array_values($clean);
+        }
+
+        return $data;
+    }
+
+    /** Vote (or change vote) on a poll message. */
+    public function votePoll(Message $message, User $user, int $optionIndex): array
+    {
+        if ($message->type !== 'poll') {
+            throw new \InvalidArgumentException('Message is not a poll.');
+        }
+        if (! $message->conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $options = $message->metadata['options'] ?? [];
+        if (! isset($options[$optionIndex])) {
+            throw new \InvalidArgumentException('Invalid option.');
+        }
+        PollVote::updateOrCreate(
+            ['message_id' => $message->id, 'user_id' => $user->id],
+            ['option_index' => $optionIndex]
+        );
+
+        return $this->pollResults($message, $user);
+    }
+
+    public function pollResults(Message $message, User $user): array
+    {
+        if ($message->type !== 'poll') {
+            throw new \InvalidArgumentException('Message is not a poll.');
+        }
+        if (! $message->conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $options = array_values($message->metadata['options'] ?? []);
+        $counts = array_fill(0, count($options), 0);
+        foreach (PollVote::where('message_id', $message->id)->get(['user_id', 'option_index']) as $vote) {
+            if (isset($counts[$vote->option_index])) {
+                $counts[$vote->option_index]++;
+            }
+        }
+        $mine = PollVote::where('message_id', $message->id)->where('user_id', $user->id)->value('option_index');
+
+        return [
+            'message_id' => $message->id,
+            'question' => $message->body,
+            'options' => array_map(fn ($text, $i) => ['index' => $i, 'text' => $text, 'votes' => $counts[$i] ?? 0], $options, array_keys($options)),
+            'total_votes' => array_sum($counts),
+            'my_vote' => $mine === null ? null : (int) $mine,
+        ];
+    }
+
+    /** CSV rendering of export() for download. */
+    public function exportCsv(Conversation $conversation, User $user): string
+    {
+        $data = $this->export($conversation, $user);
+        $lines = ['id,sent_at,sender_id,sender_name,type,body'];
+        foreach ($data['messages'] as $m) {
+            $lines[] = implode(',', [
+                $m['id'],
+                $m['created_at'],
+                $m['sender_id'],
+                '"'.str_replace('"', '""', (string) ($m['sender_name'] ?? '')).'"',
+                $m['type'],
+                '"'.str_replace('"', '""', preg_replace('/\s+/', ' ', (string) $m['body'])).'"',
+            ]);
+        }
+
+        return implode("\n", $lines)."\n";
+    }
+
+    /** Hard-delete messages past the conversation disappearing-message TTL. */
+    public function pruneDisappearing(int $batch = 200): int
+    {
+        $pruned = 0;
+        $ttls = Conversation::whereNotNull('disappears_in_seconds')->pluck('disappears_in_seconds', 'id');
+        foreach ($ttls as $convId => $ttl) {
+            if ($pruned >= $batch) {
+                break;
+            }
+            $ids = Message::where('conversation_id', $convId)
+                ->where('created_at', '<=', now()->subSeconds(max(60, (int) $ttl)))
+                ->limit($batch - $pruned)->pluck('id');
+            if ($ids->isEmpty()) {
+                continue;
+            }
+            $paths = MessageAttachment::whereIn('message_id', $ids)->pluck('file_path')->all();
+            foreach ($paths as $path) {
+                try {
+                    Storage::disk('public')->delete($path);
+                } catch (\Throwable) {
+                }
+            }
+            MessageAttachment::whereIn('message_id', $ids)->delete();
+            PollVote::whereIn('message_id', $ids)->delete();
+            $pruned += Message::whereIn('id', $ids)->delete();
+        }
+
+        return $pruned;
+    }
+
+    /** Queue a message for future delivery; quota/moderation apply at dispatch time. */
+    public function scheduleMessage(Conversation $conversation, User $sender, string $body, \DateTimeInterface $sendAt, ?string $clientMessageId = null): ScheduledMessage
+    {
+        if (! $conversation->involves((int) $sender->id)) {
+            throw new \RuntimeException('Not a conversation member.');
+        }
+        $body = trim($body);
+        if ($body === '') {
+            throw new \InvalidArgumentException('Message body required.');
+        }
+        if (mb_strlen($body) > (int) config('chat.message.max_length', 2000)) {
+            throw new \InvalidArgumentException('Message too long.');
+        }
+        $at = Carbon::parse($sendAt);
+        if ($at->isPast()) {
+            throw new \InvalidArgumentException('Schedule must be in the future.');
+        }
+        if ($at->gt(now()->addDays(30))) {
+            throw new \InvalidArgumentException('Schedule too far ahead (max 30 days).');
+        }
+
+        return ScheduledMessage::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'body' => $body,
+            'type' => 'text',
+            'client_message_id' => $clientMessageId,
+            'send_at' => $at,
+            'status' => ScheduledMessageStatus::Pending,
+        ]);
+    }
+
+    public function scheduledFor(Conversation $conversation, User $user, int $perPage = 20)
+    {
+        if (! $conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a conversation member.');
+        }
+
+        return ScheduledMessage::where('conversation_id', $conversation->id)
+            ->where('sender_id', $user->id)->latest('send_at')->paginate($perPage);
+    }
+
+    public function cancelScheduled(ScheduledMessage $scheduled, User $user): bool
+    {
+        if ((int) $scheduled->sender_id !== (int) $user->id && ! $user->isStaff()) {
+            throw new \RuntimeException('Only sender can cancel.');
+        }
+        if ($scheduled->status !== ScheduledMessageStatus::Pending) {
+            throw new \RuntimeException('Only pending messages can be cancelled.');
+        }
+
+        return (bool) $scheduled->update(['status' => ScheduledMessageStatus::Cancelled]);
+    }
+
+    /** Send all due scheduled messages. Returns [sent, failed]. */
+    public function dispatchDue(int $batch = 100): array
+    {
+        $sent = 0;
+        $failed = 0;
+        $due = ScheduledMessage::where('status', ScheduledMessageStatus::Pending)
+            ->where('send_at', '<=', now())->limit($batch)->get();
+        foreach ($due as $item) {
+            try {
+                $conversation = $item->conversation;
+                $sender = $item->sender;
+                if (! $conversation || ! $sender) {
+                    throw new \RuntimeException('Conversation or sender gone.');
+                }
+                $message = $this->sendMessage($conversation, $sender, [
+                    'body' => $item->body,
+                    'type' => $item->type,
+                    'metadata' => ['scheduled_message_id' => $item->id],
+                ], $item->client_message_id);
+                $item->update(['status' => ScheduledMessageStatus::Sent, 'message_id' => $message->id]);
+                $sent++;
+            } catch (\Throwable $e) {
+                $item->update(['status' => ScheduledMessageStatus::Failed, 'failure_reason' => mb_substr($e->getMessage(), 0, 500)]);
+                $failed++;
+            }
+        }
+
+        return ['sent' => $sent, 'failed' => $failed];
     }
 
     public function export(Conversation $conversation, User $user): array

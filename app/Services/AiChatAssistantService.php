@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Conversation;
+use App\Models\ConversationMember;
 use App\Models\User;
 
 class AiChatAssistantService
@@ -94,6 +95,31 @@ class AiChatAssistantService
         $openers[] = 'Boleh tahu hal apa yang paling kamu suka lakukan akhir-akhir ini?';
 
         return array_slice(array_values(array_unique($openers)), 0, $count);
+    }
+
+    /** Catch-up digest: what you missed since you last read the thread. */
+    public function catchUp(Conversation $conversation, User $user, int $limit = 30): array
+    {
+        $member = ConversationMember::where('conversation_id', $conversation->id)
+            ->where('user_id', $user->id)->first();
+        $since = $member?->last_read_at;
+        $items = $conversation->messages()->with('sender')
+            ->when($since, fn ($q) => $q->where('created_at', '>', $since))
+            ->latest('id')->limit($limit)->get()->reverse()->values();
+        if ($items->isEmpty()) {
+            return ['has_updates' => false, 'count' => 0, 'digest' => null];
+        }
+        $history = $items->map(fn ($m) => ($m->sender?->displayName() ?? '?').': '.mb_substr((string) $m->body, 0, 150))->implode("\n");
+        $prompt = "Ringkas update terbaru percakapan berikut maksimal 3 kalimat, Bahasa Indonesia:\n{$history}";
+
+        try {
+            $res = $this->ai->chat($prompt, ['max_tokens' => 120], $user, 'catch_up');
+            $digest = trim((string) $res['text']) ?: null;
+        } catch (\Throwable) {
+            $digest = null;
+        }
+
+        return ['has_updates' => true, 'count' => $items->count(), 'digest' => $digest];
     }
 
     /** Short AI summary of a conversation thread for quick context. */

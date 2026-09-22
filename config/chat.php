@@ -29,4 +29,27 @@ return [
     ],
 
     'unread_counter_cache' => true,
+
+    'themes' => [
+        ['code' => 'default', 'name' => 'Default', 'bubble_me' => '#ec4899', 'bubble_them' => '#f1f1f4'],
+        ['code' => 'ocean', 'name' => 'Ocean', 'bubble_me' => '#0ea5e9', 'bubble_them' => '#e0f2fe'],
+        ['code' => 'sunset', 'name' => 'Sunset', 'bubble_me' => '#f59e0b', 'bubble_them' => '#fef3c7'],
+        ['code' => 'forest', 'name' => 'Hutan', 'bubble_me' => '#16a34a', 'bubble_them' => '#dcfce7'],
+        ['code' => 'midnight', 'name' => 'Midnight', 'bubble_me' => '#6366f1', 'bubble_them' => '#1e1b4b'],
+    ],
+
+    'stickers' => [
+        ['code' => 'love', 'emoji' => '❤️', 'name' => 'Love'],
+        ['code' => 'kiss', 'emoji' => '😘', 'name' => 'Kiss'],
+        ['code' => 'flower', 'emoji' => '🌹', 'name' => 'Mawar'],
+        ['code' => 'laugh', 'emoji' => '😂', 'name' => 'Ngakak'],
+        ['code' => 'sad', 'emoji' => '🥺', 'name' => 'Memelas'],
+        ['code' => 'angry', 'emoji' => '😡', 'name' => 'Marah'],
+        ['code' => 'cool', 'emoji' => '😎', 'name' => 'Cool'],
+        ['code' => 'party', 'emoji' => '🎉', 'name' => 'Party'],
+        ['code' => 'coffee', 'emoji' => '☕', 'name' => 'Ngopi'],
+        ['code' => 'moon', 'emoji' => '🌙', 'name' => 'Selamat malam'],
+        ['code' => 'sun', 'emoji' => '☀️', 'name' => 'Selamat pagi'],
+        ['code' => 'hug', 'emoji' => '🤗', 'name' => 'Peluk'],
+    ],
 ];

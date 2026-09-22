@@ -23,6 +23,12 @@ class SettingsSeeder extends Seeder
             ['group' => 'chat', 'key' => 'messages_per_hour', 'value' => '200', 'type' => 'integer'],
             ['group' => 'chat', 'key' => 'max_length', 'value' => '2000', 'type' => 'integer'],
             ['group' => 'chat', 'key' => 'request_expiry_hours', 'value' => '72', 'type' => 'integer'],
+            ['group' => 'chat', 'key' => 'free_messages_per_peer', 'value' => '1', 'type' => 'integer'],
+            ['group' => 'chat', 'key' => 'premium_messages_per_peer', 'value' => '30', 'type' => 'integer'],
+            // calls (voice & video both paid with tokens)
+            ['group' => 'calls', 'key' => 'voice_per_minute', 'value' => '5', 'type' => 'integer'],
+            ['group' => 'calls', 'key' => 'video_per_minute', 'value' => '10', 'type' => 'integer'],
+            ['group' => 'calls', 'key' => 'invite_ttl_seconds', 'value' => '60', 'type' => 'integer'],
             // matching
             ['group' => 'matching', 'key' => 'daily_picks', 'value' => '10', 'type' => 'integer'],
             ['group' => 'matching', 'key' => 'min_daily_score', 'value' => '55', 'type' => 'integer'],

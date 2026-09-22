@@ -36,7 +36,7 @@
 <div style="font-size:10px;opacity:.7;margin-top:4px;display:flex;gap:6px">
 <span>{{ $m->created_at?->format('H:i') }}</span>
 @if($m->is_edited)<span>· diedit</span>@endif
-@if($mine)<span>· {{ $m->reads->count() ? 'dibaca ✓✓' : 'terkirim ✓' }}</span>@endif
+@if($mine)<span>· {{ ($canSeeReads ?? false) && $m->reads->count() ? 'dibaca ✓✓' : 'terkirim ✓' }}</span>@endif
 @foreach($m->reactions as $r)<span>{{ $r->emoji }}</span>@endforeach
 </div>
 @if($mine)
@@ -63,6 +63,16 @@
 <input class="jk-input" style="flex:1" wire:model="body" placeholder="Tulis pesan..." autocomplete="off" aria-label="Tulis pesan">
 <button class="jk-btn jk-btn-like" style="flex:none;padding:10px 18px" type="submit">Kirim</button>
 </form>
+<form wire:submit.prevent="sendGift" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+<select class="jk-input" style="flex:1" wire:model="giftCode" aria-label="Pilih gift">
+<option value="">Kirim gift…</option>
+@foreach(($giftCatalog ?? []) as $gift)
+<option value="{{ $gift->code }}">{{ $gift->name }} ({{ $gift->credit_price }} kredit)</option>
+@endforeach
+</select>
+<button class="jk-pill" style="flex:none" type="submit">Kirim Gift</button>
+</form>
+@error('giftCode')<div class="jk-alert err">{{ $message }}</div>@enderror
 <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
 <form method="POST" action="/chat/{{ $conv->id }}/unmatch" onsubmit="return confirm('Yakin unmatch? Percakapan akan diarsipkan.')">@csrf<button class="jk-pill" type="submit">Unmatch</button></form>
 <form method="POST" action="/safety/block" onsubmit="return confirm('Blokir user ini? Kamu tidak akan saling melihat lagi.')">@csrf<input type="hidden" name="user_id" value="{{ $other?->id }}"><button class="jk-pill" type="submit">Block</button></form>

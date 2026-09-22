@@ -101,6 +101,30 @@ class BiroJodohController extends Controller
         }
     }
 
+    public function addChaperone(Request $request, Courtship $courtship, CourtshipService $courtships)
+    {
+        $this->authorize('manage', $courtship);
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $guardian = User::findOrFail($request->integer('user_id'));
+        try {
+            return response()->json($courtships->addChaperone($courtship, $guardian, $request->user()), 201);
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function removeChaperone(Request $request, Courtship $courtship, CourtshipService $courtships)
+    {
+        $this->authorize('manage', $courtship);
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $guardian = User::findOrFail($request->integer('user_id'));
+        try {
+            return response()->json($courtships->removeChaperone($courtship, $guardian, $request->user()));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     // ---- Counselor consultations ----
 
     public function counselors(Request $request, ConsultationService $consultations)

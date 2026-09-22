@@ -18,7 +18,22 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/admin/overview` | sanctum+`admin` | `users_total`, `reports_pending` (403 untuk member) |
 | GET | `/admin/gateways` | sanctum+`can:admin` | daftar gateway; sekret dimask `***encrypted***` |
 | POST | `/admin/gateways/{code}` | sanctum+`can:admin` | simpan setting; sekret dienkripsi `Crypt` |
-| POST | `/conversations/{conversation}/messages` | sanctum | kirim pesan (`client_message_id` idempoten) |
+| POST | `/conversations/{conversation}/messages` | sanctum | kirim pesan (`client_message_id` idempoten; kuota per peer: free 1, premium 30 → 429 + `upgrade`) |
+| GET | `/chat/quota?user_id=` | sanctum | sisa kuota pesan ke user (`limit/used/remaining`) |
+| GET | `/chat/themes`, `/chat/stickers` | sanctum | preset tema & katalog stiker |
+| POST | `/conversations/{conversation}/scheduled-messages` | sanctum | jadwalkan pesan (maks 30 hari; kuota/moderasi saat terkirim) |
+| GET | `/conversations/{conversation}/scheduled-messages` | sanctum | daftar terjadwal milik sendiri |
+| DELETE | `/scheduled-messages/{id}` | sanctum | batalkan terjadwal (pending saja) |
+| PATCH | `/conversations/{conversation}/disappearing` | sanctum | pesan menghilang `{seconds 1jam–30hari}`/null |
+| POST/GET | `/messages/{message}/poll/vote`, `/messages/{message}/poll` | sanctum | vote & hasil polling (1 suara/user, bisa ganti) |
+| POST | `/messages/{message}/translate` | sanctum | terjemahan AI id/en (fallback teks asli) |
+| GET | `/conversations/{conversation}/catch-up` | sanctum | ringkasan pesan belum dibaca |
+| GET | `/chat/{conversation}/safety` | sanctum | level risiko peer + tips aman |
+| GET | `/calls/rates` | sanctum | tarif token voice/video per menit |
+| POST | `/conversations/{conversation}/calls` | sanctum | undang call voice/video (berbayar token; tolak bila saldo < 1 menit) |
+| GET | `/conversations/{conversation}/calls` | sanctum | riwayat call |
+| POST | `/calls/{call}/accept`, `/reject`, `/cancel`, `/end` | sanctum | kelola call (tagihan per menit dibulatkan ke atas) |
+| POST/DELETE | `/courtships/{id}/chaperone` | sanctum | tambah/hapus wali read-only (mulai tahap taaruf) |
 | POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload) |
 | POST | `/conversations/{conversation}/typing` | sanctum | indikator mengetik (broadcast Reverb) |
 | PATCH | `/conversations/{conversation}/settings` | sanctum | `is_muted/is_pinned/is_archived/theme/nickname` |

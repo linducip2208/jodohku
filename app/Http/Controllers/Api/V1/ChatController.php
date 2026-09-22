@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ChatRequestStatus;
+use App\Exceptions\ChatQuotaExceededException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendMessageRequest;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
 use App\Models\ChatRequest;
 use App\Models\Conversation;
+use App\Models\FraudRiskScore;
 use App\Models\Message;
+use App\Models\ScheduledMessage;
 use App\Models\User;
+use App\Services\AiChatAssistantService;
+use App\Services\AiService;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
 
@@ -75,11 +80,22 @@ class ChatController extends Controller
 
         try {
             $message = $chat->sendMessage($conversation, $request->user(), $request->validated(), $request->input('client_message_id'));
+        } catch (ChatQuotaExceededException $e) {
+            return response()->json(['message' => $e->getMessage(), 'upgrade' => ! $e->isPremium, 'limit' => $e->limit], 429);
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json(MessageResource::make($message->load(['sender', 'attachments'])), 201);
+    }
+
+    public function quota(Request $request, ChatService $chat)
+    {
+        $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $peer = User::findOrFail($request->integer('user_id'));
+        $this->authorize('view', $peer);
+
+        return response()->json($chat->messageQuotaRemaining($request->user(), $peer));
     }
 
     public function upload(Request $request, Conversation $conversation, ChatService $chat)
@@ -197,10 +213,14 @@ class ChatController extends Controller
         $target = Conversation::findOrFail($request->integer('conversation_id'));
         $this->authorize('send', $target);
 
+        $metadata = ['forwarded_from' => $message->conversation->id, 'original_message_id' => $message->id];
+        if ($message->type === 'poll' && isset($message->metadata['options'])) {
+            $metadata['options'] = $message->metadata['options'];
+        }
         $forwarded = $chat->sendMessage($target, $request->user(), [
             'body' => $message->body,
             'type' => $message->type,
-            'metadata' => ['forwarded_from' => $message->conversation->id, 'original_message_id' => $message->id],
+            'metadata' => $metadata,
             'attachments' => $message->attachments->map(fn ($a) => [
                 'file_path' => $a->file_path,
                 'file_name' => $a->file_name,
@@ -283,10 +303,145 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
         try {
+            if ($request->query('format') === 'csv') {
+                $csv = $chat->exportCsv($conversation, $request->user());
+
+                return response($csv, 200, [
+                    'Content-Type' => 'text/csv',
+                    'Content-Disposition' => "attachment; filename=\"chat-{$conversation->id}.csv\"",
+                ]);
+            }
+
             return response()->json($chat->export($conversation, $request->user()));
         } catch (\RuntimeException $e) {
             abort(403, $e->getMessage());
         }
+    }
+
+    public function themes(ChatService $chat)
+    {
+        return response()->json($chat->themes());
+    }
+
+    public function stickers(ChatService $chat)
+    {
+        return response()->json($chat->stickers());
+    }
+
+    public function disappearing(Request $request, Conversation $conversation)
+    {
+        $this->authorize('manage', $conversation);
+        $request->validate(['seconds' => ['nullable', 'integer', 'min:3600', 'max:2592000']]);
+        $conversation->update(['disappears_in_seconds' => $request->input('seconds')]);
+
+        return response()->json($conversation->fresh());
+    }
+
+    public function votePoll(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        $request->validate(['option_index' => ['required', 'integer', 'min:0', 'max:10']]);
+        try {
+            return response()->json($chat->votePoll($message, $request->user(), $request->integer('option_index')));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function pollResults(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        try {
+            return response()->json($chat->pollResults($message, $request->user()));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function translate(Request $request, Message $message, AiService $ai)
+    {
+        $this->authorize('view', $message->conversation);
+        $request->validate(['target' => ['nullable', 'string', 'in:id,en']]);
+        $target = $request->input('target', 'id');
+        $label = $target === 'en' ? 'Inggris' : 'Indonesia';
+        try {
+            $res = $ai->chat("Terjemahkan teks berikut ke Bahasa {$label}, jawab hanya hasil terjemahannya:\n\"".mb_substr((string) $message->body, 0, 1000).'"', ['max_tokens' => 400], $request->user(), 'translate');
+            $text = trim((string) $res['text']);
+
+            return response()->json(['translated' => $text !== '' ? $text : $message->body, 'machine' => true]);
+        } catch (\Throwable) {
+            return response()->json(['translated' => $message->body, 'machine' => false]);
+        }
+    }
+
+    public function catchUp(Request $request, Conversation $conversation, AiChatAssistantService $assistant)
+    {
+        $this->authorize('view', $conversation);
+
+        return response()->json($assistant->catchUp($conversation, $request->user()));
+    }
+
+    public function safetyHint(Request $request, Conversation $conversation)
+    {
+        $this->authorize('view', $conversation);
+        $peer = $conversation->otherMember((int) $request->user()->id)?->user;
+        abort_unless($peer, 404);
+        $latest = FraudRiskScore::where('user_id', $peer->id)->latest('id')->first();
+        $level = $latest?->level ?? 'unknown';
+
+        return response()->json([
+            'peer_id' => $peer->id,
+            'peer_verified' => (bool) $peer->is_verified,
+            'risk_level' => $level,
+            'warning' => in_array($level, ['medium', 'high'], true),
+            'tips' => [
+                'Jangan bagikan OTP, password, atau data bank.',
+                'Waspadai ajakan pindah platform / investasi.',
+                'Laporkan perilaku mencurigakan lewat tombol Laporkan.',
+            ],
+        ]);
+    }
+
+    public function schedule(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('send', $conversation);
+        $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+            'send_at' => ['required', 'date', 'after:now', 'before:+31 days'],
+            'client_message_id' => ['nullable', 'string', 'max:64'],
+        ]);
+        try {
+            $item = $chat->scheduleMessage(
+                $conversation, $request->user(), $request->string('body')->toString(),
+                $request->date('send_at'), $request->input('client_message_id')
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($item, 201);
+    }
+
+    public function scheduled(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        try {
+            return response()->json($chat->scheduledFor($conversation, $request->user(), (int) $request->query('per_page', 20)));
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+    }
+
+    public function cancelScheduled(Request $request, ScheduledMessage $scheduled, ChatService $chat)
+    {
+        $this->authorize('view', $scheduled->conversation);
+        try {
+            $chat->cancelScheduled($scheduled, $request->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Cancelled.']);
     }
 
     public function labels(Request $request, Conversation $conversation)

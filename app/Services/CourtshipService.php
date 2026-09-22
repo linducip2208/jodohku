@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CourtshipStage;
 use App\Enums\CourtshipStatus;
 use App\Models\Block;
+use App\Models\ConversationMember;
 use App\Models\Courtship;
 use App\Models\User;
 use App\Models\UserMatch;
@@ -112,6 +113,55 @@ class CourtshipService
                 $courtship->update(['status' => CourtshipStatus::Completed, 'completed_at' => now()]);
             }
             $this->audit->log('courtship.advanced', $user, $courtship, [], ['stage' => $next->value]);
+
+            return $courtship->fresh();
+        });
+    }
+
+    /**
+     * Add a guardian (wali) as a READ-ONLY chaperone to the courtship chat.
+     * Available from the taaruf stage onward, per bureau practice.
+     */
+    public function addChaperone(Courtship $courtship, User $guardian, User $actor): Courtship
+    {
+        $this->ensureActive($courtship);
+        if (! in_array($courtship->stage, [CourtshipStage::Taaruf, CourtshipStage::Khitbah], true)) {
+            throw new \RuntimeException('Chaperone joins from the taaruf stage.');
+        }
+        if ((int) $guardian->id === (int) $courtship->initiator_id || (int) $guardian->id === (int) $courtship->partner_id) {
+            throw new \InvalidArgumentException('Chaperone must be a third party.');
+        }
+        if (Block::existsBetween((int) $guardian->id, (int) $courtship->initiator_id)
+            || Block::existsBetween((int) $guardian->id, (int) $courtship->partner_id)) {
+            throw new \RuntimeException('Chaperone is blocked by a party.');
+        }
+
+        return DB::transaction(function () use ($courtship, $guardian, $actor) {
+            $conversation = $courtship->conversation;
+            if (! $conversation) {
+                $conversation = app(ChatService::class)->findOrCreateDirect($courtship->initiator, $courtship->partner);
+                $courtship->update(['conversation_id' => $conversation->id]);
+            }
+            ConversationMember::updateOrCreate(
+                ['conversation_id' => $conversation->id, 'user_id' => $guardian->id],
+                ['role' => 'chaperone', 'joined_at' => now(), 'left_at' => null]
+            );
+            $this->audit->log('courtship.chaperone_added', $actor, $courtship, [], ['guardian_id' => $guardian->id]);
+
+            return $courtship->fresh(['conversation']);
+        });
+    }
+
+    public function removeChaperone(Courtship $courtship, User $guardian, User $actor): Courtship
+    {
+        $this->ensureActive($courtship);
+
+        return DB::transaction(function () use ($courtship, $guardian, $actor) {
+            if ($courtship->conversation_id) {
+                ConversationMember::where('conversation_id', $courtship->conversation_id)
+                    ->where('user_id', $guardian->id)->where('role', 'chaperone')->delete();
+            }
+            $this->audit->log('courtship.chaperone_removed', $actor, $courtship, [], ['guardian_id' => $guardian->id]);
 
             return $courtship->fresh();
         });

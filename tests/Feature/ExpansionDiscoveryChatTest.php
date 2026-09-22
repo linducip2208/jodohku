@@ -76,7 +76,7 @@ class ExpansionDiscoveryChatTest extends TestCase
 
     public function test_chat_overview_search_stats_and_clear_history(): void
     {
-        $a = User::factory()->create();
+        $a = User::factory()->premium()->create();
         $b = User::factory()->create();
         $chat = app(ChatService::class);
 
