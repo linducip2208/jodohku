@@ -26,13 +26,13 @@
 @if($m->attachments->count())
 @foreach($m->attachments as $att)
 @if(str_starts_with($att->mime_type ?? '', 'image/'))
-<div style="margin-top:6px"><img src="{{ asset('storage/'.$att->file_path) }}" alt="Lampiran foto" style="max-width:220px;border-radius:12px" loading="lazy"></div>
+<div style="margin-top:6px"><img src="{{ route('member.chat.attachment.download', $att) }}" alt="Lampiran foto" style="max-width:220px;border-radius:12px" loading="lazy"></div>
 @elseif(str_starts_with($att->mime_type ?? '', 'video/'))
-<div style="margin-top:6px"><video src="{{ asset('storage/'.$att->file_path) }}" controls style="max-width:220px;border-radius:12px"></video></div>
+<div style="margin-top:6px"><video src="{{ route('member.chat.attachment.download', $att) }}" controls style="max-width:220px;border-radius:12px"></video></div>
 @elseif(str_starts_with($att->mime_type ?? '', 'audio/'))
-<div style="margin-top:6px"><audio src="{{ asset('storage/'.$att->file_path) }}" controls style="max-width:220px"></audio></div>
+<div style="margin-top:6px"><audio src="{{ route('member.chat.attachment.download', $att) }}" controls style="max-width:220px"></audio></div>
 @else
-<div style="font-size:12px;margin-top:6px"><a href="{{ asset('storage/'.$att->file_path) }}" target="_blank" rel="noopener">{{ $att->file_name ?? 'Unduh lampiran' }}</a></div>
+<div style="font-size:12px;margin-top:6px"><a href="{{ route('member.chat.attachment.download', $att) }}" target="_blank" rel="noopener">{{ $att->file_name ?? 'Unduh lampiran' }}</a></div>
 @endif
 @endforeach
 @endif

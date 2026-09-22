@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\Importance;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnswerQuestionnaireRequest;
 use App\Http\Requests\PartnerPreferenceRequest;
 use App\Jobs\RecalculateMatches;
 use App\Models\Question;
 use App\Models\QuestionnaireAnswer;
+use App\Models\QuestionOption;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -42,15 +44,16 @@ class PreferenceController extends Controller
             $out = [];
             foreach ($request->input('answers', []) as $row) {
                 $question = Question::findOrFail($row['question_id']);
+                $option = ! empty($row['question_option_id']) ? QuestionOption::find($row['question_option_id']) : null;
                 $out[] = QuestionnaireAnswer::updateOrCreate(
                     ['user_id' => $user->id, 'question_id' => $question->id],
                     [
                         'questionnaire_version_id' => $request->input('questionnaire_version_id', $question->questionnaire_version_id),
-                        'question_option_id' => $row['question_option_id'] ?? null,
-                        'answer_text' => $row['answer_text'] ?? null,
-                        'answer_value' => $row['answer_value'] ?? null,
-                        'answer_score' => $row['answer_score'] ?? null,
-                        'importance' => $row['importance'] ?? null,
+                        'question_option_id' => $option?->id,
+                        'answer_text' => $row['answer_text'] ?? $option?->option_text,
+                        'answer_value' => $row['answer_value'] ?? $option?->option_value,
+                        'answer_score' => $row['answer_score'] ?? $option?->score ?? 0,
+                        'importance' => $row['importance'] ?? Importance::Neutral,
                     ]
                 );
             }

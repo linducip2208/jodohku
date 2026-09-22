@@ -22,9 +22,38 @@ class BiroJodohController extends Controller
 {
     // ---- Courtship (tahapan taaruf) ----
 
+    protected function html(Request $request, $data, string $view, array $extra = [])
+    {
+        if ($request->wantsJson()) {
+            return response()->json($data);
+        }
+
+        return view($view, array_merge(['data' => $data], $extra));
+    }
+
+    protected function mutate(Request $request, $data, string $message, int $code = 200)
+    {
+        if ($request->wantsJson()) {
+            return response()->json($data, $code);
+        }
+
+        return back()->with('status', $message);
+    }
+
+    protected function fail(Request $request, string $message, int $code = 422)
+    {
+        if ($request->wantsJson()) {
+            return response()->json(['message' => $message], $code);
+        }
+
+        return back()->withErrors(['action' => $message]);
+    }
+
     public function courtships(Request $request, CourtshipService $courtships)
     {
-        return response()->json($courtships->forUser($request->user(), (int) $request->query('per_page', 20)));
+        $items = $courtships->forUser($request->user(), (int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.courtships');
     }
 
     public function startCourtship(Request $request, CourtshipService $courtships)
@@ -46,17 +75,21 @@ class BiroJodohController extends Controller
         try {
             $courtship = $courtships->start($request->user(), $partner, $request->only(['conversation_id', 'guardian_name', 'guardian_phone', 'guardian_relation']));
         } catch (\InvalidArgumentException|\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
 
-        return response()->json($courtship->load(['initiator', 'partner']), 201);
+        return $this->mutate($request, $courtship->load(['initiator', 'partner']), 'Taaruf dimulai. Semoga dimudahkan.', 201);
     }
 
-    public function showCourtship(Request $request, Courtship $courtship)
+    public function showCourtship(Request $request, Courtship $courtship, MarriageJourneyService $journey)
     {
         $this->authorize('view', $courtship);
+        $courtship->load(['initiator', 'partner', 'match', 'conversation']);
+        $other = (int) $courtship->initiator_id === (int) $request->user()->id ? $courtship->partner : $courtship->initiator;
 
-        return response()->json($courtship->load(['initiator', 'partner', 'match', 'conversation']));
+        return $this->html($request, $courtship, 'member.biro-jodoh.courtship-show', [
+            'journey' => $other ? $journey->journey($request->user(), $other) : null,
+        ]);
     }
 
     public function journey(Request $request, User $partner, MarriageJourneyService $journey)
@@ -79,20 +112,24 @@ class BiroJodohController extends Controller
     {
         $this->authorize('manage', $courtship);
         try {
-            return response()->json($courtships->advance($courtship, $request->user()));
+            $advanced = $courtships->advance($courtship, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $advanced, 'Tahap taaruf diperbarui ke '.$advanced->stage->label().'.');
     }
 
     public function withdrawCourtship(Request $request, Courtship $courtship, CourtshipService $courtships)
     {
         $this->authorize('manage', $courtship);
         try {
-            return response()->json($courtships->withdraw($courtship, $request->user()));
+            $withdrawn = $courtships->withdraw($courtship, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $withdrawn, 'Taaruf diakhiri dengan baik.');
     }
 
     public function setGuardian(Request $request, Courtship $courtship, CourtshipService $courtships)
@@ -104,20 +141,24 @@ class BiroJodohController extends Controller
             'guardian_relation' => ['nullable', 'string', 'max:60'],
         ]);
         try {
-            return response()->json($courtships->setGuardian($courtship, $request->user(), $request->only(['guardian_name', 'guardian_phone', 'guardian_relation'])));
+            $updated = $courtships->setGuardian($courtship, $request->user(), $request->only(['guardian_name', 'guardian_phone', 'guardian_relation']));
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $updated, 'Data wali disimpan.');
     }
 
     public function approveGuardian(Request $request, Courtship $courtship, CourtshipService $courtships)
     {
         $this->authorize('manage', $courtship);
         try {
-            return response()->json($courtships->approveGuardian($courtship, $request->user()));
+            $approved = $courtships->approveGuardian($courtship, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $approved, 'Restu wali dicatat.');
     }
 
     public function addChaperone(Request $request, Courtship $courtship, CourtshipService $courtships)
@@ -126,10 +167,12 @@ class BiroJodohController extends Controller
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
         $guardian = User::findOrFail($request->integer('user_id'));
         try {
-            return response()->json($courtships->addChaperone($courtship, $guardian, $request->user()), 201);
+            $withChaperone = $courtships->addChaperone($courtship, $guardian, $request->user());
         } catch (\InvalidArgumentException|\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $withChaperone, 'Wali ditambahkan sebagai pendamping.', 201);
     }
 
     public function removeChaperone(Request $request, Courtship $courtship, CourtshipService $courtships)
@@ -138,17 +181,21 @@ class BiroJodohController extends Controller
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
         $guardian = User::findOrFail($request->integer('user_id'));
         try {
-            return response()->json($courtships->removeChaperone($courtship, $guardian, $request->user()));
+            $removed = $courtships->removeChaperone($courtship, $guardian, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $removed, 'Pendamping dihapus.');
     }
 
     // ---- Counselor consultations ----
 
     public function counselors(Request $request, ConsultationService $consultations)
     {
-        return response()->json($consultations->counselors((int) $request->query('per_page', 20)));
+        $items = $consultations->counselors((int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.counselors');
     }
 
     public function bookConsultation(Request $request, ConsultationService $consultations)
@@ -166,10 +213,10 @@ class BiroJodohController extends Controller
         try {
             $consultation = $consultations->book($request->user(), $counselor, $request->only(['topic', 'notes', 'scheduled_at', 'duration_minutes', 'share_report', 'shared_report_id']));
         } catch (\InvalidArgumentException|\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
 
-        return response()->json($consultation->load(['counselor.user']), 201);
+        return $this->mutate($request, $consultation->load(['counselor.user']), 'Konsultasi berhasil dibooking.', 201);
     }
 
     public function counselorBookings(Request $request, ConsultationService $consultations)
@@ -183,7 +230,9 @@ class BiroJodohController extends Controller
 
     public function consultations(Request $request, ConsultationService $consultations)
     {
-        return response()->json($consultations->forUser($request->user(), (int) $request->query('per_page', 20)));
+        $items = $consultations->forUser($request->user(), (int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.consultations');
     }
 
     public function confirmConsultation(Request $request, Consultation $consultation, ConsultationService $consultations)
@@ -191,10 +240,12 @@ class BiroJodohController extends Controller
         $this->authorize('manage', $consultation);
         abort_unless((int) $consultation->counselor?->user_id === (int) $request->user()->id || $request->user()->isStaff(), 403);
         try {
-            return response()->json($consultations->confirm($consultation, $request->user()));
+            $confirmed = $consultations->confirm($consultation, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $confirmed, 'Konsultasi dikonfirmasi.');
     }
 
     public function completeConsultation(Request $request, Consultation $consultation, ConsultationService $consultations)
@@ -202,27 +253,33 @@ class BiroJodohController extends Controller
         $this->authorize('manage', $consultation);
         abort_unless((int) $consultation->counselor?->user_id === (int) $request->user()->id || $request->user()->isStaff(), 403);
         try {
-            return response()->json($consultations->complete($consultation, $request->user()));
+            $completed = $consultations->complete($consultation, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $completed, 'Konsultasi selesai.');
     }
 
     public function cancelConsultation(Request $request, Consultation $consultation, ConsultationService $consultations)
     {
         $this->authorize('manage', $consultation);
         try {
-            return response()->json($consultations->cancel($consultation, $request->user()));
+            $cancelled = $consultations->cancel($consultation, $request->user());
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
+
+        return $this->mutate($request, $cancelled, 'Konsultasi dibatalkan.');
     }
 
     // ---- Compatibility reports ----
 
     public function reports(Request $request, CompatibilityReportService $reports)
     {
-        return response()->json($reports->forUser($request->user(), (int) $request->query('per_page', 20)));
+        $items = $reports->forUser($request->user(), (int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.reports');
     }
 
     public function generateReport(Request $request, CompatibilityReportService $reports)
@@ -233,24 +290,26 @@ class BiroJodohController extends Controller
         try {
             $report = $reports->generate($request->user(), $candidate);
         } catch (\InvalidArgumentException|\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->fail($request, $e->getMessage());
         }
 
-        return response()->json($report->load('candidate'), 201);
+        return $this->mutate($request, $report->load('candidate'), 'Laporan kecocokan dibuat.', 201);
     }
 
     public function showReport(Request $request, CompatibilityReport $report)
     {
         $this->authorize('view', $report);
 
-        return response()->json($report->load('candidate'));
+        return $this->html($request, $report->load('candidate'), 'member.biro-jodoh.report-show');
     }
 
     // ---- Success stories ----
 
     public function stories(Request $request, SuccessStoryService $stories)
     {
-        return response()->json($stories->published((int) $request->query('per_page', 20)));
+        $items = $stories->published((int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.stories');
     }
 
     public function submitStory(Request $request, SuccessStoryService $stories)
@@ -260,11 +319,13 @@ class BiroJodohController extends Controller
             'story' => ['required', 'string', 'min:50', 'max:5000'],
         ]);
 
-        return response()->json($stories->submit($request->user(), $request->only(['partner_name', 'story'])), 201);
+        return $this->mutate($request, $stories->submit($request->user(), $request->only(['partner_name', 'story'])), 'Kisah terkirim, menunggu moderasi.', 201);
     }
 
     public function myStories(Request $request, SuccessStoryService $stories)
     {
-        return response()->json($stories->mine($request->user(), (int) $request->query('per_page', 20)));
+        $items = $stories->mine($request->user(), (int) $request->query('per_page', 20));
+
+        return $this->html($request, $items, 'member.biro-jodoh.stories-mine');
     }
 }

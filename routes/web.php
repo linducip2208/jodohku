@@ -4,6 +4,7 @@ use App\Enums\EventStatus;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\VerificationController;
+use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\EventController;
@@ -275,6 +276,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         return back();
     });
     Route::post('/chat/{conversation}/attachments', [MessageController::class, 'upload'])->name('member.chat.attachments');
+    Route::get('/chat/attachments/{attachment}', [MessageController::class, 'download'])->name('member.chat.attachment.download');
     Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels'])->name('member.chat.labels');
     Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel'])->name('member.chat.labels.add');
     Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel'])->name('member.chat.labels.remove');
@@ -419,6 +421,22 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->name('member.events.rsvp');
     Route::get('/events/{event}/attendees', [EventController::class, 'attendees'])->name('member.events.attendees');
     Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
+
+    Route::get('/biro-jodoh/taaruf', [BiroJodohController::class, 'courtships'])->name('member.biro-jodoh.courtships');
+    Route::get('/biro-jodoh/taaruf/{courtship}', [BiroJodohController::class, 'showCourtship'])->name('member.biro-jodoh.courtship');
+    Route::post('/biro-jodoh/taaruf/{courtship}/lanjut', [BiroJodohController::class, 'advanceCourtship'])->name('member.biro-jodoh.advance');
+    Route::post('/biro-jodoh/taaruf/{courtship}/mundur', [BiroJodohController::class, 'withdrawCourtship'])->name('member.biro-jodoh.withdraw');
+    Route::put('/biro-jodoh/taaruf/{courtship}/wali', [BiroJodohController::class, 'setGuardian'])->name('member.biro-jodoh.guardian');
+    Route::post('/biro-jodoh/taaruf/{courtship}/wali/setuju', [BiroJodohController::class, 'approveGuardian'])->name('member.biro-jodoh.guardian.approve');
+    Route::get('/biro-jodoh/konselor', [BiroJodohController::class, 'counselors'])->name('member.biro-jodoh.counselors');
+    Route::get('/biro-jodoh/konsultasi', [BiroJodohController::class, 'consultations'])->name('member.biro-jodoh.consultations');
+    Route::post('/biro-jodoh/konsultasi', [BiroJodohController::class, 'bookConsultation'])->name('member.biro-jodoh.consultations.book');
+    Route::post('/biro-jodoh/konsultasi/{consultation}/batal', [BiroJodohController::class, 'cancelConsultation'])->name('member.biro-jodoh.consultations.cancel');
+    Route::get('/biro-jodoh/laporan', [BiroJodohController::class, 'reports'])->name('member.biro-jodoh.reports');
+    Route::get('/biro-jodoh/laporan/{report}', [BiroJodohController::class, 'showReport'])->name('member.biro-jodoh.report');
+    Route::get('/biro-jodoh/kisah', [BiroJodohController::class, 'stories'])->name('member.biro-jodoh.stories');
+    Route::get('/biro-jodoh/kisah/saya', [BiroJodohController::class, 'myStories'])->name('member.biro-jodoh.stories.mine');
+    Route::post('/biro-jodoh/kisah', [BiroJodohController::class, 'submitStory'])->name('member.biro-jodoh.stories.submit');
 
     Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
     Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');

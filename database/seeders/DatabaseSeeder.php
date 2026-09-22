@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             TriggerSeeder::class,
             CouponBlogForumSeeder::class,
             DemoInteractionSeeder::class,
+            BiroJodohSeeder::class,
         ]);
     }
 }
