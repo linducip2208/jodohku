@@ -13,9 +13,20 @@ use Illuminate\Http\Request;
 
 class BiroJodohAdminController extends Controller
 {
+    protected function respond(Request $request, $data, string $view, string $key = 'items')
+    {
+        if ($request->wantsJson()) {
+            return response()->json($data);
+        }
+
+        return view($view, [$key => $data]);
+    }
+
     public function courtships(Request $request)
     {
-        return response()->json(Courtship::with(['initiator', 'partner'])->latest('id')->paginate(25));
+        $items = Courtship::with(['initiator', 'partner'])->latest('id')->paginate(25);
+
+        return $this->respond($request, $items, 'admin.biro-jodoh.courtships');
     }
 
     public function counselors(Request $request, AuditService $audit)
@@ -32,10 +43,14 @@ class BiroJodohAdminController extends Controller
             );
             $audit->log('admin.counselor.saved', $request->user(), $counselor);
 
-            return response()->json($counselor, 201);
+            return $request->wantsJson()
+                ? response()->json($counselor, 201)
+                : back()->with('status', 'Konselor disimpan.');
         }
 
-        return response()->json(Counselor::with('user')->orderBy('id')->paginate(25));
+        $items = Counselor::with('user')->orderBy('id')->paginate(25);
+
+        return $this->respond($request, $items, 'admin.biro-jodoh.counselors');
     }
 
     public function updateCounselor(Request $request, Counselor $counselor, AuditService $audit)
@@ -48,17 +63,23 @@ class BiroJodohAdminController extends Controller
         ]));
         $audit->log('admin.counselor.updated', $request->user(), $counselor, $before, []);
 
-        return response()->json($counselor->fresh());
+        return $request->wantsJson()
+            ? response()->json($counselor->fresh())
+            : back()->with('status', 'Konselor diperbarui.');
     }
 
     public function consultations(Request $request)
     {
-        return response()->json(Consultation::with(['counselor.user', 'user'])->latest('scheduled_at')->paginate(25));
+        $items = Consultation::with(['counselor.user', 'user'])->latest('scheduled_at')->paginate(25);
+
+        return $this->respond($request, $items, 'admin.biro-jodoh.consultations');
     }
 
     public function stories(Request $request, SuccessStoryService $stories)
     {
-        return response()->json($stories->queue((int) $request->query('per_page', 25)));
+        $items = $stories->queue((int) $request->query('per_page', 25));
+
+        return $this->respond($request, $items, 'admin.biro-jodoh.stories');
     }
 
     public function moderateStory(Request $request, SuccessStory $story, SuccessStoryService $stories, AuditService $audit)
@@ -72,7 +93,9 @@ class BiroJodohAdminController extends Controller
         }
         $audit->log('admin.success_story.moderated', $request->user(), $story, [], ['action' => $action]);
 
-        return response()->json($story->fresh());
+        return $request->wantsJson()
+            ? response()->json($story->fresh())
+            : back()->with('status', 'Kisah dimoderasi: '.$action.'.');
     }
 
     public function stats(Request $request)

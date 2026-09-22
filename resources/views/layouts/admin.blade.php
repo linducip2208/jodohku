@@ -64,6 +64,10 @@
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/community/events*') ? ' active' : '' }}" href="/admin/community/events"><span class="nav-link-icon"><i class="ti ti-calendar-event"></i></span> Events</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/community/forums*') ? ' active' : '' }}" href="/admin/community/forums"><span class="nav-link-icon"><i class="ti ti-messages"></i></span> Forums</a></li>
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/community/blogs*') ? ' active' : '' }}" href="/admin/community/blogs"><span class="nav-link-icon"><i class="ti ti-news"></i></span> Blogs</a></li>
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/biro-jodoh/courtships*') ? ' active' : '' }}" href="/admin/biro-jodoh/courtships"><span class="nav-link-icon"><i class="ti ti-heart-handshake"></i></span> Taaruf</a></li>
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/biro-jodoh/counselors*') ? ' active' : '' }}" href="/admin/biro-jodoh/counselors"><span class="nav-link-icon"><i class="ti ti-headset"></i></span> Counselors</a></li>
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/biro-jodoh/consultations*') ? ' active' : '' }}" href="/admin/biro-jodoh/consultations"><span class="nav-link-icon"><i class="ti ti-calendar-event"></i></span> Consultations</a></li>
+<li class="nav-item"><a class="nav-link{{ request()->is('admin/biro-jodoh/stories*') ? ' active' : '' }}" href="/admin/biro-jodoh/stories"><span class="nav-link-icon"><i class="ti ti-heart"></i></span> Stories</a></li>
 @endcan
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/notifications*') ? ' active' : '' }}" href="/admin/notifications"><span class="nav-link-icon"><i class="ti ti-bell"></i></span> Notifications</a></li>
 @can('moderator')

@@ -16,13 +16,53 @@
 @if(in_array($peerRisk ?? null, ['medium', 'high'], true))
 <div class="jk-alert err" role="alert">Perhatikan keamanan saat berkomunikasi. Jangan kirim uang atau kode OTP kepada orang lain.</div>
 @endif
+@if(!empty($activeCall))
+<div class="jk-section" role="alert" style="border-left:4px solid #ec4899">
+<div class="jk-h2">{{ $activeCall->type === 'video' ? 'Panggilan video' : 'Panggilan suara' }} — {{ $activeCall->status->label() }}</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+@if($activeCall->status->value === 'ringing' && (int) $activeCall->receiver_id === (int) ($me?->id))
+<button class="jk-btn jk-btn-like" style="padding:8px 16px" wire:click="answerCall({{ $activeCall->id }}, 'accept')">Angkat</button>
+<button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'reject')">Tolak</button>
+@elseif($activeCall->status->value === 'ringing')
+<button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'cancel')">Batalkan</button>
+@else
+<button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'end')">Akhiri</button>
+@endif
+</div>
+</div>
+@endif
+@if(($scheduledItems ?? collect())->isNotEmpty())
+<div class="jk-section"><div class="jk-h2">Terjadwal ({{ $scheduledItems->count() }})</div>
+@foreach($scheduledItems as $s)
+<div style="display:flex;gap:8px;align-items:center;font-size:12px;margin-top:4px">
+<span class="jk-muted">{{ $s->send_at?->format('d M H:i') }}</span><span style="flex:1">{{ \Illuminate\Support\Str::limit($s->body, 60) }}</span>
+<button class="jk-pill" wire:click="cancelScheduled({{ $s->id }})">Batal</button>
+</div>
+@endforeach
+</div>
+@endif
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px" id="msgList">
 @foreach($messages as $m)
 @php $mine = $me && $m->sender_id === $me->id; @endphp
 <div style="display:flex;{{ $mine ? 'justify-content:flex-end' : 'justify-content:flex-start' }}">
 <div class="jk-bubble {{ $mine ? 'me' : 'them' }}">
 @if($m->replyTo)<div style="font-size:11px;opacity:.75;border-left:2px solid currentColor;padding-left:6px;margin-bottom:4px">{{ \Illuminate\Support\Str::limit($m->replyTo->body ?? '', 60) }}</div>@endif
+@if($m->type === 'sticker')
+<div style="font-size:44px;line-height:1">{{ $m->body }}</div>
+@elseif($m->type === 'poll')
+<div><strong>{{ $m->body }}</strong></div>
+<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">
+@foreach(($m->metadata['options'] ?? []) as $idx => $opt)
+<button wire:click="votePoll({{ $m->id }}, {{ $idx }})" style="text-align:left;background:rgba(127,127,127,.12);border:0;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px">{{ $opt }}@if(isset($pollResults[$m->id])) ({{ $pollResults[$m->id]['options'][$idx]['votes'] ?? 0 }})@endif</button>
+@endforeach
+</div>
+@if(isset($pollResults[$m->id]))<div class="jk-muted" style="font-size:11px;margin-top:4px">Total {{ $pollResults[$m->id]['total_votes'] }} suara</div>@endif
+@else
 <div>{{ $m->body }}</div>
+@endif
+@isset($translations[$m->id])
+<div style="font-size:11px;opacity:.8;border-top:1px dashed currentColor;margin-top:4px;padding-top:4px">Terjemahan: {{ $translations[$m->id] }}</div>
+@endisset
 @if($m->attachments->count())
 @foreach($m->attachments as $att)
 @if(str_starts_with($att->mime_type ?? '', 'image/'))
@@ -47,7 +87,12 @@
 <button wire:click="react({{ $m->id }}, '❤️')" style="background:none;border:0;cursor:pointer" aria-label="Suka">❤️</button>
 <button wire:click="react({{ $m->id }}, '😂')" style="background:none;border:0;cursor:pointer" aria-label="Tertawa">😂</button>
 <button wire:click="react({{ $m->id }}, '😮')" style="background:none;border:0;cursor:pointer" aria-label="Kagum">😮</button>
+<button wire:click="translate({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Terjemahkan">Terjemahkan</button>
 <button wire:click="delete({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Hapus pesan">Hapus</button>
+</div>
+@else
+<div style="margin-top:4px;display:flex;gap:6px;font-size:11px">
+<button wire:click="translate({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Terjemahkan">Terjemahkan</button>
 </div>
 @endif
 </div>
@@ -76,6 +121,46 @@
 <button class="jk-pill" style="flex:none" type="submit">Kirim Gift</button>
 </form>
 @error('giftCode')<div class="jk-alert err">{{ $message }}</div>@enderror
+<details style="margin-top:8px">
+<summary class="jk-pill" style="cursor:pointer;display:inline-block" aria-label="Opsi lanjutan">Opsi lanjutan</summary>
+<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+<form wire:submit.prevent="schedule" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+<div style="flex:2;min-width:180px"><label class="jk-muted" style="font-size:11px" for="sched-body">Jadwalkan pesan</label><input id="sched-body" class="jk-input" style="width:100%" wire:model="scheduleBody" placeholder="Tulis pesan terjadwal..." maxlength="2000"></div>
+<div><label class="jk-muted" style="font-size:11px" for="sched-at">Waktu kirim</label><input id="sched-at" class="jk-input" type="datetime-local" wire:model="scheduleAt"></div>
+<button class="jk-pill" type="submit">Jadwalkan</button>
+</form>
+@error('scheduleBody')<div class="jk-alert err">{{ $message }}</div>@enderror
+<form wire:submit.prevent="sendSticker" style="display:flex;gap:8px;align-items:flex-end">
+<div style="flex:1"><label class="jk-muted" style="font-size:11px" for="sticker-pick">Stiker</label><select id="sticker-pick" class="jk-input" style="width:100%" wire:model="sticker">
+<option value="">Pilih stiker…</option>
+@foreach(($stickerCatalog ?? []) as $st)<option value="{{ $st['emoji'] }}">{{ $st['emoji'] }} {{ $st['name'] }}</option>@endforeach
+</select></div>
+<button class="jk-pill" type="submit">Kirim Stiker</button>
+</form>
+@error('sticker')<div class="jk-alert err">{{ $message }}</div>@enderror
+<form wire:submit.prevent="sendPoll" style="display:flex;flex-direction:column;gap:6px">
+<label class="jk-muted" style="font-size:11px" for="poll-q">Polling baru (satu opsi per baris, min 2)</label>
+<input id="poll-q" class="jk-input" wire:model="pollQuestion" placeholder="Pertanyaan polling..." maxlength="300">
+<textarea class="jk-input" wire:model="pollOptions" rows="2" placeholder="Opsi 1&#10;Opsi 2"></textarea>
+<div><button class="jk-pill" type="submit">Kirim Polling</button></div>
+</form>
+@error('pollQuestion')<div class="jk-alert err">{{ $message }}</div>@enderror
+<form wire:submit.prevent="setDisappearing" style="display:flex;gap:8px;align-items:flex-end">
+<div style="flex:1"><label class="jk-muted" style="font-size:11px" for="disappear-sel">Pesan menghilang</label><select id="disappear-sel" class="jk-input" style="width:100%" wire:model="disappearing">
+<option value="">Mati</option>
+<option value="3600">1 jam</option>
+<option value="86400">1 hari</option>
+<option value="604800">7 hari</option>
+</select></div>
+<button class="jk-pill" type="submit">Simpan</button>
+</form>
+@error('disappearing')<div class="jk-alert err">{{ $message }}</div>@enderror
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button class="jk-pill" wire:click="inviteCall('voice')" title="Panggilan suara berbayar token">Voice Call</button>
+<button class="jk-pill" wire:click="inviteCall('video')" title="Panggilan video berbayar token">Video Call</button>
+</div>
+</div>
+</details>
 <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
 <form method="POST" action="/chat/{{ $conv->id }}/unmatch" onsubmit="return confirm('Yakin unmatch? Percakapan akan diarsipkan.')">@csrf<button class="jk-pill" type="submit">Unmatch</button></form>
 <form method="POST" action="/safety/block" onsubmit="return confirm('Blokir user ini? Kamu tidak akan saling melihat lagi.')">@csrf<input type="hidden" name="user_id" value="{{ $other?->id }}"><button class="jk-pill" type="submit">Block</button></form>
