@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Forum;
+use App\Models\ForumReply;
 use App\Models\ForumThread;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ForumController extends Controller
@@ -71,6 +73,57 @@ class ForumController extends Controller
         }
 
         return response()->json($reply, 201);
+    }
+
+    public function updateThread(Request $request, int $thread)
+    {
+        $t = ForumThread::findOrFail($thread);
+        $this->authorizeOwner($request->user(), (int) $t->user_id);
+        if ($t->is_locked && ! $request->user()->isStaff()) {
+            return response()->json(['message' => 'Thread is locked.'], 422);
+        }
+        $t->update($request->validate([
+            'title' => ['sometimes', 'string', 'max:220'],
+            'body' => ['sometimes', 'string', 'max:20000'],
+        ]));
+
+        return response()->json($t->fresh());
+    }
+
+    public function destroyThread(Request $request, int $thread)
+    {
+        $t = ForumThread::findOrFail($thread);
+        $this->authorizeOwner($request->user(), (int) $t->user_id);
+        $t->delete();
+
+        return response()->json(['message' => 'Thread deleted.']);
+    }
+
+    public function updateReply(Request $request, int $reply)
+    {
+        $r = ForumReply::findOrFail($reply);
+        $this->authorizeOwner($request->user(), (int) $r->user_id);
+        $r->update($request->validate(['body' => ['required', 'string', 'max:10000']]));
+
+        return response()->json($r->fresh());
+    }
+
+    public function destroyReply(Request $request, int $reply)
+    {
+        $r = ForumReply::findOrFail($reply);
+        $this->authorizeOwner($request->user(), (int) $r->user_id);
+        $thread = $r->thread;
+        $r->delete();
+        if ($thread) {
+            $thread->update(['reply_count' => max(0, (int) $thread->reply_count - 1)]);
+        }
+
+        return response()->json(['message' => 'Reply deleted.']);
+    }
+
+    protected function authorizeOwner(User $user, int $ownerId): void
+    {
+        abort_unless((int) $user->id === $ownerId || $user->isStaff(), 403);
     }
 
     public function trending(Request $request)

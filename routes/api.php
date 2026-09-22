@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\AiAssistantController;
+use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\BlogController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\EventController;
@@ -67,6 +68,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/discover/picks/reset', [DiscoveryController::class, 'resetPicks']);
         Route::get('/matches', [DiscoveryController::class, 'matches']);
         Route::get('/matches/{user}/explain', [DiscoveryController::class, 'explain']);
+        Route::get('/matches/{user}/score-cache', [DiscoveryController::class, 'scoreCache']);
         Route::post('/matches/batch-score', [DiscoveryController::class, 'batchScore']);
         Route::get('/matches/stats', [DiscoveryController::class, 'stats']);
         Route::get('/matches/history', [DiscoveryController::class, 'history']);
@@ -145,6 +147,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/blocks', [AccountController::class, 'blocks']);
 
         Route::get('/gifts', [AccountController::class, 'gifts']);
+        Route::get('/gifts/leaderboard', [AccountController::class, 'giftsLeaderboard']);
+        Route::get('/gifts/trending', [AccountController::class, 'giftsTrending']);
         Route::post('/gifts/send', [AccountController::class, 'storeGift'])->middleware('throttle:10,1,gift-send');
         Route::get('/gifts/received', [AccountController::class, 'giftsReceived']);
         Route::get('/gifts/sent', [AccountController::class, 'giftsSent']);
@@ -179,6 +183,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1,forum-threads');
         Route::get('/forum-threads/{thread}', [ForumController::class, 'show']);
         Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1,forum-replies');
+        Route::put('/forum-threads/{thread}', [ForumController::class, 'updateThread']);
+        Route::delete('/forum-threads/{thread}', [ForumController::class, 'destroyThread']);
+        Route::put('/forum-replies/{reply}', [ForumController::class, 'updateReply']);
+        Route::delete('/forum-replies/{reply}', [ForumController::class, 'destroyReply']);
 
         Route::get('/events/upcoming', [EventController::class, 'upcoming']);
         Route::get('/events/mine', [EventController::class, 'mine']);
@@ -188,6 +196,29 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
         Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
         Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
+
+        Route::get('/courtships', [BiroJodohController::class, 'courtships']);
+        Route::post('/courtships', [BiroJodohController::class, 'startCourtship'])->middleware('throttle:10,1,courtships');
+        Route::get('/courtships/{courtship}', [BiroJodohController::class, 'showCourtship']);
+        Route::post('/courtships/{courtship}/advance', [BiroJodohController::class, 'advanceCourtship']);
+        Route::post('/courtships/{courtship}/withdraw', [BiroJodohController::class, 'withdrawCourtship']);
+        Route::put('/courtships/{courtship}/guardian', [BiroJodohController::class, 'setGuardian']);
+        Route::post('/courtships/{courtship}/guardian/approve', [BiroJodohController::class, 'approveGuardian']);
+
+        Route::get('/counselors', [BiroJodohController::class, 'counselors']);
+        Route::post('/consultations', [BiroJodohController::class, 'bookConsultation'])->middleware('throttle:10,1,consultations');
+        Route::get('/consultations', [BiroJodohController::class, 'consultations']);
+        Route::post('/consultations/{consultation}/confirm', [BiroJodohController::class, 'confirmConsultation']);
+        Route::post('/consultations/{consultation}/complete', [BiroJodohController::class, 'completeConsultation']);
+        Route::post('/consultations/{consultation}/cancel', [BiroJodohController::class, 'cancelConsultation']);
+
+        Route::get('/compatibility-reports', [BiroJodohController::class, 'reports']);
+        Route::post('/compatibility-reports', [BiroJodohController::class, 'generateReport'])->middleware('throttle:20,1,compatibility-reports');
+        Route::get('/compatibility-reports/{report}', [BiroJodohController::class, 'showReport']);
+
+        Route::get('/success-stories', [BiroJodohController::class, 'stories']);
+        Route::get('/success-stories/mine', [BiroJodohController::class, 'myStories']);
+        Route::post('/success-stories', [BiroJodohController::class, 'submitStory'])->middleware('throttle:5,1,success-stories');
 
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])

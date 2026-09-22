@@ -263,6 +263,22 @@ class AccountController extends Controller
         return response()->json($gifts->stats($request->user()));
     }
 
+    public function giftsLeaderboard(Request $request, GiftService $gifts)
+    {
+        $request->validate(['period' => ['nullable', 'string', 'in:all,month,week'], 'limit' => ['nullable', 'integer', 'min:1', 'max:50']]);
+
+        return response()->json($gifts->leaderboard(
+            $request->input('period', 'all'), (int) $request->input('limit', 10)
+        ));
+    }
+
+    public function giftsTrending(Request $request, GiftService $gifts)
+    {
+        $request->validate(['limit' => ['nullable', 'integer', 'min:1', 'max:50']]);
+
+        return response()->json($gifts->trending((int) $request->input('limit', 10)));
+    }
+
     public function plansMatrix(MembershipService $membership)
     {
         return response()->json($membership->featureMatrix());

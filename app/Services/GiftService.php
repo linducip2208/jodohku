@@ -32,6 +32,37 @@ class GiftService
             ->latest('id')->paginate($perPage);
     }
 
+    /** Top senders & receivers; period: all|month|week. */
+    public function leaderboard(string $period = 'all', int $limit = 10): array
+    {
+        $limit = max(1, min(50, $limit));
+        $window = fn ($q) => match ($period) {
+            'week' => $q->where('created_at', '>', now()->subWeek()),
+            'month' => $q->where('created_at', '>', now()->subMonth()),
+            default => $q,
+        };
+        $topSenders = $window(GiftTransaction::with('sender'))
+            ->selectRaw('sender_id, COUNT(*) as total, SUM(credits_spent) as spent')
+            ->groupBy('sender_id')->orderByDesc('total')->limit($limit)->get()
+            ->map(fn ($t) => ['user_id' => $t->sender_id, 'name' => $t->sender?->displayName(), 'gifts' => (int) $t->total, 'credits_spent' => (float) $t->spent])->all();
+        $topReceivers = $window(GiftTransaction::with('receiver'))
+            ->selectRaw('receiver_id, COUNT(*) as total')
+            ->groupBy('receiver_id')->orderByDesc('total')->limit($limit)->get()
+            ->map(fn ($t) => ['user_id' => $t->receiver_id, 'name' => $t->receiver?->displayName(), 'gifts' => (int) $t->total])->all();
+
+        return ['period' => $period, 'top_senders' => $topSenders, 'top_receivers' => $topReceivers];
+    }
+
+    /** Most-sent gifts in the last 30 days. */
+    public function trending(int $limit = 10): array
+    {
+        return GiftTransaction::with('gift')
+            ->where('created_at', '>', now()->subDays(30))
+            ->selectRaw('gift_id, COUNT(*) as total, SUM(quantity) as qty')
+            ->groupBy('gift_id')->orderByDesc('total')->limit(max(1, min(50, $limit)))->get()
+            ->map(fn ($t) => ['gift' => $t->gift?->only(['code', 'name', 'credit_price']), 'transactions' => (int) $t->total, 'quantity' => (int) $t->qty])->all();
+    }
+
     public function stats(User $user): array
     {
         return [

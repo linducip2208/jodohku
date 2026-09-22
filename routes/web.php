@@ -410,6 +410,10 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/forums/search', [ForumController::class, 'search'])->name('member.forums.search');
     Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->name('member.forums.threads.store');
     Route::post('/forums/thread/{thread}/reply', [ForumController::class, 'reply'])->name('member.forums.thread.reply');
+    Route::put('/forums/thread/{thread}', [ForumController::class, 'updateThread'])->name('member.forums.thread.update');
+    Route::delete('/forums/thread/{thread}', [ForumController::class, 'destroyThread'])->name('member.forums.thread.destroy');
+    Route::put('/forums/reply/{reply}', [ForumController::class, 'updateReply'])->name('member.forums.reply.update');
+    Route::delete('/forums/reply/{reply}', [ForumController::class, 'destroyReply'])->name('member.forums.reply.destroy');
 });
 
 /* ---------- Admin HTML views (role-gated mirrors of admin.php) ---------- */

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdController;
 use App\Http\Controllers\Admin\AiUsageController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BiroJodohAdminController;
 use App\Http\Controllers\Admin\BoostAdminController;
 use App\Http\Controllers\Admin\ChatAdminController;
 use App\Http\Controllers\Admin\CommunityAdminController;
@@ -76,6 +77,14 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
 
         Route::get('/inbox', [NotificationAdminController::class, 'inbox'])->name('inbox');
         Route::post('/inbox/{message}', [NotificationAdminController::class, 'handle'])->name('inbox.handle');
+
+        Route::get('/biro-jodoh/stats', [BiroJodohAdminController::class, 'stats'])->name('biro-jodoh.stats');
+        Route::get('/biro-jodoh/courtships', [BiroJodohAdminController::class, 'courtships'])->name('biro-jodoh.courtships');
+        Route::match(['get', 'post'], '/biro-jodoh/counselors', [BiroJodohAdminController::class, 'counselors'])->name('biro-jodoh.counselors');
+        Route::put('/biro-jodoh/counselors/{counselor}', [BiroJodohAdminController::class, 'updateCounselor'])->name('biro-jodoh.counselors.update');
+        Route::get('/biro-jodoh/consultations', [BiroJodohAdminController::class, 'consultations'])->name('biro-jodoh.consultations');
+        Route::get('/biro-jodoh/stories', [BiroJodohAdminController::class, 'stories'])->name('biro-jodoh.stories');
+        Route::post('/biro-jodoh/stories/{story}/moderate', [BiroJodohAdminController::class, 'moderateStory'])->name('biro-jodoh.stories.moderate');
     });
 
     // ---- Live chat & virtual members: operator+ ----

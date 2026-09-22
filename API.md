@@ -30,6 +30,18 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | DELETE | `/matches/{user}` | sanctum | unmatch (nonaktif + `unmatched_at`) |
 | POST | `/chat-requests/{user}` | sanctum | kirim permintaan chat (idempoten pending dua arah, tolak bila diblokir, cap harian) |
 | GET | `/forums/search?q=` | sanctum | cari thread + post + forum |
+| PUT/DELETE | `/forum-threads/{thread}`, `/forum-replies/{reply}` | sanctum | edit/hapus milik sendiri (staff boleh; locked → 422) |
+| GET | `/matches/{user}/score-cache` | sanctum | skor kompatibilitas + cache |
+| GET | `/gifts/leaderboard?period=`, `/gifts/trending` | sanctum | top pengirim/penerima + gift terlaris |
+| GET/POST | `/courtships`, `/courtships/{id}` | sanctum | tahapan taaruf kenalan→taaruf→khitbah→menikah (butuh match aktif; khitbah wajib restu wali) |
+| POST | `/courtships/{id}/advance`, `/withdraw`, `/guardian/approve` | sanctum | naik tahap, mundur, setujui wali |
+| PUT | `/courtships/{id}/guardian` | sanctum | data wali (nama/telp/hubungan) |
+| GET | `/counselors` | sanctum | konselor biro jodoh aktif |
+| GET/POST | `/consultations` | sanctum | booking konsultasi (anti double-book; jadwal masa depan) |
+| POST | `/consultations/{id}/confirm`, `/complete`, `/cancel` | sanctum | kelola status (konselor/staff; transisi dijaga) |
+| GET/POST | `/compatibility-reports` | sanctum | generate laporan kecocokan dari MatchingEngine (idempoten) |
+| GET | `/success-stories`, `/success-stories/mine` | sanctum | kisah sukses published + milik sendiri |
+| POST | `/success-stories` | sanctum | kirim kisah (moderasi admin; min 50 karakter) |
 | POST | `/events/{event}/rsvp` | sanctum | `{status: confirmed/declined/maybe}` (default confirmed) |
 | POST | `/ai/rewrite` | sanctum | tulis ulang draf (`tone`: friendly/funny/formal/romantic/confident) |
 | GET | `/ads?placement=` | sanctum | iklan servable (aktif + dalam jadwal) |
