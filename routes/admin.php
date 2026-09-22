@@ -170,6 +170,11 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
 
         Route::get('/analytics', [AnalyticsController::class, 'overview'])->name('analytics');
         Route::get('/analytics/funnel', [AnalyticsController::class, 'funnel'])->name('analytics.funnel');
+        Route::get('/analytics/kpi', [AnalyticsController::class, 'kpi'])->name('analytics.kpi');
+        Route::get('/analytics/gateways', [AnalyticsController::class, 'gateways'])->name('analytics.gateways');
+        Route::get('/analytics/top-users', [AnalyticsController::class, 'topUsers'])->name('analytics.top-users');
+        Route::get('/analytics/engagement', [AnalyticsController::class, 'engagement'])->name('analytics.engagement');
+        Route::get('/analytics/cohorts', [AnalyticsController::class, 'cohorts'])->name('analytics.cohorts');
         Route::get('/ai-usage', [AiUsageController::class, 'index'])->name('ai-usage');
 
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings');

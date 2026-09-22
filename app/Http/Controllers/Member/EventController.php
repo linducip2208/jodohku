@@ -74,6 +74,23 @@ class EventController extends Controller
         return response()->json($attendees);
     }
 
+    public function upcoming(Request $request)
+    {
+        $events = Event::where('status', 'published')
+            ->where('starts_at', '>', now())
+            ->orderBy('starts_at')->limit(20)->get();
+
+        return response()->json($events);
+    }
+
+    public function mine(Request $request)
+    {
+        $events = Event::whereHas('members', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->withCount(['members'])->orderBy('starts_at')->paginate(20);
+
+        return response()->json($events);
+    }
+
     public function nearby(Request $request)
     {
         $request->validate(['latitude' => 'required|numeric', 'longitude' => 'required|numeric', 'radius' => 'nullable|integer|min:1|max:100']);

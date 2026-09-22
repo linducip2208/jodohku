@@ -33,6 +33,37 @@ class DiscoveryService
         if (! empty($filters['education'])) {
             $query->whereHas('profile', fn ($q) => $q->where('education', 'like', '%'.$filters['education'].'%'));
         }
+        if (! empty($filters['religion'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('religion', $filters['religion']));
+        }
+        if (! empty($filters['marital_status'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('marital_status', $filters['marital_status']));
+        }
+        if (! empty($filters['relationship_goal'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('relationship_goal', $filters['relationship_goal']));
+        }
+        if (! empty($filters['height_min'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '>=', (int) $filters['height_min']));
+        }
+        if (! empty($filters['height_max'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '<=', (int) $filters['height_max']));
+        }
+        if (! empty($filters['has_photo']) && in_array($filters['has_photo'], ['1', 'true', true], true)) {
+            $query->whereHas('photos', fn ($q) => $q->where('status', 'approved'));
+        }
+        if (! empty($filters['keyword'])) {
+            $kw = (string) $filters['keyword'];
+            $query->where(function ($q) use ($kw) {
+                $q->where('name', 'like', "%{$kw}%")
+                    ->orWhere('display_name', 'like', "%{$kw}%")
+                    ->orWhere('username', 'like', "%{$kw}%")
+                    ->orWhere('city', 'like', "%{$kw}%")
+                    ->orWhereHas('profile', fn ($p) => $p->where('headline', 'like', "%{$kw}%")
+                        ->orWhere('bio', 'like', "%{$kw}%")
+                        ->orWhere('occupation', 'like', "%{$kw}%")
+                        ->orWhere('education', 'like', "%{$kw}%"));
+            });
+        }
         if (! empty($filters['verified'])) {
             $query->where('is_verified', true);
         }
@@ -106,6 +137,57 @@ class DiscoveryService
         })->values()->take($perPage);
 
         return new CursorPaginator($scored, $perPage, $pool->nextCursor(), ['path' => request()->url(), 'query' => request()->query()]);
+    }
+
+    /**
+     * Curated daily picks: top-compatibility candidates that haven't been
+     * recommended today, rotating via a per-user/day cache. Fall back to the
+     * next-best candidates once the daily pool is exhausted.
+     */
+    public function dailyPicks(User $user, int $limit = 10): array
+    {
+        $limit = min(20, max(1, $limit));
+        $cacheKey = 'discovery:picks:'.today()->toDateString().':'.$user->id;
+        $picked = (array) \Illuminate\Support\Facades\Cache::get($cacheKey, []);
+
+        $filters = ['exclude_ids' => $picked];
+        if ($user->partnerPreference?->gender_preference) {
+            $gp = $user->partnerPreference->gender_preference;
+            $filters['gender'] = $gp instanceof \BackedEnum ? $gp->value : (string) $gp;
+        }
+
+        $candidates = $this->engine->candidatesFor($user, $filters, $limit);
+
+        // Top up with non-picked candidates when preferences are empty.
+        if ($candidates->count() < $limit) {
+            $extra = $this->engine->candidatesFor($user, ['exclude_ids' => array_merge($picked, $candidates->pluck('id')->all())], $limit - $candidates->count() + 20);
+            $candidates = $candidates->merge($extra);
+        }
+
+        $picks = $candidates->take($limit)->values()->map(function (User $cand) {
+            return [
+                'user_id' => $cand->id,
+                'display_name' => $cand->displayName(),
+                'headline' => $cand->profile?->headline,
+                'city' => $cand->city,
+                'age' => $cand->age(),
+                'avatar_url' => $cand->avatarUrl(),
+                'is_premium' => (bool) $cand->is_premium,
+                'is_verified' => (bool) $cand->is_verified,
+                'compatibility_score' => $cand->compatibility,
+                'breakdown' => $cand->match_breakdown,
+            ];
+        })->all();
+
+        $newPicks = array_values(array_unique(array_merge($picked, array_column($picks, 'user_id'))));
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $newPicks, now()->endOfDay());
+
+        return $picks;
+    }
+
+    public function resetDailyPicks(User $user): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('discovery:picks:'.today()->toDateString().':'.$user->id);
     }
 
     public function distanceKm(User $a, User $b): ?float

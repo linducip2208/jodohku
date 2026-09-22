@@ -22,6 +22,35 @@ class ChatController extends Controller
         return ConversationResource::collection($items)->response();
     }
 
+    public function overview(Request $request, ChatService $chat)
+    {
+        return response()->json($chat->overview($request->user()));
+    }
+
+    public function search(Request $request, ChatService $chat)
+    {
+        $request->validate(['q' => ['required', 'string', 'max:255']]);
+
+        return response()->json($chat->searchConversations($request->user(), $request->string('q')));
+    }
+
+    public function stats(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        try {
+            return response()->json($chat->conversationStats($conversation, $request->user()));
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+    }
+
+    public function clearHistory(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        $chat->clearHistory($conversation, $request->user());
+
+        return response()->json(['message' => 'History cleared.']);
+    }
+
     public function show(Request $request, Conversation $conversation)
     {
         $this->authorize('view', $conversation);

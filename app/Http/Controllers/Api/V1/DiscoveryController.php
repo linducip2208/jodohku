@@ -17,11 +17,30 @@ class DiscoveryController extends Controller
     public function discover(Request $request, DiscoveryService $discovery)
     {
         $result = $discovery->discover($request->user(), $request->only([
-            'gender', 'city', 'education', 'verified', 'online', 'premium',
+            'gender', 'city', 'education', 'religion', 'marital_status', 'relationship_goal',
+            'height_min', 'height_max', 'has_photo', 'keyword',
+            'verified', 'online', 'premium',
             'min_age', 'max_age', 'max_distance_km', 'sort',
         ]), (int) $request->input('per_page', 20), $request->query('cursor'));
 
         return UserResource::collection($result)->response();
+    }
+
+    public function picks(Request $request, DiscoveryService $discovery)
+    {
+        $request->validate(['limit' => ['nullable', 'integer', 'min:1', 'max:20']]);
+
+        return response()->json([
+            'date' => today()->toDateString(),
+            'picks' => $discovery->dailyPicks($request->user(), (int) $request->input('limit', 10)),
+        ]);
+    }
+
+    public function resetPicks(Request $request, DiscoveryService $discovery)
+    {
+        $discovery->resetDailyPicks($request->user());
+
+        return response()->json(['message' => 'Daily picks reset.']);
     }
 
     public function matches(Request $request)

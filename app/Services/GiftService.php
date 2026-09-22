@@ -18,6 +18,32 @@ class GiftService
         return Gift::active()->get();
     }
 
+    public function received(User $user, int $perPage = 25)
+    {
+        return GiftTransaction::with(['gift', 'sender'])->where('receiver_id', $user->id)
+            ->latest('id')->paginate($perPage);
+    }
+
+    public function sent(User $user, int $perPage = 25)
+    {
+        return GiftTransaction::with(['gift', 'receiver'])->where('sender_id', $user->id)
+            ->latest('id')->paginate($perPage);
+    }
+
+    public function stats(User $user): array
+    {
+        return [
+            'gifts_received' => GiftTransaction::where('receiver_id', $user->id)->count(),
+            'gifts_sent' => GiftTransaction::where('sender_id', $user->id)->count(),
+            'credits_spent' => (float) GiftTransaction::where('sender_id', $user->id)->sum('credits_spent'),
+            'top_sender' => GiftTransaction::with('sender')->where('receiver_id', $user->id)
+                ->selectRaw('sender_id, COUNT(*) as total')->groupBy('sender_id')->orderByDesc('total')->first()?->sender?->displayName(),
+            'popular_gifts' => GiftTransaction::with('gift')
+                ->selectRaw('gift_id, COUNT(*) as total')->groupBy('gift_id')->orderByDesc('total')->limit(5)
+                ->get()->map(fn ($t) => ['gift' => $t->gift?->name, 'total' => $t->total])->all(),
+        ];
+    }
+
     public function send(User $sender, User $receiver, string $giftCode, int $quantity = 1, ?Conversation $conversation = null, ?Message $message = null, ?string $note = null): GiftTransaction
     {
         if (! config('jodohku.features.gifts', true)) {

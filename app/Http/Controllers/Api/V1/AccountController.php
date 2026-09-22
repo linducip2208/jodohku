@@ -189,6 +189,68 @@ class AccountController extends Controller
         return response()->json($gifts->catalog());
     }
 
+    public function giftsReceived(Request $request, GiftService $gifts)
+    {
+        return response()->json($gifts->received($request->user(), (int) $request->query('per_page', 25))->items());
+    }
+
+    public function giftsSent(Request $request, GiftService $gifts)
+    {
+        return response()->json($gifts->sent($request->user(), (int) $request->query('per_page', 25))->items());
+    }
+
+    public function giftsStats(Request $request, GiftService $gifts)
+    {
+        return response()->json($gifts->stats($request->user()));
+    }
+
+    public function plansMatrix(MembershipService $membership)
+    {
+        return response()->json($membership->featureMatrix());
+    }
+
+    public function plansFeatures(Request $request, MembershipService $membership)
+    {
+        return response()->json($membership->currentFeatures($request->user()));
+    }
+
+    public function aiOpeners(Request $request, User $user, AiChatAssistantService $assistant)
+    {
+        $this->authorize('view', $user);
+
+        return response()->json(['openers' => $assistant->openers($request->user(), $user)]);
+    }
+
+    public function aiDigest(Request $request, \App\Models\Conversation $conversation, AiChatAssistantService $assistant)
+    {
+        $this->authorize('view', $conversation);
+
+        return response()->json(['digest' => $assistant->digest($conversation, $request->user())]);
+    }
+
+    public function storeGift(Request $request, GiftService $gifts)
+    {
+        $request->validate([
+            'gift' => ['required', 'string'],
+            'receiver_id' => ['required', 'integer', 'exists:users,id'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
+            'conversation_id' => ['nullable', 'integer', 'exists:conversations,id'],
+            'note' => ['nullable', 'string', 'max:300'],
+        ]);
+        $receiver = User::findOrFail($request->integer('receiver_id'));
+        $conversation = $request->filled('conversation_id')
+            ? \App\Models\Conversation::findOrFail($request->integer('conversation_id'))
+            : null;
+
+        try {
+            $txn = $gifts->send($request->user(), $receiver, (string) $request->input('gift'), (int) $request->input('quantity', 1), $conversation, null, $request->input('note'));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($txn, 201);
+    }
+
     public function boost(Request $request, BoostService $boost, CreditService $credits)
     {
         if ($boost->isLive($request->user())) {

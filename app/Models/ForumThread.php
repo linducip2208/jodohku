@@ -15,7 +15,7 @@ class ForumThread extends Model
 
     protected $fillable = [
         'forum_id', 'user_id', 'title', 'body',
-        'is_pinned', 'is_locked', 'is_hidden', 'reply_count', 'last_reply_at',
+        'is_pinned', 'is_locked', 'is_hidden', 'reply_count', 'views_count', 'last_reply_at',
     ];
 
     protected function casts(): array
@@ -46,6 +46,11 @@ class ForumThread extends Model
     public function visibleReplies(): HasMany
     {
         return $this->replies()->where('is_hidden', false);
+    }
+
+    public function recordView(): void
+    {
+        $this->increment('views_count');
     }
 
     /** Append a reply; guards locked/hidden threads. Concurrency-safe counters. */

@@ -67,4 +67,44 @@ class AiChatAssistantService
 
         return trim((string) $res['text']) ?: $draft;
     }
+
+    /** Opening messages grounded on shared interests — deterministic, AI-free fallback. */
+    public function openers(User $user, User $candidate, int $count = 3): array
+    {
+        $mine = $user->interests->pluck('name');
+        $theirs = $candidate->interests->pluck('name');
+        $shared = $mine->intersect($theirs)->values()->take(2);
+
+        $openers = [];
+        foreach ($shared as $interest) {
+            $openers[] = "Aku lihat kamu juga suka {$interest}, ada rekomendasi {$interest} kesukaanmu?";
+        }
+        if ($candidate->profile?->occupation) {
+            $openers[] = "Kerjaan {$candidate->profile->occupation} pasti seru, sering lelah atau asik?";
+        }
+        if ($candidate->city && $user->city && strtolower($candidate->city) === strtolower($user->city)) {
+            $openers[] = "Kita satu kota ({$candidate->city})! Ada tempat favorit di sini?";
+        }
+        $openers[] = "Halo {$candidate->displayName()}! Aku kepo sama profil kamu, cocok banget kita kenalan 💬";
+        $openers[] = 'Boleh tahu hal apa yang paling kamu suka lakukan akhir-akhir ini?';
+
+        return array_slice(array_values(array_unique($openers)), 0, $count);
+    }
+
+    /** Short AI summary of a conversation thread for quick context. */
+    public function digest(Conversation $conversation, User $user): string
+    {
+        $history = $conversation->messages()->latest('id')->limit(20)->get()->reverse()
+            ->map(fn ($m) => mb_substr((string) $m->body, 0, 150))
+            ->implode("\n");
+        $prompt = "Ringkas percakapan berikut maksimal 3 kalimat, Bahasa Indonesia:\n{$history}";
+
+        try {
+            $res = $this->ai->chat($prompt, ['max_tokens' => 100], $user, 'digest');
+
+            return trim((string) $res['text']) ?: 'Tidak ada ringkasan yang tersedia.';
+        } catch (\Throwable) {
+            return 'Tidak ada ringkasan yang tersedia saat ini.';
+        }
+    }
 }

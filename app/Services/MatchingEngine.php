@@ -372,6 +372,40 @@ class MatchingEngine
         if (! empty($filters['city'])) {
             $query->where('city', $filters['city']);
         }
+        if (! empty($filters['education'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('education', 'like', '%'.$filters['education'].'%'));
+        }
+        if (! empty($filters['religion'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('religion', $filters['religion']));
+        }
+        if (! empty($filters['marital_status'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('marital_status', $filters['marital_status']));
+        }
+        if (! empty($filters['relationship_goal'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('relationship_goal', $filters['relationship_goal']));
+        }
+        if (! empty($filters['height_min'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '>=', (int) $filters['height_min']));
+        }
+        if (! empty($filters['height_max'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '<=', (int) $filters['height_max']));
+        }
+        if (! empty($filters['has_photo']) && in_array($filters['has_photo'], ['1', 'true', true], true)) {
+            $query->whereHas('photos', fn ($q) => $q->where('status', 'approved'));
+        }
+        if (! empty($filters['keyword'])) {
+            $kw = (string) $filters['keyword'];
+            $query->where(function ($q) use ($kw) {
+                $q->where('name', 'like', "%{$kw}%")
+                    ->orWhere('display_name', 'like', "%{$kw}%")
+                    ->orWhere('username', 'like', "%{$kw}%")
+                    ->orWhere('city', 'like', "%{$kw}%")
+                    ->orWhereHas('profile', fn ($p) => $p->where('headline', 'like', "%{$kw}%")
+                        ->orWhere('bio', 'like', "%{$kw}%")
+                        ->orWhere('occupation', 'like', "%{$kw}%")
+                        ->orWhere('education', 'like', "%{$kw}%"));
+            });
+        }
         if (! empty($filters['verified'])) {
             $query->where('is_verified', true);
         }

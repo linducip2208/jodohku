@@ -10,6 +10,7 @@ use App\Events\TypingIndicator;
 use App\Models\Block;
 use App\Models\ChatBlock;
 use App\Models\Conversation;
+use App\Models\ConversationLabel;
 use App\Models\ConversationMember;
 use App\Models\ConversationUserSetting;
 use App\Models\Message;
@@ -361,6 +362,98 @@ class ChatService
             ->update(['last_read_at' => now()]);
 
         return $messages->count();
+    }
+
+    /** Aggregate inbox statistics for a user. */
+    public function overview(User $user): array
+    {
+        $convIds = Conversation::forUser($user->id)->pluck('id');
+        $settings = ConversationUserSetting::where('user_id', $user->id)->whereIn('conversation_id', $convIds)->get();
+
+        return [
+            'total_conversations' => $convIds->count(),
+            'unread_total' => $this->unreadTotal($user),
+            'pinned' => $settings->where('is_pinned', true)->count(),
+            'muted' => $settings->where('is_muted', true)->count(),
+            'archived' => $settings->where('is_archived', true)->count(),
+            'with_attachments' => Message::whereIn('conversation_id', $convIds)->whereHas('attachments')->distinct('conversation_id')->count('conversation_id'),
+            'labels' => ConversationLabel::whereIn('conversation_id', $convIds)
+                ->selectRaw('label, COUNT(*) as total')->groupBy('label')->orderByDesc('total')->limit(5)->pluck('total', 'label'),
+        ];
+    }
+
+    /** Search a user's own conversations by keyword (message body or peer name). */
+    public function searchConversations(User $user, string $keyword, int $limit = 10): array
+    {
+        $convIds = Conversation::forUser($user->id)->pluck('id');
+        $kw = strtolower(trim($keyword));
+        if ($kw === '') {
+            return [];
+        }
+
+        $messages = Message::whereIn('conversation_id', $convIds)
+            ->whereRaw('LOWER(body) LIKE ?', ["%{$kw}%"])
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
+            ->with('sender')->latest('id')->limit($limit)->get()
+            ->groupBy('conversation_id');
+
+        return $messages->map(function ($items, $convId) {
+            $conv = Conversation::with(['members.user'])->find($convId);
+
+            return [
+                'conversation_id' => (int) $convId,
+                'title' => $conv?->title,
+                'matches' => $items->take(3)->map(fn ($m) => [
+                    'message_id' => $m->id,
+                    'sender_name' => $m->sender?->display_name ?? $m->sender?->name,
+                    'body' => mb_substr((string) $m->body, 0, 160),
+                    'created_at' => $m->created_at,
+                ])->values(),
+            ];
+        })->values()->all();
+    }
+
+    public function conversationStats(Conversation $conversation, User $user): array
+    {
+        if (! $conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $messages = Message::where('conversation_id', $conversation->id)->get();
+        $mine = $messages->where('sender_id', $user->id);
+        $theirs = $messages->where('sender_id', '!=', $user->id);
+        $createdDates = $messages->map(fn ($m) => $m->created_at?->toDateString())->filter();
+
+        return [
+            'conversation_id' => $conversation->id,
+            'total_messages' => $messages->count(),
+            'my_messages' => $mine->count(),
+            'their_messages' => $theirs->count(),
+            'attachments' => \App\Models\MessageAttachment::whereIn('message_id', $messages->pluck('id'))->count(),
+            'reactions' => \App\Models\MessageReaction::whereIn('message_id', $messages->pluck('id'))->count(),
+            'first_message_at' => $messages->min('created_at'),
+            'last_message_at' => $messages->max('created_at'),
+            'active_days' => $createdDates->unique()->count(),
+        ];
+    }
+
+    /** Soft-delete every message for the given user (clears their thread view). */
+    public function clearHistory(Conversation $conversation, User $user): int
+    {
+        if (! $conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $ids = Message::where('conversation_id', $conversation->id)
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
+
+        return DB::transaction(function () use ($conversation, $user, $ids) {
+            foreach ($ids as $id) {
+                MessageDeletion::firstOrCreate(['message_id' => $id, 'user_id' => $user->id, 'scope' => 'for_me']);
+            }
+            ConversationMember::where('conversation_id', $conversation->id)->where('user_id', $user->id)
+                ->update(['last_read_at' => now()]);
+
+            return $ids->count();
+        });
     }
 
     public function createConversation(User $a, User $b): Conversation

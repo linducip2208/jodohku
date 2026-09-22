@@ -50,11 +50,12 @@ class ForumController extends Controller
     public function show(Request $request, int $thread)
     {
         $t = ForumThread::with(['forum', 'user', 'visibleReplies.user'])->where('is_hidden', false)->findOrFail($thread);
+        $t->recordView();
         $replies = $t->visibleReplies()->latest('id')->paginate(20);
 
         return $request->wantsJson()
-            ? response()->json(['thread' => $t, 'replies' => $replies])
-            : view('member.forums.thread', ['thread' => $t, 'replies' => $replies]);
+            ? response()->json(['thread' => $t->fresh(['forum', 'user']), 'replies' => $replies])
+            : view('member.forums.thread', ['thread' => $t->fresh(), 'replies' => $replies]);
     }
 
     public function reply(Request $request, int $thread)
@@ -69,6 +70,25 @@ class ForumController extends Controller
         }
 
         return response()->json($reply, 201);
+    }
+
+    public function trending(Request $request)
+    {
+        $threads = ForumThread::where('is_hidden', false)
+            ->where('created_at', '>', now()->subDays(30))
+            ->orderByDesc('views_count')->orderByDesc('reply_count')
+            ->with(['forum', 'user'])->limit(10)->get();
+
+        return response()->json(['threads' => $threads]);
+    }
+
+    public function popular(Request $request)
+    {
+        $threads = ForumThread::where('is_hidden', false)
+            ->orderByDesc('views_count')->orderByDesc('reply_count')
+            ->with(['forum', 'user'])->limit(10)->get();
+
+        return response()->json(['threads' => $threads]);
     }
 
     public function search(Request $request)
