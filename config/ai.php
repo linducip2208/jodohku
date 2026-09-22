@@ -1,5 +1,8 @@
 <?php
 
+use App\AI\CompatibleAiProvider;
+use App\AI\OpenAiProvider;
+
 return [
     'enabled' => env('AI_ENABLED', true),
     'default_provider' => env('AI_PROVIDER', 'openai'),
@@ -7,14 +10,14 @@ return [
 
     'providers' => [
         'openai' => [
-            'driver' => \App\AI\OpenAiProvider::class,
+            'driver' => OpenAiProvider::class,
             'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
             'api_key' => env('OPENAI_API_KEY', ''),
             'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
             'timeout' => 45,
         ],
         'compatible' => [
-            'driver' => \App\AI\CompatibleAiProvider::class,
+            'driver' => CompatibleAiProvider::class,
             'base_url' => env('AI_BASE_URL', 'https://api.openai.com/v1'),
             'api_key' => env('AI_API_KEY', ''),
             'model' => env('AI_MODEL', 'gpt-4o-mini'),

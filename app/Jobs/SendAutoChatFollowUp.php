@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Conversation;
-use App\Models\User;
 use App\Services\AiChatAssistantService;
 use App\Services\ChatService;
 use Illuminate\Contracts\Queue\ShouldQueue;

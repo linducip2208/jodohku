@@ -6,7 +6,10 @@ use App\Models\Payment;
 
 class TripayGateway extends BaseGateway
 {
-    public function code(): string { return 'tripay'; }
+    public function code(): string
+    {
+        return 'tripay';
+    }
 
     public function createPayment(Payment $payment, array $options = []): array
     {

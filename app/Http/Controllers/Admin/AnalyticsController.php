@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Like;
 use App\Models\Message;
+use App\Models\ModerationQueue;
 use App\Models\Payment;
+use App\Models\PaymentItem;
 use App\Models\ProfileView;
+use App\Models\Report;
 use App\Models\User;
 use App\Models\UserMatch;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
@@ -49,8 +53,8 @@ class AnalyticsController extends Controller
             'profile_views_new' => ProfileView::where('created_at', '>', $since)->count(),
             'revenue_total' => (float) Payment::where('status', 'paid')->sum('total_amount'),
             'revenue_new' => (float) Payment::where('status', 'paid')->where('created_at', '>', $since)->sum('total_amount'),
-            'pending_moderation' => \App\Models\ModerationQueue::whereNull('resolved_at')->count(),
-            'open_reports' => \App\Models\Report::where('status', 'open')->count(),
+            'pending_moderation' => ModerationQueue::whereNull('resolved_at')->count(),
+            'open_reports' => Report::where('status', 'open')->count(),
         ]);
     }
 
@@ -66,13 +70,13 @@ class AnalyticsController extends Controller
             ->when($days > 0, fn ($q) => $q->where('payments.created_at', '>', $since))
             ->groupBy('gateway')->orderByDesc('revenue')->get();
 
-        $byItem = \App\Models\PaymentItem::leftJoin('payments', 'payment_items.payment_id', '=', 'payments.id')
+        $byItem = PaymentItem::leftJoin('payments', 'payment_items.payment_id', '=', 'payments.id')
             ->selectRaw('payment_items.item_type, COUNT(*) as total')
             ->where('payments.status', 'paid')
             ->groupBy('payment_items.item_type')->orderByDesc('total')->get();
 
-        $byPlan = \App\Models\PaymentItem::leftJoin('membership_plans', function ($j) {
-            $j->on('payment_items.item_type', '=', \Illuminate\Database\Query\Expression::raw("'plan'"))
+        $byPlan = PaymentItem::leftJoin('membership_plans', function ($j) {
+            $j->on('payment_items.item_type', '=', Expression::raw("'plan'"))
                 ->whereColumn('payment_items.item_code', 'membership_plans.code');
         })->selectRaw('payment_items.item_code, COUNT(*) as total')->groupBy('payment_items.item_code')
             ->orderByDesc('total')->limit(10)->get();

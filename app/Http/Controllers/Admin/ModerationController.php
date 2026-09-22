@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\ModerationAction;
 use App\Http\Controllers\Controller;
 use App\Models\ModerationLog;
 use App\Models\ModerationQueue;
+use App\Models\ProfanityWord;
+use App\Models\Report;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ModerationController extends Controller
@@ -19,7 +21,8 @@ class ModerationController extends Controller
         return $request->wantsJson() ? response()->json($items) : view('admin.moderation', ['items' => $items]);
     }
 
-    public function decide(Request $request, ModerationQueue $queue, AuditService $audit)    {
+    public function decide(Request $request, ModerationQueue $queue, AuditService $audit)
+    {
         $request->validate([
             'action' => ['required', 'string'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -39,7 +42,7 @@ class ModerationController extends Controller
         return response()->json(['message' => 'Decision recorded.']);
     }
 
-    public function resolveReport(Request $request, \App\Models\Report $report, AuditService $audit)
+    public function resolveReport(Request $request, Report $report, AuditService $audit)
     {
         $request->validate(['notes' => ['nullable', 'string', 'max:2000']]);
         DB::transaction(function () use ($request, $report, $audit) {
@@ -54,7 +57,7 @@ class ModerationController extends Controller
 
     public function words(Request $request)
     {
-        $words = \App\Models\ProfanityWord::with('category')->latest('id')->paginate(50);
+        $words = ProfanityWord::with('category')->latest('id')->paginate(50);
 
         return $request->wantsJson()
             ? response()->json($words)
@@ -71,14 +74,14 @@ class ModerationController extends Controller
             'is_regex' => ['sometimes', 'boolean'],
             'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
         ]);
-        $word = \App\Models\ProfanityWord::create($data + ['is_active' => true]);
+        $word = ProfanityWord::create($data + ['is_active' => true]);
         $this->bustDictionaryCache();
         $audit->log('admin.profanity.created', $request->user(), $word);
 
         return $request->wantsJson() ? response()->json($word, 201) : back()->with('status', 'Kata ditambahkan.');
     }
 
-    public function updateWord(Request $request, \App\Models\ProfanityWord $word, AuditService $audit)
+    public function updateWord(Request $request, ProfanityWord $word, AuditService $audit)
     {
         $before = $word->only(['word', 'replacement', 'is_active']);
         $word->update($request->validate([
@@ -94,7 +97,7 @@ class ModerationController extends Controller
         return $request->wantsJson() ? response()->json($word->fresh()) : back()->with('status', 'Kata diperbarui.');
     }
 
-    public function destroyWord(Request $request, \App\Models\ProfanityWord $word, AuditService $audit)
+    public function destroyWord(Request $request, ProfanityWord $word, AuditService $audit)
     {
         $word->delete();
         $this->bustDictionaryCache();
@@ -105,7 +108,7 @@ class ModerationController extends Controller
 
     protected function bustDictionaryCache(): void
     {
-        \Illuminate\Support\Facades\Cache::forget('profanity_words:v2');
-        \Illuminate\Support\Facades\Cache::forget('profanity_words');
+        Cache::forget('profanity_words:v2');
+        Cache::forget('profanity_words');
     }
 }

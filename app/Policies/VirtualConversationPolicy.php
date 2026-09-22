@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\VirtualConversation;
 
@@ -18,6 +19,6 @@ class VirtualConversationPolicy
 
     public function operate(User $user, VirtualConversation $vc): bool
     {
-        return in_array($user->role, [\App\Enums\UserRole::Operator, \App\Enums\UserRole::Admin, \App\Enums\UserRole::Superadmin], true);
+        return in_array($user->role, [UserRole::Operator, UserRole::Admin, UserRole::Superadmin], true);
     }
 }

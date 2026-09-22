@@ -6,7 +6,10 @@ use App\Models\Payment;
 
 class IpaymuGateway extends BaseGateway
 {
-    public function code(): string { return 'ipaymu'; }
+    public function code(): string
+    {
+        return 'ipaymu';
+    }
 
     public function createPayment(Payment $payment, array $options = []): array
     {

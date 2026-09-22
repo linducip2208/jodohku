@@ -1,5 +1,10 @@
 <?php
 
+use App\Payments\IpaymuGateway;
+use App\Payments\MidtransGateway;
+use App\Payments\TripayGateway;
+use App\Payments\XenditGateway;
+
 return [
     'default' => env('PAYMENT_GATEWAY', 'midtrans'),
     'currency' => env('PAYMENT_CURRENCY', 'IDR'),
@@ -8,7 +13,7 @@ return [
     // Secrets are read ONLY from env and stored encrypted at rest (Crypt) via Admin\GatewayController.
     'gateways' => [
         'ipaymu' => [
-            'driver' => \App\Payments\IpaymuGateway::class,
+            'driver' => IpaymuGateway::class,
             'enabled' => env('IPAYMU_ENABLED', false),
             'priority' => 10,
             'base_url' => env('IPAYMU_BASE_URL', 'https://sandbox.ipaymu.com/api/v2'),
@@ -18,7 +23,7 @@ return [
             'fee_percent' => 2.0,
         ],
         'xendit' => [
-            'driver' => \App\Payments\XenditGateway::class,
+            'driver' => XenditGateway::class,
             'enabled' => env('XENDIT_ENABLED', false),
             'priority' => 20,
             'base_url' => env('XENDIT_BASE_URL', 'https://api.xendit.co'),
@@ -28,7 +33,7 @@ return [
             'fee_percent' => 2.5,
         ],
         'midtrans' => [
-            'driver' => \App\Payments\MidtransGateway::class,
+            'driver' => MidtransGateway::class,
             'enabled' => env('MIDTRANS_ENABLED', false),
             'priority' => 30,
             'base_url' => env('MIDTRANS_BASE_URL', 'https://api.sandbox.midtrans.com'),
@@ -39,7 +44,7 @@ return [
             'fee_percent' => 2.9,
         ],
         'tripay' => [
-            'driver' => \App\Payments\TripayGateway::class,
+            'driver' => TripayGateway::class,
             'enabled' => env('TRIPAY_ENABLED', false),
             'priority' => 40,
             'base_url' => env('TRIPAY_BASE_URL', 'https://tripay.co.id/api-sandbox'),

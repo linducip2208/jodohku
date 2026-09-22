@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Services\ChatService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,7 +46,7 @@ class ChatAttachmentTest extends TestCase
         $msgId = $res->json('id');
         $this->assertDatabaseHas('message_attachments', ['message_id' => $msgId]);
         Storage::disk('public')->assertExists(
-            \App\Models\MessageAttachment::where('message_id', $msgId)->firstOrFail()->file_path
+            MessageAttachment::where('message_id', $msgId)->firstOrFail()->file_path
         );
 
         // Idempotent retry: same client_message_id returns same message.
@@ -53,7 +55,7 @@ class ChatAttachmentTest extends TestCase
             ['file' => $this->imageFile(), 'client_message_id' => 'att-1']
         )->assertCreated();
         $this->assertEquals($msgId, $retry->json('id'));
-        $this->assertEquals(1, \App\Models\Message::where('conversation_id', $conv->id)->count());
+        $this->assertEquals(1, Message::where('conversation_id', $conv->id)->count());
     }
 
     public function test_executable_spoof_rejected_and_stranger_forbidden(): void

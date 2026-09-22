@@ -7,7 +7,9 @@ use App\Http\Requests\QuestionStoreRequest;
 use App\Models\Question;
 use App\Models\QuestionCategory;
 use App\Models\QuestionnaireVersion;
+use App\Models\Setting;
 use App\Services\AuditService;
+use App\Services\MatchingEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -88,7 +90,7 @@ class MatchingAdminController extends Controller
         if ($request->isMethod('post') || $request->isMethod('put')) {
             $request->validate(['weights' => ['required', 'array']]);
             foreach ((array) $request->input('weights') as $key => $value) {
-                \App\Models\Setting::updateOrCreate(['key' => 'match.weight.'.$key], ['value' => (string) $value, 'group' => 'matchmaking']);
+                Setting::updateOrCreate(['key' => 'match.weight.'.$key], ['value' => (string) $value, 'group' => 'matchmaking']);
             }
 
             return response()->json(['weights' => $request->input('weights')]);
@@ -97,12 +99,12 @@ class MatchingAdminController extends Controller
         return response()->json(config('matchmaking.weights'));
     }
 
-    public function demographic(Request $request, \App\Services\MatchingEngine $engine)
+    public function demographic(Request $request, MatchingEngine $engine)
     {
         return response()->json($engine->demographicBreakdown($request->user()));
     }
 
-    public function syncWeights(Request $request, \App\Services\MatchingEngine $engine)
+    public function syncWeights(Request $request, MatchingEngine $engine)
     {
         $request->validate(['weights' => ['required', 'array']]);
         $updated = $engine->updateWeights($request->input('weights'));

@@ -17,7 +17,7 @@ class PhotoService
 
     public function __construct(protected AuditService $audit)
     {
-        $this->images = new ImageManager(new Driver());
+        $this->images = new ImageManager(new Driver);
     }
 
     /**
@@ -49,7 +49,10 @@ class PhotoService
             if (method_exists($main, 'scaleDown')) {
                 $main->scaleDown(1600, 1600);
             } else {
-                $main->resize(1600, 1600, function ($c) { $c->aspectRatio(); $c->upsize(); });
+                $main->resize(1600, 1600, function ($c) {
+                    $c->aspectRatio();
+                    $c->upsize();
+                });
             }
             $mainPath = $base.'.jpg';
             Storage::disk('public')->put($mainPath, (string) $main->encode(new JpegEncoder(82)));

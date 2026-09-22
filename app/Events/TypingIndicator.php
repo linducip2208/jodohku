@@ -20,7 +20,10 @@ class TypingIndicator implements ShouldBroadcast
         return [new PrivateChannel('conversations.'.$this->conversation->id)];
     }
 
-    public function broadcastAs(): string { return 'typing'; }
+    public function broadcastAs(): string
+    {
+        return 'typing';
+    }
 
     public function broadcastWith(): array
     {

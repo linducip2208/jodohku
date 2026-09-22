@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\PaymentStatus;
+use App\Enums\UserRole;
 use App\Models\Conversation;
-use App\Models\MembershipPlan;
 use App\Models\CreditProduct;
+use App\Models\MembershipPlan;
 use App\Models\Message;
 use App\Models\Report;
 use App\Models\Subscription;
@@ -158,7 +159,7 @@ class EndToEndJourneyTest extends TestCase
         $report = Report::where('reporter_id', $aId)->firstOrFail();
 
         // ---- Admin moderation resolves report → audit log written ----
-        $admin = User::factory()->create(['role' => \App\Enums\UserRole::Moderator]);
+        $admin = User::factory()->create(['role' => UserRole::Moderator]);
         $this->actingAs($admin)->postJson("/admin/reports/{$report->id}/resolve", ['notes' => 'warned'])->assertOk();
         $this->assertDatabaseHas('audit_logs', ['actor_id' => $admin->id]);
     }

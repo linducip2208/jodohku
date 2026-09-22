@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\MembershipPlan;
+use App\Models\Payment;
 use App\Models\User;
 use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,7 +69,7 @@ class CouponCheckoutTest extends TestCase
             'value' => 5000, 'is_active' => true, 'ends_at' => now()->subDay(),
         ]);
 
-        $countBefore = \App\Models\Payment::count();
+        $countBefore = Payment::count();
         try {
             app(PaymentService::class)->checkout($user, [
                 'gateway' => 'midtrans',
@@ -77,7 +78,7 @@ class CouponCheckoutTest extends TestCase
             ]);
             $this->fail('Expired coupon should throw.');
         } catch (\InvalidArgumentException) {
-            $this->assertEquals($countBefore, \App\Models\Payment::count());
+            $this->assertEquals($countBefore, Payment::count());
         }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Boost;
+use App\Models\Setting;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 
@@ -18,12 +19,12 @@ class BoostAdminController extends Controller
     {
         if ($request->isMethod('post') || $request->isMethod('put')) {
             $request->validate(['credit_price' => ['required', 'integer', 'min:1']]);
-            \App\Models\Setting::updateOrCreate(['key' => 'boost.credit_price'], ['value' => (string) $request->input('credit_price'), 'group' => 'boost']);
+            Setting::updateOrCreate(['key' => 'boost.credit_price'], ['value' => (string) $request->input('credit_price'), 'group' => 'boost']);
             $audit->log('admin.boost.pricing', $request->user());
 
             return response()->json(['credit_price' => $request->input('credit_price')]);
         }
 
-        return response()->json(['credit_price' => \App\Models\Setting::where('key', 'boost.credit_price')->first()?->value ?? 50]);
+        return response()->json(['credit_price' => Setting::where('key', 'boost.credit_price')->first()?->value ?? 50]);
     }
 }

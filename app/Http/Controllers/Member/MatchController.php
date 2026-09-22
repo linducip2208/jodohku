@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MatchResource;
+use App\Http\Resources\UserResource;
+use App\Models\Like;
+use App\Models\ProfileView;
 use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\MatchingEngine;
@@ -60,13 +63,13 @@ class MatchController extends Controller
         if (! $user->isPremium()) {
             return response()->json(['message' => 'Who Liked You is a Premium feature.', 'upgrade' => true], 403);
         }
-        $likes = \App\Models\Like::with('liker.profile')
+        $likes = Like::with('liker.profile')
             ->where('liked_id', $user->id)
             ->whereNotIn('liker_id', fn ($q) => $q->select('liked_id')->from('likes')->where('liker_id', $user->id))
             ->latest('id')->paginate(20);
 
         return $request->wantsJson()
-            ? \App\Http\Resources\UserResource::collection($likes->getCollection()->pluck('liker'))->response()
+            ? UserResource::collection($likes->getCollection()->pluck('liker'))->response()
             : view('member.likes', ['whoLiked' => $likes]);
     }
 
@@ -77,11 +80,11 @@ class MatchController extends Controller
         if (! $user->isPremium()) {
             return response()->json(['message' => 'Visitors is a Premium feature.', 'upgrade' => true], 403);
         }
-        $views = \App\Models\ProfileView::with('viewer.profile')
+        $views = ProfileView::with('viewer.profile')
             ->where('profile_user_id', $user->id)->latest('id')->paginate(20);
 
         return $request->wantsJson()
-            ? \App\Http\Resources\UserResource::collection($views->getCollection()->pluck('viewer')->filter())->response()
+            ? UserResource::collection($views->getCollection()->pluck('viewer')->filter())->response()
             : view('member.visitors', ['visitors' => $views]);
     }
 }

@@ -8,14 +8,23 @@ use Livewire\Component;
 class DiscoverGrid extends Component
 {
     public int $minAge = 18;
+
     public int $maxAge = 45;
+
     public int $maxDistance = 200;
+
     public string $gender = '';
+
     public string $city = '';
+
     public string $education = '';
+
     public bool $verified = false;
+
     public bool $online = false;
+
     public bool $premium = false;
+
     public string $sort = 'compatibility';
 
     public function updated($field): void
@@ -30,8 +39,11 @@ class DiscoverGrid extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['minAge','maxAge','maxDistance','gender','city','education','verified','online','premium','sort']);
-        $this->minAge = 18; $this->maxAge = 45; $this->maxDistance = 200; $this->sort = 'compatibility';
+        $this->reset(['minAge', 'maxAge', 'maxDistance', 'gender', 'city', 'education', 'verified', 'online', 'premium', 'sort']);
+        $this->minAge = 18;
+        $this->maxAge = 45;
+        $this->maxDistance = 200;
+        $this->sort = 'compatibility';
     }
 
     public function filters(): array
@@ -62,6 +74,7 @@ class DiscoverGrid extends Component
                 $candidates = collect();
             }
         }
+
         return view('livewire.discover-grid', ['candidates' => $candidates]);
     }
 }

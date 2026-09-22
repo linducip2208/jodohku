@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnswerQuestionnaireRequest;
+use App\Jobs\RecalculateMatches;
 use App\Models\Question;
 use App\Models\QuestionnaireAnswer;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class QuestionnaireController extends Controller
             return $out;
         });
 
-        \App\Jobs\RecalculateMatches::dispatch($user->id);
+        RecalculateMatches::dispatch($user->id);
 
         return response()->json($saved, 201);
     }

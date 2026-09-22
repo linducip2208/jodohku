@@ -6,8 +6,9 @@ use App\Models\Block;
 use App\Models\Boost;
 use App\Models\Like;
 use App\Models\User;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\CursorPaginator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DiscoveryService
 {
@@ -112,7 +113,7 @@ class DiscoveryService
         };
 
         $pool = $query->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
-            ->cursorPaginate($limit, ['*'], 'cursor', $cursor ? \Illuminate\Pagination\Cursor::fromEncoded($cursor) : null);
+            ->cursorPaginate($limit, ['*'], 'cursor', $cursor ? Cursor::fromEncoded($cursor) : null);
 
         // Score in memory
         $scored = $pool->getCollection()->map(function (User $cand) use ($user) {
@@ -130,6 +131,7 @@ class DiscoveryService
         $liveBoostUserIds = Boost::live()->pluck('user_id')->flip()->all();
         $scored = $scored->sortByDesc(function (User $cand) use ($sort, $liveBoostUserIds) {
             $boost = isset($liveBoostUserIds[$cand->id]) ? 1 : 0;
+
             // Boost adds presentation priority via tuple: boosted first, then sort key
             return [$boost, $sort === 'newest'
                 ? strtotime((string) $cand->created_at)
@@ -148,7 +150,7 @@ class DiscoveryService
     {
         $limit = min(20, max(1, $limit));
         $cacheKey = 'discovery:picks:'.today()->toDateString().':'.$user->id;
-        $picked = (array) \Illuminate\Support\Facades\Cache::get($cacheKey, []);
+        $picked = (array) Cache::get($cacheKey, []);
 
         $filters = ['exclude_ids' => $picked];
         if ($user->partnerPreference?->gender_preference) {
@@ -180,14 +182,14 @@ class DiscoveryService
         })->all();
 
         $newPicks = array_values(array_unique(array_merge($picked, array_column($picks, 'user_id'))));
-        \Illuminate\Support\Facades\Cache::put($cacheKey, $newPicks, now()->endOfDay());
+        Cache::put($cacheKey, $newPicks, now()->endOfDay());
 
         return $picks;
     }
 
     public function resetDailyPicks(User $user): void
     {
-        \Illuminate\Support\Facades\Cache::forget('discovery:picks:'.today()->toDateString().':'.$user->id);
+        Cache::forget('discovery:picks:'.today()->toDateString().':'.$user->id);
     }
 
     public function distanceKm(User $a, User $b): ?float

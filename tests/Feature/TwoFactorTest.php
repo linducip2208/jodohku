@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\TwoFactorCode;
 use App\Services\TwoFactorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class TwoFactorTest extends TestCase
@@ -14,7 +16,7 @@ class TwoFactorTest extends TestCase
 
     public function test_api_login_requires_code_then_issues_token(): void
     {
-        \Illuminate\Support\Facades\Notification::fake();
+        Notification::fake();
         $user = User::factory()->create(['password' => bcrypt('password123')]);
         /** @var TwoFactorService $tfa */
         $tfa = app(TwoFactorService::class);
@@ -36,7 +38,7 @@ class TwoFactorTest extends TestCase
         // Extract the real code from the mail fake via cache bypass:
         // re-send is throttled, so resolve by reading notification.
         $code = null;
-        \Illuminate\Support\Facades\Notification::assertSentTo($user, \App\Notifications\TwoFactorCode::class, function ($n) use (&$code) {
+        Notification::assertSentTo($user, TwoFactorCode::class, function ($n) use (&$code) {
             $code = $n->code;
 
             return true;

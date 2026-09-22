@@ -9,6 +9,7 @@ use Livewire\Component;
 class AiAssistantBox extends Component
 {
     public int $conversationId;
+
     public array $suggestions = [];
 
     public function mount(int $conversationId): void
@@ -20,7 +21,11 @@ class AiAssistantBox extends Component
     {
         $me = auth()->user();
         $conv = Conversation::find($this->conversationId);
-        if (!$me || !$conv) { $this->suggestions = []; return; }
+        if (! $me || ! $conv) {
+            $this->suggestions = [];
+
+            return;
+        }
         try {
             $this->suggestions = $ai->suggestedReplies($conv, $me, 3);
         } catch (\Throwable) {

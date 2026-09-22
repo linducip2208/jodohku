@@ -9,11 +9,15 @@ use Livewire\Component;
 class ChatInbox extends Component
 {
     public string $filter = 'all';
+
     public string $search = '';
 
     protected $queryString = ['filter', 'search'];
 
-    public function setFilter(string $f): void { $this->filter = $f; }
+    public function setFilter(string $f): void
+    {
+        $this->filter = $f;
+    }
 
     public function render(ChatService $chat)
     {
@@ -38,8 +42,11 @@ class ChatInbox extends Component
                     $q = $q->filter(fn ($c) => (bool) $c->is_archived);
                 }
                 $items = $q->values();
-            } catch (\Throwable) { $items = collect(); }
+            } catch (\Throwable) {
+                $items = collect();
+            }
         }
+
         return view('livewire.chat-inbox', ['items' => $items]);
     }
 }

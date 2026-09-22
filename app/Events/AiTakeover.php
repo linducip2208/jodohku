@@ -20,7 +20,10 @@ class AiTakeover implements ShouldBroadcast
         return [new PrivateChannel('conversations.'.$this->conversation->id)];
     }
 
-    public function broadcastAs(): string { return 'ai.takeover'; }
+    public function broadcastAs(): string
+    {
+        return 'ai.takeover';
+    }
 
     public function broadcastWith(): array
     {

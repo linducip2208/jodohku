@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\PhotoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -90,7 +91,7 @@ class PhotoUploadTest extends TestCase
         $this->assertCount(0, $svc->visibleTo($owner, $viewer));
         $this->assertCount(1, $svc->visibleTo($owner, $owner));
 
-        $svc->approve($photo, $admin = User::factory()->create(['role' => \App\Enums\UserRole::Admin]));
+        $svc->approve($photo, $admin = User::factory()->create(['role' => UserRole::Admin]));
         $this->assertCount(1, $svc->visibleTo($owner, $viewer));
     }
 }

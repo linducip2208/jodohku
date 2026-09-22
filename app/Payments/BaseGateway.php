@@ -2,7 +2,6 @@
 
 namespace App\Payments;
 
-use App\Models\Payment;
 use Illuminate\Support\Facades\Http;
 
 abstract class BaseGateway implements PaymentGatewayInterface

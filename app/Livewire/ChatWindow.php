@@ -11,9 +11,13 @@ use Livewire\Component;
 class ChatWindow extends Component
 {
     public int $conversationId;
+
     public string $body = '';
+
     public ?int $replyToId = null;
+
     public string $typingUsers = '';
+
     public int $perPage = 30;
 
     public function mount(int $conversationId): void
@@ -31,7 +35,7 @@ class ChatWindow extends Component
 
     public function echoChannel(): string
     {
-        return 'conversations.' . $this->conversationId;
+        return 'conversations.'.$this->conversationId;
     }
 
     public function onEchoMessage($payload = null): void
@@ -45,9 +49,13 @@ class ChatWindow extends Component
     public function send(ChatService $chat): void
     {
         $me = auth()->user();
-        if (!$me || trim($this->body) === '') return;
+        if (! $me || trim($this->body) === '') {
+            return;
+        }
         $conv = Conversation::find($this->conversationId);
-        if (!$conv) return;
+        if (! $conv) {
+            return;
+        }
         try {
             $chat->sendMessage($conv, $me, [
                 'body' => trim($this->body),
@@ -63,26 +71,45 @@ class ChatWindow extends Component
     public function react(int $messageId, string $emoji, ChatService $chat): void
     {
         $me = auth()->user();
-        if (!$me) return;
+        if (! $me) {
+            return;
+        }
         $m = Message::find($messageId);
-        if (!$m) return;
-        try { $chat->react($m, $me, $emoji); } catch (\Throwable) {}
+        if (! $m) {
+            return;
+        }
+        try {
+            $chat->react($m, $me, $emoji);
+        } catch (\Throwable) {
+        }
     }
 
     public function delete(int $messageId, ChatService $chat): void
     {
         $me = auth()->user();
-        if (!$me) return;
+        if (! $me) {
+            return;
+        }
         $m = Message::find($messageId);
-        if (!$m) return;
-        try { $chat->deleteMessage($m, $me, 'for_me'); } catch (\Throwable) {}
+        if (! $m) {
+            return;
+        }
+        try {
+            $chat->deleteMessage($m, $me, 'for_me');
+        } catch (\Throwable) {
+        }
     }
 
     public function markTyping(ChatService $chat, bool $isTyping = true): void
     {
         $me = auth()->user();
         $conv = Conversation::find($this->conversationId);
-        if ($me && $conv) { try { $chat->typing($conv, $me, $isTyping); } catch (\Throwable) {} }
+        if ($me && $conv) {
+            try {
+                $chat->typing($conv, $me, $isTyping);
+            } catch (\Throwable) {
+            }
+        }
     }
 
     public function render(ChatService $chat)
@@ -96,8 +123,10 @@ class ChatWindow extends Component
                 $chat->markRead($conv, $me);
                 $messages = Message::where('conversation_id', $conv->id)->with(['sender', 'reactions', 'replyTo', 'attachments', 'reads'])->latest('id')->take($this->perPage)->get()->reverse()->values();
                 $other = $conv->otherUser($me->id);
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
+
         return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me]);
     }
 }

@@ -20,7 +20,10 @@ class MessageRead implements ShouldBroadcast
         return [new PrivateChannel('conversations.'.$this->message->conversation_id)];
     }
 
-    public function broadcastAs(): string { return 'message.read'; }
+    public function broadcastAs(): string
+    {
+        return 'message.read';
+    }
 
     public function broadcastWith(): array
     {

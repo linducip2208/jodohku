@@ -6,7 +6,10 @@ use App\Models\Payment;
 
 class XenditGateway extends BaseGateway
 {
-    public function code(): string { return 'xendit'; }
+    public function code(): string
+    {
+        return 'xendit';
+    }
 
     public function createPayment(Payment $payment, array $options = []): array
     {

@@ -19,7 +19,10 @@ class PaymentPaid implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->payment->user_id)];
     }
 
-    public function broadcastAs(): string { return 'payment.paid'; }
+    public function broadcastAs(): string
+    {
+        return 'payment.paid';
+    }
 
     public function broadcastWith(): array
     {

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Question;
+use App\Models\QuestionCategory;
 use App\Models\QuestionnaireAnswer;
 use App\Models\QuestionnaireVersion;
 use App\Models\User;
@@ -41,7 +42,7 @@ class MatchingDepthTest extends TestCase
     {
         $v1 = QuestionnaireVersion::firstOrCreate(['version' => 9001], ['is_active' => true, 'notes' => 'test']);
         $q = Question::create([
-            'question_category_id' => \App\Models\QuestionCategory::firstOrCreate(['slug' => 'test-cat'], ['name' => 'Test']) ->id,
+            'question_category_id' => QuestionCategory::firstOrCreate(['slug' => 'test-cat'], ['name' => 'Test'])->id,
             'questionnaire_version_id' => $v1->id,
             'category_key' => 'personality', 'type' => 'single_choice',
             'question_text' => 'Versi test?', 'sort_order' => 1, 'is_active' => true,

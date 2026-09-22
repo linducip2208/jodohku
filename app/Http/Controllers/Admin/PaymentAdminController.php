@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
-use App\Services\AuditService;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 
 class PaymentAdminController extends Controller
@@ -23,7 +23,7 @@ class PaymentAdminController extends Controller
         return response()->json($payment);
     }
 
-    public function refund(Request $request, Payment $payment, \App\Services\PaymentService $payments)
+    public function refund(Request $request, Payment $payment, PaymentService $payments)
     {
         $this->authorize('refund', $payment);
         $request->validate(['reason' => ['nullable', 'string', 'max:500']]);

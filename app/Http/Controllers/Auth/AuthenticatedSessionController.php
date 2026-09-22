@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,7 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
-    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $request->validate([
             'login' => ['required', 'string'],
@@ -50,7 +51,7 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended('/home');
     }
 
-    public function destroy(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
+    public function destroy(Request $request): RedirectResponse|JsonResponse
     {
         $request->user()?->update(['is_online' => false]);
         Auth::guard('web')->logout();

@@ -98,8 +98,8 @@ class EventController extends Controller
         $lon = (float) $request->input('longitude');
         $radius = (int) ($request->input('radius', 25));
         $events = Event::where('status', 'published')
-            ->whereRaw("(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?", [$lat, $lon, $lat, $radius])
-            ->orderByRaw("(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))", [$lat, $lon, $lat])
+            ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?', [$lat, $lon, $lat, $radius])
+            ->orderByRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))', [$lat, $lon, $lat])
             ->paginate(20);
 
         return response()->json($events);

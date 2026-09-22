@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaymentGateway;
+use App\Payments\PaymentGatewayManager;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -40,7 +41,7 @@ class GatewayController extends Controller
 
     public function test(Request $request, PaymentGateway $gateway)
     {
-        $manager = app(\App\Payments\PaymentGatewayManager::class);
+        $manager = app(PaymentGatewayManager::class);
 
         try {
             $driver = $manager->driver($gateway->code);

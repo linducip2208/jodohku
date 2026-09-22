@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MatchResource;
 use App\Http\Resources\UserResource;
+use App\Models\Favorite;
+use App\Models\Like;
+use App\Models\ProfileView;
+use App\Models\Rewind;
+use App\Models\SuperLike;
 use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\DiscoveryService;
@@ -142,18 +147,18 @@ class DiscoveryController extends Controller
         $today = today();
 
         return response()->json([
-            'profiles_viewed_today' => \App\Models\ProfileView::where('viewer_id', $user->id)->where('created_at', '>=', $today)->count(),
-            'profiles_viewed_total' => \App\Models\ProfileView::where('viewer_id', $user->id)->count(),
-            'likes_given_today' => \App\Models\Like::where('liker_id', $user->id)->whereDate('created_at', $today)->count(),
-            'likes_given_total' => \App\Models\Like::where('liker_id', $user->id)->count(),
-            'likes_received_today' => \App\Models\Like::where('liked_id', $user->id)->whereDate('created_at', $today)->count(),
-            'likes_received_total' => \App\Models\Like::where('liked_id', $user->id)->count(),
-            'matches_today' => \App\Models\UserMatch::where('user_a_id', $user->id)->orWhere('user_b_id', $user->id)->whereDate('matched_at', '>=', $today)->count(),
-            'matches_total' => \App\Models\UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
-            'rewinds_total' => \App\Models\Rewind::where('user_id', $user->id)->whereNull('undone_at')->count(),
-            'favorites_total' => \App\Models\Favorite::where('user_id', $user->id)->count(),
-            'superlikes_given_total' => \App\Models\SuperLike::where('sender_id', $user->id)->count(),
-            'superlikes_received_total' => \App\Models\SuperLike::where('receiver_id', $user->id)->count(),
+            'profiles_viewed_today' => ProfileView::where('viewer_id', $user->id)->where('created_at', '>=', $today)->count(),
+            'profiles_viewed_total' => ProfileView::where('viewer_id', $user->id)->count(),
+            'likes_given_today' => Like::where('liker_id', $user->id)->whereDate('created_at', $today)->count(),
+            'likes_given_total' => Like::where('liker_id', $user->id)->count(),
+            'likes_received_today' => Like::where('liked_id', $user->id)->whereDate('created_at', $today)->count(),
+            'likes_received_total' => Like::where('liked_id', $user->id)->count(),
+            'matches_today' => UserMatch::where('user_a_id', $user->id)->orWhere('user_b_id', $user->id)->whereDate('matched_at', '>=', $today)->count(),
+            'matches_total' => UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
+            'rewinds_total' => Rewind::where('user_id', $user->id)->whereNull('undone_at')->count(),
+            'favorites_total' => Favorite::where('user_id', $user->id)->count(),
+            'superlikes_given_total' => SuperLike::where('sender_id', $user->id)->count(),
+            'superlikes_received_total' => SuperLike::where('receiver_id', $user->id)->count(),
         ]);
     }
 
@@ -163,7 +168,7 @@ class DiscoveryController extends Controller
         $type = $request->query('type', 'all');
         $perPage = (int) $request->query('per_page', 20);
 
-        $query = \App\Models\Like::where('liker_id', $user->id)->with(['liked']);
+        $query = Like::where('liker_id', $user->id)->with(['liked']);
 
         match ($type) {
             'likes' => $query->where('is_super', false),

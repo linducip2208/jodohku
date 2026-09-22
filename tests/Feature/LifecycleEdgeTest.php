@@ -2,17 +2,22 @@
 
 namespace Tests\Feature;
 
-use App\Enums\UserRole;
+use App\Enums\AdStatus;
 use App\Models\Ad;
+use App\Models\Boost;
 use App\Models\Coupon;
 use App\Models\Gift;
 use App\Models\MembershipPlan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\VerificationRequest;
+use App\Services\AdService;
 use App\Services\BoostService;
+use App\Services\CouponService;
 use App\Services\CreditService;
 use App\Services\DiscoveryService;
 use App\Services\GiftService;
+use App\Services\MatchingEngine;
 use App\Services\SubscriptionService;
 use App\Services\VerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,9 +55,9 @@ class LifecycleEdgeTest extends TestCase
 
         /** @var BoostService $boost */
         $boost = app(BoostService::class);
-        $before = app(\App\Services\MatchingEngine::class)->scorePair($viewer, $boosted)['mutual'];
+        $before = app(MatchingEngine::class)->scorePair($viewer, $boosted)['mutual'];
         $boost->activate($boosted, 60);
-        $after = app(\App\Services\MatchingEngine::class)->scorePair($viewer, $boosted)['mutual'];
+        $after = app(MatchingEngine::class)->scorePair($viewer, $boosted)['mutual'];
         $this->assertEquals($before, $after); // score untouched
 
         $ids = app(DiscoveryService::class)->discover($viewer, [], 50)->pluck('id')->all();
@@ -60,7 +65,7 @@ class LifecycleEdgeTest extends TestCase
 
         // Expiry works.
         $this->assertTrue($boost->isLive($boosted));
-        \App\Models\Boost::where('user_id', $boosted->id)->update(['ends_at' => now()->subMinute()]);
+        Boost::where('user_id', $boosted->id)->update(['ends_at' => now()->subMinute()]);
         $this->assertEquals(1, $boost->expireDue());
         $this->assertFalse($boost->isLive($boosted->fresh()));
     }
@@ -77,7 +82,7 @@ class LifecycleEdgeTest extends TestCase
         $subs->activate($user, $plan);
         $this->assertTrue($user->fresh()->isPremium());
 
-        \App\Models\Subscription::where('user_id', $user->id)->update(['ends_at' => now()->subMinute()]);
+        Subscription::where('user_id', $user->id)->update(['ends_at' => now()->subMinute()]);
         $this->assertGreaterThanOrEqual(1, $subs->expireDue());
         $this->assertFalse($user->fresh()->isPremium());
     }
@@ -99,7 +104,7 @@ class LifecycleEdgeTest extends TestCase
             'code' => 'ONCE', 'name' => 'Once', 'type' => 'fixed', 'value' => 5000,
             'usage_limit' => 1, 'per_user_limit' => 5, 'is_active' => true,
         ]);
-        $svc = app(\App\Services\CouponService::class);
+        $svc = app(CouponService::class);
         $u1 = User::factory()->create();
         $u2 = User::factory()->create();
         $this->assertEquals(5000, $svc->quote($u1, 'ONCE', 50000)['discount']);
@@ -125,9 +130,9 @@ class LifecycleEdgeTest extends TestCase
 
     public function test_ads_serve_only_in_window(): void
     {
-        $live = Ad::create(['title' => 'Live', 'placement' => 'feed', 'starts_at' => now()->subDay(), 'ends_at' => now()->addDay(), 'status' => \App\Enums\AdStatus::Active]);
-        Ad::create(['title' => 'Old', 'placement' => 'feed', 'starts_at' => now()->subDays(5), 'ends_at' => now()->subDay(), 'status' => \App\Enums\AdStatus::Active]);
-        $served = app(\App\Services\AdService::class)->servable('feed', 10)->pluck('id')->all();
+        $live = Ad::create(['title' => 'Live', 'placement' => 'feed', 'starts_at' => now()->subDay(), 'ends_at' => now()->addDay(), 'status' => AdStatus::Active]);
+        Ad::create(['title' => 'Old', 'placement' => 'feed', 'starts_at' => now()->subDays(5), 'ends_at' => now()->subDay(), 'status' => AdStatus::Active]);
+        $served = app(AdService::class)->servable('feed', 10)->pluck('id')->all();
         $this->assertContains($live->id, $served);
         $this->assertCount(1, $served);
     }

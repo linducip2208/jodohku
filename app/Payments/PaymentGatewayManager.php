@@ -20,7 +20,7 @@ class PaymentGatewayManager
         $class = $cfg['driver'];
         $instance = app($class);
         if (! $instance instanceof PaymentGatewayInterface) {
-            throw new \RuntimeException("Gateway driver must implement PaymentGatewayInterface.");
+            throw new \RuntimeException('Gateway driver must implement PaymentGatewayInterface.');
         }
         $this->drivers[$code] = $instance;
 

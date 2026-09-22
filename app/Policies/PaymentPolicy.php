@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\Payment;
 use App\Models\User;
 
@@ -14,6 +15,6 @@ class PaymentPolicy
 
     public function refund(User $user, Payment $payment): bool
     {
-        return in_array($user->role, [\App\Enums\UserRole::Admin, \App\Enums\UserRole::Superadmin], true);
+        return in_array($user->role, [UserRole::Admin, UserRole::Superadmin], true);
     }
 }

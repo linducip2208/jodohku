@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BlogPost;
 use App\Models\Event;
+use App\Models\Forum;
+use App\Models\ForumReply;
+use App\Models\ForumThread;
 use App\Models\Group;
 use App\Models\Post;
 use App\Services\AuditService;
@@ -72,16 +76,16 @@ class CommunityAdminController extends Controller
                 'status' => ['required', 'string', 'in:draft,published'],
                 'published_at' => ['nullable', 'date'],
             ]);
-            $post = \App\Models\BlogPost::create($data + ['user_id' => $request->user()->id]);
+            $post = BlogPost::create($data + ['user_id' => $request->user()->id]);
             app(AuditService::class)->log('admin.blog.created', $request->user(), $post);
 
             return response()->json($post, 201);
         }
 
-        return response()->json(\App\Models\BlogPost::with('author')->latest('id')->paginate(25));
+        return response()->json(BlogPost::with('author')->latest('id')->paginate(25));
     }
 
-    public function updateBlog(Request $request, \App\Models\BlogPost $blog, AuditService $audit)
+    public function updateBlog(Request $request, BlogPost $blog, AuditService $audit)
     {
         $before = $blog->only(['title', 'status']);
         $blog->update($request->validate([
@@ -96,7 +100,7 @@ class CommunityAdminController extends Controller
         return response()->json($blog->fresh());
     }
 
-    public function destroyBlog(Request $request, \App\Models\BlogPost $blog, AuditService $audit)
+    public function destroyBlog(Request $request, BlogPost $blog, AuditService $audit)
     {
         $blog->delete();
         $audit->log('admin.blog.deleted', $request->user(), $blog);
@@ -113,15 +117,15 @@ class CommunityAdminController extends Controller
                 'description' => ['nullable', 'string'],
                 'sort_order' => ['nullable', 'integer', 'min:0'],
             ]);
-            $forum = \App\Models\Forum::create($data);
+            $forum = Forum::create($data);
 
             return response()->json($forum, 201);
         }
 
-        return response()->json(\App\Models\Forum::withCount('threads')->orderBy('sort_order')->paginate(25));
+        return response()->json(Forum::withCount('threads')->orderBy('sort_order')->paginate(25));
     }
 
-    public function moderateThread(Request $request, \App\Models\ForumThread $thread, AuditService $audit)
+    public function moderateThread(Request $request, ForumThread $thread, AuditService $audit)
     {
         $data = $request->validate([
             'action' => ['required', 'string', 'in:hide,unhide,lock,unlock,pin,unpin,delete'],
@@ -141,7 +145,7 @@ class CommunityAdminController extends Controller
         return response()->json(['message' => 'Done.']);
     }
 
-    public function moderateReply(Request $request, \App\Models\ForumReply $reply, AuditService $audit)
+    public function moderateReply(Request $request, ForumReply $reply, AuditService $audit)
     {
         $request->validate(['action' => ['required', 'string', 'in:hide,unhide,delete']]);
         $action = $request->string('action')->toString();

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\PaymentGateway;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -53,7 +54,7 @@ class RbacTest extends TestCase
     public function test_admin_full_but_not_secrets_without_superadmin(): void
     {
         $admin = $this->user('admin');
-        \App\Models\PaymentGateway::firstOrCreate(['code' => 'midtrans'], ['name' => 'Midtrans']);
+        PaymentGateway::firstOrCreate(['code' => 'midtrans'], ['name' => 'Midtrans']);
         $this->actingAs($admin)->get('/admin')->assertOk();
         $this->actingAs($admin)->get('/admin/membership/payments')->assertOk();
         $this->actingAs($admin)->get('/admin/settings')->assertOk();

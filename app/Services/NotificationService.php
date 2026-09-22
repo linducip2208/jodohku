@@ -3,19 +3,26 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Notifications\DatabaseNotification;
+use App\Notifications\ChatRequestReceived;
+use App\Notifications\MatchFound;
+use App\Notifications\NewMessage;
+use App\Notifications\PaymentNotification;
+use App\Notifications\ReportStatusChanged;
+use App\Notifications\SubscriptionActive;
+use App\Notifications\VerificationDecided;
+use Illuminate\Notifications\Notification;
 
 class NotificationService
 {
     /** In-app (database) + mail via Notification classes. */
-    public function send(User $user, \Illuminate\Notifications\Notification $notification): void
+    public function send(User $user, Notification $notification): void
     {
         $prefs = $user->notificationPreference;
         // Respect coarse preferences for match/message categories
-        if ($prefs && $notification instanceof \App\Notifications\MatchFound && ! $prefs->push_matches) {
+        if ($prefs && $notification instanceof MatchFound && ! $prefs->push_matches) {
             return;
         }
-        if ($prefs && $notification instanceof \App\Notifications\NewMessage && ! $prefs->push_messages) {
+        if ($prefs && $notification instanceof NewMessage && ! $prefs->push_messages) {
             return;
         }
         if ($this->isDuplicateUnread($user, $notification)) {
@@ -25,16 +32,16 @@ class NotificationService
     }
 
     /** Same entity + same type already waiting unread → don't stack. */
-    protected function isDuplicateUnread(User $user, \Illuminate\Notifications\Notification $notification): bool
+    protected function isDuplicateUnread(User $user, Notification $notification): bool
     {
         $keyMap = [
-            \App\Notifications\MatchFound::class => 'match_id',
-            \App\Notifications\NewMessage::class => 'message_id',
-            \App\Notifications\ChatRequestReceived::class => 'request_id',
-            \App\Notifications\PaymentNotification::class => 'payment_id',
-            \App\Notifications\SubscriptionActive::class => 'subscription_id',
-            \App\Notifications\VerificationDecided::class => 'request_id',
-            \App\Notifications\ReportStatusChanged::class => 'report_id',
+            MatchFound::class => 'match_id',
+            NewMessage::class => 'message_id',
+            ChatRequestReceived::class => 'request_id',
+            PaymentNotification::class => 'payment_id',
+            SubscriptionActive::class => 'subscription_id',
+            VerificationDecided::class => 'request_id',
+            ReportStatusChanged::class => 'report_id',
         ];
         $class = get_class($notification);
         if (! isset($keyMap[$class]) || ! method_exists($notification, 'toDatabase')) {

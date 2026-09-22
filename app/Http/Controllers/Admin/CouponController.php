@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Models\CouponRedemption;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 
@@ -73,7 +74,7 @@ class CouponController extends Controller
     public function redemptions(Request $request)
     {
         return response()->json(
-            \App\Models\CouponRedemption::with(['coupon', 'user', 'payment'])
+            CouponRedemption::with(['coupon', 'user', 'payment'])
                 ->latest('id')->paginate(25)
         );
     }

@@ -9,6 +9,7 @@ use App\Http\Resources\MessageResource;
 use App\Models\ChatRequest;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\User;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
 
@@ -169,7 +170,7 @@ class ChatController extends Controller
     public function create(Request $request, ChatService $chat)
     {
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'initial_message' => ['nullable', 'string', 'max:2000']]);
-        $target = \App\Models\User::findOrFail($request->integer('user_id'));
+        $target = User::findOrFail($request->integer('user_id'));
         $conversation = $chat->findOrCreateDirect($request->user(), $target);
 
         if ($request->filled('initial_message')) {
@@ -185,7 +186,7 @@ class ChatController extends Controller
     {
         $this->authorize('view', $message->conversation);
         $request->validate(['conversation_id' => ['required', 'integer', 'exists:conversations,id']]);
-        $target = \App\Models\Conversation::findOrFail($request->integer('conversation_id'));
+        $target = Conversation::findOrFail($request->integer('conversation_id'));
         $this->authorize('send', $target);
 
         $forwarded = $chat->sendMessage($target, $request->user(), [

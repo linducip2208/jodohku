@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\PaymentStatus;
+use App\Enums\UserRole;
 use App\Models\CreditProduct;
 use App\Models\MembershipPlan;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\CreditService;
 use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -68,7 +70,7 @@ class RefundTest extends TestCase
 
         /** @var PaymentService $svc */
         $svc = app(PaymentService::class);
-        $admin = User::factory()->create(['role' => \App\Enums\UserRole::Admin]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
         $result = $svc->refund($payment, $admin, 'customer request');
         $this->assertEquals(PaymentStatus::Refunded, $result->status);
         $this->assertFalse($user->fresh()->isPremium());
@@ -93,8 +95,8 @@ class RefundTest extends TestCase
         $this->assertEquals(100, $user->fresh()->creditBalance());
 
         // Spend 70 first: clawback takes back only the remaining 30.
-        app(\App\Services\CreditService::class)->spend($user->fresh(), 70, 'test spend');
-        $admin = User::factory()->create(['role' => \App\Enums\UserRole::Admin]);
+        app(CreditService::class)->spend($user->fresh(), 70, 'test spend');
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
         $svc->refund($payment->fresh(), $admin);
         $this->assertEquals(0, $user->fresh()->creditBalance());
     }
@@ -113,7 +115,7 @@ class RefundTest extends TestCase
 
         /** @var PaymentService $svc */
         $svc = app(PaymentService::class);
-        $admin = User::factory()->create(['role' => \App\Enums\UserRole::Admin]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
         try {
             $svc->refund($payment, $admin);
             $this->fail('Gateway failure should abort refund.');
@@ -129,15 +131,15 @@ class RefundTest extends TestCase
     {
         Http::fake(['*' => Http::response(['error' => 'down'], 500)]);
         $user = User::factory()->create();
-        \App\Models\MembershipPlan::firstOrCreate(['code' => 'premium_monthly'], [
+        MembershipPlan::firstOrCreate(['code' => 'premium_monthly'], [
             'name' => 'Premium', 'price' => 49000, 'currency' => 'IDR',
             'interval' => 'monthly', 'duration_days' => 30, 'is_active' => true,
         ]);
 
-        $countBefore = \App\Models\Payment::count();
+        $countBefore = Payment::count();
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/checkout', [
             'gateway' => 'midtrans', 'subscription_plan' => 'premium_monthly',
         ])->assertStatus(503);
-        $this->assertEquals($countBefore, \App\Models\Payment::count());
+        $this->assertEquals($countBefore, Payment::count());
     }
 }

@@ -20,7 +20,10 @@ class ProfileVerified implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->user->id)];
     }
 
-    public function broadcastAs(): string { return 'profile.verified'; }
+    public function broadcastAs(): string
+    {
+        return 'profile.verified';
+    }
 
     public function broadcastWith(): array
     {

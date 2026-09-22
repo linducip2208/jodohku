@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContactMessage;
 use App\Models\User;
+use App\Notifications\SubscriptionActive;
 use App\Services\AuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationAdminController extends Controller
 {
     public function inbox(Request $request)
     {
-        $messages = \App\Models\ContactMessage::latest('id')->paginate(25);
+        $messages = ContactMessage::latest('id')->paginate(25);
 
         return $request->wantsJson()
             ? response()->json($messages)
@@ -22,7 +23,7 @@ class NotificationAdminController extends Controller
 
     public function handle(Request $request, int $message, AuditService $audit)
     {
-        $m = \App\Models\ContactMessage::findOrFail($message);
+        $m = ContactMessage::findOrFail($message);
         $request->validate(['status' => ['required', 'string', 'in:handled,spam,open']]);
         $m->update(['status' => $request->string('status'), 'handled_by' => $request->user()->id]);
         $audit->log('admin.contact.handled', $request->user(), $m, [], ['status' => $m->status]);
@@ -30,7 +31,8 @@ class NotificationAdminController extends Controller
         return $request->wantsJson() ? response()->json($m->fresh()) : back()->with('status', 'Tiket diperbarui.');
     }
 
-    public function broadcast(Request $request, NotificationService $notifications, AuditService $audit)    {
+    public function broadcast(Request $request, NotificationService $notifications, AuditService $audit)
+    {
         $request->validate([
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string', 'max:1000'],
@@ -44,9 +46,9 @@ class NotificationAdminController extends Controller
             default => null,
         };
         $count = 0;
-        $query->chunkById(500, function ($users) use ($request, $notifications, &$count) {
+        $query->chunkById(500, function ($users) use ($notifications, &$count) {
             foreach ($users as $user) {
-                $notifications->send($user, new \App\Notifications\SubscriptionActive($user->activeSubscription()));
+                $notifications->send($user, new SubscriptionActive($user->activeSubscription()));
                 $count++;
             }
         });

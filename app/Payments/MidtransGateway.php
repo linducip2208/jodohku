@@ -6,7 +6,10 @@ use App\Models\Payment;
 
 class MidtransGateway extends BaseGateway
 {
-    public function code(): string { return 'midtrans'; }
+    public function code(): string
+    {
+        return 'midtrans';
+    }
 
     public function createPayment(Payment $payment, array $options = []): array
     {

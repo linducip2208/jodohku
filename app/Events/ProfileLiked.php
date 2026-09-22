@@ -19,7 +19,10 @@ class ProfileLiked implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->liked->id)];
     }
 
-    public function broadcastAs(): string { return 'profile.liked'; }
+    public function broadcastAs(): string
+    {
+        return 'profile.liked';
+    }
 
     public function broadcastWith(): array
     {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use App\Models\Forum;
 use App\Models\ForumThread;
+use App\Models\Post;
 use Illuminate\Http\Request;
 
 class ForumController extends Controller
@@ -102,8 +103,8 @@ class ForumController extends Controller
             ->with('forum', 'user')
             ->latest('id')
             ->paginate(20);
-        $posts = \App\Models\Post::where('body', 'like', "%{$q}%")->with('user')->latest('id')->paginate(20);
-        $forums = \App\Models\Forum::where('is_active', true)
+        $posts = Post::where('body', 'like', "%{$q}%")->with('user')->latest('id')->paginate(20);
+        $forums = Forum::where('is_active', true)
             ->where(function ($query) use ($q) {
                 $query->where('name', 'like', "%{$q}%")->orWhere('description', 'like', "%{$q}%");
             })

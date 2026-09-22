@@ -2,10 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Enums\UserRole;
 use App\Models\ProfanityCategory;
 use App\Models\ProfanityWord;
+use App\Models\User;
 use App\Services\ProfanityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class ProfanityCensorTest extends TestCase
@@ -38,7 +41,7 @@ class ProfanityCensorTest extends TestCase
         $this->assertEquals(1, $svc->censor('Dasar bangsat kamu!')['count']);
 
         config()->set('cache.default', 'database');
-        \Illuminate\Support\Facades\Cache::forget('profanity_words:v2');
+        Cache::forget('profanity_words:v2');
         $again = $svc->censor('Bangsat lagi!');
         $this->assertEquals(1, $again['count']);
         $third = $svc->censor('Bangsat sekali lagi!');
@@ -47,12 +50,12 @@ class ProfanityCensorTest extends TestCase
 
     public function test_admin_can_manage_dictionary_and_cache_busts(): void
     {
-        $admin = \App\Models\User::factory()->create(['role' => \App\Enums\UserRole::Moderator]);
+        $admin = User::factory()->create(['role' => UserRole::Moderator]);
         $this->actingAs($admin)->postJson('/admin/moderation/words', [
             'word' => 'testkasar123', 'language' => 'id',
         ])->assertCreated();
         $this->assertDatabaseHas('profanity_words', ['word' => 'testkasar123']);
-        $w = \App\Models\ProfanityWord::where('word', 'testkasar123')->firstOrFail();
+        $w = ProfanityWord::where('word', 'testkasar123')->firstOrFail();
         $this->actingAs($admin)->deleteJson("/admin/moderation/words/{$w->id}")->assertOk();
         $this->assertDatabaseMissing('profanity_words', ['word' => 'testkasar123']);
     }

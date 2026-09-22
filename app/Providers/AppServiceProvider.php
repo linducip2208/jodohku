@@ -4,13 +4,8 @@ namespace App\Providers;
 
 use App\AI\AiProviderManager;
 use App\Enums\UserRole;
-use App\Events\MessageSent;
 use App\Events\MutualMatchCreated;
-use App\Events\PaymentPaid;
-use App\Events\ProfileLiked;
 use App\Events\ProfileViewed;
-use App\Events\ReportCreated;
-use App\Events\UserRegistered;
 use App\Listeners\FireVirtualTrigger;
 use App\Listeners\LogAudit;
 use App\Listeners\RecalcMatchesOnProfileUpdate;

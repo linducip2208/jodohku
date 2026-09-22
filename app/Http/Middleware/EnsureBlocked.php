@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Block;
 use App\Models\ChatBlock;
+use App\Models\Conversation;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,7 +33,7 @@ class EnsureBlocked
         if ($user && $request->route('conversation')) {
             $conversation = $request->route('conversation');
             if (is_numeric($conversation)) {
-                $conversation = \App\Models\Conversation::find($conversation);
+                $conversation = Conversation::find($conversation);
             }
             if ($conversation && method_exists($conversation, 'otherMember')) {
                 $other = $conversation->otherMember((int) $user->id);

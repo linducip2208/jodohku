@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\Report;
 use App\Models\User;
 
@@ -14,6 +15,6 @@ class ReportPolicy
 
     public function resolve(User $user, Report $report): bool
     {
-        return in_array($user->role, [\App\Enums\UserRole::Moderator, \App\Enums\UserRole::Admin, \App\Enums\UserRole::Superadmin], true);
+        return in_array($user->role, [UserRole::Moderator, UserRole::Admin, UserRole::Superadmin], true);
     }
 }

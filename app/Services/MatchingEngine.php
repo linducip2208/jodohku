@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Block;
+use App\Models\Like;
 use App\Models\MatchScore;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MatchingEngine
@@ -51,6 +53,7 @@ class MatchingEngine
         if (Block::existsBetween((int) $a->id, (int) $b->id)) {
             return false;
         }
+
         return true;
     }
 
@@ -433,7 +436,7 @@ class MatchingEngine
         // Incognito: hidden unless they already liked the viewer.
         $query->where(function ($q) use ($u) {
             $q->whereDoesntHave('profilePrivacy', fn ($p) => $p->where('is_incognito', true))
-                ->orWhereIn('id', \App\Models\Like::where('liked_id', $u->id)->select('liker_id'));
+                ->orWhereIn('id', Like::where('liked_id', $u->id)->select('liker_id'));
         });
         if (! empty($filters['exclude_ids'])) {
             $query->whereNotIn('id', (array) $filters['exclude_ids']);
@@ -522,7 +525,7 @@ class MatchingEngine
             }
         }
         if (empty($diffs)) {
-            $common[] = "Hampir sempurna! Sangat cocok.";
+            $common[] = 'Hampir sempurna! Sangat cocok.';
         }
 
         return [
@@ -540,13 +543,13 @@ class MatchingEngine
 
     public function scoreWithCache(User $a, User $b, int $ttl = 300): array
     {
-        $cacheKey = "match:score:".min($a->id, $b->id).":".max($a->id, $b->id);
-        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        $cacheKey = 'match:score:'.min($a->id, $b->id).':'.max($a->id, $b->id);
+        $cached = Cache::get($cacheKey);
         if ($cached) {
             return $cached;
         }
         $result = $this->scorePair($a, $b);
-        \Illuminate\Support\Facades\Cache::put($cacheKey, $result, now()->addSeconds($ttl));
+        Cache::put($cacheKey, $result, now()->addSeconds($ttl));
 
         return $result;
     }

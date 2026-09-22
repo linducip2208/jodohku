@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnswerQuestionnaireRequest;
 use App\Http\Requests\PartnerPreferenceRequest;
+use App\Jobs\RecalculateMatches;
 use App\Models\Question;
 use App\Models\QuestionnaireAnswer;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ class PreferenceController extends Controller
 
             return $out;
         });
-        \App\Jobs\RecalculateMatches::dispatch($user->id);
+        RecalculateMatches::dispatch($user->id);
 
         return response()->json($saved, 201);
     }

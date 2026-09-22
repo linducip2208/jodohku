@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -9,8 +10,10 @@ use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\BlogController;
+use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\ForumController;
+use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\SettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,8 +46,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/profile', [ProfileController::class, 'me']);
         Route::put('/profile', [ProfileController::class, 'update']);
-        Route::post('/profile/photos', [\App\Http\Controllers\Member\ProfileController::class, 'photos']);
-        Route::delete('/profile/photos/{photo}', [\App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto']);
+        Route::post('/profile/photos', [App\Http\Controllers\Member\ProfileController::class, 'photos']);
+        Route::delete('/profile/photos/{photo}', [App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto']);
         Route::get('/profile/{user}', [ProfileController::class, 'show'])->middleware('blocked');
         Route::get('/profile/{user}/view-history', [ProfileController::class, 'viewHistory']);
         Route::get('/profile/{user}/viewers', [ProfileController::class, 'viewers']);
@@ -65,8 +68,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/matches/batch-score', [DiscoveryController::class, 'batchScore']);
         Route::get('/matches/stats', [DiscoveryController::class, 'stats']);
         Route::get('/matches/history', [DiscoveryController::class, 'history']);
-        Route::get('/who-liked', [\App\Http\Controllers\Member\MatchController::class, 'whoLiked']);
-        Route::get('/visitors', [\App\Http\Controllers\Member\MatchController::class, 'visitors']);
+        Route::get('/who-liked', [MatchController::class, 'whoLiked']);
+        Route::get('/visitors', [MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
         Route::get('/likes/quota', [DiscoveryController::class, 'likeQuota']);
         Route::delete('/likes/{user}', [DiscoveryController::class, 'pass']);
@@ -98,7 +101,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/messages/{message}/forward', [ChatController::class, 'forward']);
 
         Route::get('/chat-requests', [ChatController::class, 'requests']);
-        Route::post('/chat-requests/{user}', [\App\Http\Controllers\Member\ChatRequestController::class, 'store'])->middleware('throttle:30,1,chat-requests');
+        Route::post('/chat-requests/{user}', [ChatRequestController::class, 'store'])->middleware('throttle:30,1,chat-requests');
         Route::post('/chat-requests/{chatRequest}/action', [ChatController::class, 'requestAction']);
 
         Route::get('/notifications', [AccountController::class, 'notifications']);
@@ -164,8 +167,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])
             ->middleware('role:admin,superadmin');
-        Route::get('/admin/users/export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->middleware('role:admin,superadmin');
-        Route::post('/admin/users/impersonate', [\App\Http\Controllers\Admin\UserController::class, 'impersonate'])->middleware('role:admin,superadmin');
-        Route::post('/admin/users/stop-impersonate', [\App\Http\Controllers\Admin\UserController::class, 'stopImpersonate'])->middleware('role:admin,superadmin');
+        Route::get('/admin/users/export', [UserController::class, 'export'])->middleware('role:admin,superadmin');
+        Route::post('/admin/users/impersonate', [UserController::class, 'impersonate'])->middleware('role:admin,superadmin');
+        Route::post('/admin/users/stop-impersonate', [UserController::class, 'stopImpersonate'])->middleware('role:admin,superadmin');
     });
 });

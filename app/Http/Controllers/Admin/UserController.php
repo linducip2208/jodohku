@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminUserUpdateRequest;
+use App\Models\ProfilePhoto;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
+use App\Services\PhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -119,16 +121,16 @@ class UserController extends Controller
 
     public function photoQueue(Request $request)
     {
-        $photos = \App\Models\ProfilePhoto::pendingReview()->with('user')->paginate(25);
+        $photos = ProfilePhoto::pendingReview()->with('user')->paginate(25);
 
         return $request->wantsJson()
             ? response()->json($photos)
             : view('admin.photos', ['photos' => $photos]);
     }
 
-    public function moderatePhoto(Request $request, int $photo, \App\Services\PhotoService $photos)
+    public function moderatePhoto(Request $request, int $photo, PhotoService $photos)
     {
-        $record = \App\Models\ProfilePhoto::findOrFail($photo);
+        $record = ProfilePhoto::findOrFail($photo);
         $request->validate(['action' => ['required', 'string', 'in:approve,reject'], 'reason' => ['nullable', 'string', 'max:500']]);
         $action = $request->string('action')->toString();
         $result = $action === 'approve'
@@ -142,7 +144,7 @@ class UserController extends Controller
 
     public function export(Request $request)
     {
-        $this->authorize('viewAdminOverview', \App\Models\User::class);
+        $this->authorize('viewAdminOverview', User::class);
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="users-'.now()->format('Y-m-d').'.csv"',
@@ -151,7 +153,7 @@ class UserController extends Controller
         $callback = function () use ($columns) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, $columns);
-            \App\Models\User::query()->with(['profile'])->chunkById(500, function ($users) use ($handle) {
+            User::query()->with(['profile'])->chunkById(500, function ($users) use ($handle) {
                 foreach ($users as $u) {
                     fputcsv($handle, [
                         $u->id, $u->name, $u->email, $u->phone, $u->display_name, $u->gender, $u->date_of_birth, $u->city, $u->status, $u->role, $u->is_verified, $u->is_premium, $u->is_online, $u->created_at, $u->last_active_at,
@@ -182,7 +184,7 @@ class UserController extends Controller
             abort(403, 'Not impersonating.');
         }
         $originalId = session()->pull('impersonating');
-        Auth::login(\App\Models\User::findOrFail($originalId));
+        Auth::login(User::findOrFail($originalId));
 
         return response()->json(['message' => 'Stopped impersonating.']);
     }

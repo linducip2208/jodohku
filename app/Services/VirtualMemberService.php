@@ -6,7 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\AiMode;
 use App\Enums\VirtualConversationStatus;
 use App\Models\AiPersonality;
-use App\Models\Conversation;
+use App\Models\ChatTrigger;
 use App\Models\User;
 use App\Models\VirtualConversation;
 use App\Models\VirtualProfile;
@@ -40,7 +40,7 @@ class VirtualMemberService
                 'mode' => $attrs['mode'] ?? AiMode::Template->value,
                 'persona_prompt' => $attrs['persona_prompt'] ?? null,
                 'greeting_message' => $attrs['greeting_message'] ?? ('Halo! Aku '.$user->displayName().' 👋 (profil virtual Jodohku)'),
-                'reply_templates' => $attrs['reply_templates'] ?? ["Hai! Senang kenalan denganmu 😊", 'Wah menarik! Ceritakan lebih banyak dong.'],
+                'reply_templates' => $attrs['reply_templates'] ?? ['Hai! Senang kenalan denganmu 😊', 'Wah menarik! Ceritakan lebih banyak dong.'],
                 'is_active' => true,
             ]);
             $this->audit->log('virtual.created', null, $user, [], ['transparent' => true]);
@@ -71,7 +71,7 @@ class VirtualMemberService
         if (! config('jodohku.features.virtual', true)) {
             return null;
         }
-        $triggers = \App\Models\ChatTrigger::active()->forEvent($eventName)->with('actions')->get();
+        $triggers = ChatTrigger::active()->forEvent($eventName)->with('actions')->get();
         if ($triggers->isEmpty()) {
             return null;
         }

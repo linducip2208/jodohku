@@ -9,7 +9,10 @@ class VisitorList extends Component
 {
     public string $tab = 'visitors';
 
-    public function setTab(string $t): void { $this->tab = $t; }
+    public function setTab(string $t): void
+    {
+        $this->tab = $t;
+    }
 
     public function render()
     {
@@ -19,11 +22,14 @@ class VisitorList extends Component
         if ($user) {
             try {
                 $visitors = ProfileView::where('viewed_id', $user->id)->with('viewer')->latest('id')->take(30)->get();
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
             try {
                 $likers = $user->likesReceived()->with('liker')->latest('id')->take(30)->get();
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
+
         return view('livewire.visitor-list', ['visitors' => $visitors, 'likers' => $likers]);
     }
 }

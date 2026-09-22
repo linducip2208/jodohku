@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Conversation;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Conversation */
+/** @mixin Conversation */
 class ConversationResource extends JsonResource
 {
     public function toArray(Request $request): array

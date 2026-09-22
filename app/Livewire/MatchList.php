@@ -15,8 +15,10 @@ class MatchList extends Component
             try {
                 $matches = UserMatch::where('user_a_id', $user->id)->orWhere('user_b_id', $user->id)
                     ->latest('id')->take(30)->get();
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
+
         return view('livewire.match-list', ['matches' => $matches]);
     }
 }

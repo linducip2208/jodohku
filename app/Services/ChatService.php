@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Enums\ConversationType;
+use App\Enums\MessageStatus;
 use App\Events\MessageRead as MessageReadEvent;
 use App\Events\MessageReceived;
 use App\Events\MessageSent;
 use App\Events\TypingIndicator;
+use App\Jobs\ProcessMessageModeration;
+use App\Jobs\SendChatNotification;
 use App\Models\Block;
 use App\Models\ChatBlock;
 use App\Models\Conversation;
@@ -14,10 +17,12 @@ use App\Models\ConversationLabel;
 use App\Models\ConversationMember;
 use App\Models\ConversationUserSetting;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\MessageDeletion;
 use App\Models\MessageReaction;
 use App\Models\User;
 use App\Models\UserMatch;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -82,7 +87,7 @@ class ChatService
     }
 
     /**
-     * @param array{body?:string,type?:string,reply_to_id?:int,attachments?:array,metadata?:array} $data
+     * @param  array{body?:string,type?:string,reply_to_id?:int,attachments?:array,metadata?:array}  $data
      */
     public function sendMessage(Conversation $conversation, User $sender, array $data, ?string $clientMessageId = null): Message
     {
@@ -126,7 +131,7 @@ class ChatService
                 'sender_id' => $sender->id,
                 'body' => $finalBody,
                 'type' => $data['type'] ?? 'text',
-                'status' => $mod['decision'] === 'flag' ? \App\Enums\MessageStatus::Sent : \App\Enums\MessageStatus::Sent,
+                'status' => $mod['decision'] === 'flag' ? MessageStatus::Sent : MessageStatus::Sent,
                 'client_message_id' => $clientId,
                 'reply_to_id' => $data['reply_to_id'] ?? null,
                 'metadata' => array_merge($data['metadata'] ?? [], [
@@ -152,11 +157,11 @@ class ChatService
 
             event(new MessageSent($message->fresh(['sender', 'conversation'])));
             event(new MessageReceived($message->fresh(['sender', 'conversation'])));
-            \App\Jobs\SendChatNotification::dispatch($message->id);
+            SendChatNotification::dispatch($message->id);
 
             // Queue AI review only when flagged
             if ($mod['needs_ai']) {
-                \App\Jobs\ProcessMessageModeration::dispatch($message->id);
+                ProcessMessageModeration::dispatch($message->id);
             }
 
             return $message->fresh();
@@ -196,7 +201,7 @@ class ChatService
      *
      * @throws \InvalidArgumentException|\RuntimeException
      */
-    public function sendAttachment(Conversation $conversation, User $sender, \Illuminate\Http\UploadedFile $file, ?string $body = null, ?string $clientMessageId = null): Message
+    public function sendAttachment(Conversation $conversation, User $sender, UploadedFile $file, ?string $body = null, ?string $clientMessageId = null): Message
     {
         if (! $file->isValid()) {
             throw new \InvalidArgumentException('Upload failed.');
@@ -428,8 +433,8 @@ class ChatService
             'total_messages' => $messages->count(),
             'my_messages' => $mine->count(),
             'their_messages' => $theirs->count(),
-            'attachments' => \App\Models\MessageAttachment::whereIn('message_id', $messages->pluck('id'))->count(),
-            'reactions' => \App\Models\MessageReaction::whereIn('message_id', $messages->pluck('id'))->count(),
+            'attachments' => MessageAttachment::whereIn('message_id', $messages->pluck('id'))->count(),
+            'reactions' => MessageReaction::whereIn('message_id', $messages->pluck('id'))->count(),
             'first_message_at' => $messages->min('created_at'),
             'last_message_at' => $messages->max('created_at'),
             'active_days' => $createdDates->unique()->count(),

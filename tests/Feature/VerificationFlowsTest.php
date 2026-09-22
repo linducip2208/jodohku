@@ -2,12 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\FraudEvent;
+use App\Models\Message;
 use App\Models\User;
+use App\Services\ChatService;
 use App\Services\FraudDetectionService;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class VerificationFlowsTest extends TestCase
@@ -21,9 +27,9 @@ class VerificationFlowsTest extends TestCase
         $this->assertFalse($user->hasVerifiedEmail());
 
         $this->actingAs($user)->post('/verify-email/send')->assertRedirect();
-        Notification::assertSentTo($user, \Illuminate\Auth\Notifications\VerifyEmail::class);
+        Notification::assertSentTo($user, VerifyEmail::class);
 
-        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        $url = URL::temporarySignedRoute(
             'verification.verify', now()->addMinutes(60),
             ['id' => $user->id, 'hash' => sha1($user->email)]
         );
@@ -32,7 +38,7 @@ class VerificationFlowsTest extends TestCase
 
         // Tampered hash rejected.
         $evil = User::factory()->create(['email_verified_at' => null]);
-        $bad = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        $bad = URL::temporarySignedRoute(
             'verification.verify', now()->addMinutes(60),
             ['id' => $evil->id, 'hash' => sha1('other@example.test')]
         );
@@ -45,7 +51,7 @@ class VerificationFlowsTest extends TestCase
         Notification::fake();
         $user = User::factory()->create();
         $this->post('/forgot-password', ['email' => $user->email])->assertRedirect();
-        Notification::assertSentTo($user, \Illuminate\Auth\Notifications\ResetPassword::class, function ($n) use ($user, &$token) {
+        Notification::assertSentTo($user, ResetPassword::class, function ($n) use (&$token) {
             $token = $n->token;
 
             return true;
@@ -104,9 +110,9 @@ class VerificationFlowsTest extends TestCase
             $fraud->scoreUser(User::latest('id')->first(), ['ip' => '10.9.9.9', 'device' => 'dev-shared']);
         }
         $peer = User::factory()->create();
-        $conv = app(\App\Services\ChatService::class)->findOrCreateDirect($spam, $peer);
+        $conv = app(ChatService::class)->findOrCreateDirect($spam, $peer);
         foreach (range(1, 60) as $i) {
-            \App\Models\Message::create([
+            Message::create([
                 'conversation_id' => $conv->id, 'sender_id' => $spam->id,
                 'body' => 'spam '.$i, 'status' => 'sent', 'client_message_id' => 'fraud-'.$i,
             ]);
@@ -114,7 +120,7 @@ class VerificationFlowsTest extends TestCase
         $result = $fraud->scoreUser($spam->fresh(), ['ip' => '10.9.9.9', 'device' => 'dev-shared']);
         $this->assertContains($result['level'], ['medium', 'high']);
         $this->assertDatabaseHas('fraud_events', ['user_id' => $spam->id]);
-        $event = \App\Models\FraudEvent::where('user_id', $spam->id)->firstOrFail();
+        $event = FraudEvent::where('user_id', $spam->id)->firstOrFail();
         $this->assertNotEmpty($event->metadata);
     }
 }

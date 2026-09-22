@@ -15,7 +15,9 @@ class AdminVirtualStats extends Component
             $stats['ai'] = User::where('account_type', 'ai')->count();
             $stats['real'] = User::where('account_type', 'real')->count();
             $stats['online'] = User::where('is_online', true)->count();
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
+
         return view('livewire.admin-virtual-stats', ['stats' => $stats]);
     }
 }

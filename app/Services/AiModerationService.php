@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MessageStatus;
 use App\Models\Message;
 use App\Models\ModerationQueue;
 
@@ -45,7 +46,7 @@ class AiModerationService
                 'status' => 'pending',
             ]);
             if ($verdict === 'block') {
-                $message->update(['status' => \App\Enums\MessageStatus::Moderated]);
+                $message->update(['status' => MessageStatus::Moderated]);
             }
         }
 

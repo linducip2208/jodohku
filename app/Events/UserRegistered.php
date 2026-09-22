@@ -19,7 +19,10 @@ class UserRegistered implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->user->id)];
     }
 
-    public function broadcastAs(): string { return 'user.registered'; }
+    public function broadcastAs(): string
+    {
+        return 'user.registered';
+    }
 
     public function broadcastWith(): array
     {

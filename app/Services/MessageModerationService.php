@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ModerationAction;
 use App\Models\Message;
 use App\Models\ModerationLog;
 use App\Models\ModerationQueue;
@@ -19,7 +20,7 @@ class MessageModerationService
      * NEVER calls AI here.
      *
      * @return array{decision:string, risk:int, clean:string, flags:string[], needs_ai:bool}
-     *   decision: allow|mask|warning|block|flag
+     *                                                                                       decision: allow|mask|warning|block|flag
      */
     public function moderate(string $body, ?User $sender = null, ?Message $message = null): array
     {
@@ -66,10 +67,10 @@ class MessageModerationService
             'moderatable_type' => $message ? Message::class : null,
             'moderatable_id' => $message?->id,
             'action' => match ($decision) {
-                'block' => \App\Enums\ModerationAction::DeleteContent,
-                'flag' => \App\Enums\ModerationAction::Escalate,
-                'warning' => \App\Enums\ModerationAction::Warn,
-                default => \App\Enums\ModerationAction::None,
+                'block' => ModerationAction::DeleteContent,
+                'flag' => ModerationAction::Escalate,
+                'warning' => ModerationAction::Warn,
+                default => ModerationAction::None,
             },
             'reason' => 'auto:risk='.$risk.' flags='.implode('|', array_slice($flags, 0, 8)),
             'metadata' => ['risk' => $risk, 'flags' => $flags, 'decision' => $decision, 'needs_ai' => $needsAi],

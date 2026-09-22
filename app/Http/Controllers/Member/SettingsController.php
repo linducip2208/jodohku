@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\NotificationPreference;
+use App\Models\ProfilePrivacy;
+use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -44,7 +48,7 @@ class SettingsController extends Controller
     public function privacy(Request $request)
     {
         $user = $request->user();
-        $privacy = \App\Models\ProfilePrivacy::firstOrCreate(['user_id' => $user->id]);
+        $privacy = ProfilePrivacy::firstOrCreate(['user_id' => $user->id]);
         $privacy->update([
             'show_online_status' => ! $request->boolean('hide_online'),
             'online_visibility' => $request->boolean('hide_online') ? 'private' : 'public',
@@ -59,7 +63,7 @@ class SettingsController extends Controller
 
     public function notifications(Request $request)
     {
-        $prefs = \App\Models\NotificationPreference::firstOrCreate(['user_id' => $request->user()->id]);
+        $prefs = NotificationPreference::firstOrCreate(['user_id' => $request->user()->id]);
         $prefs->update([
             'email_matches' => $request->boolean('match'),
             'push_matches' => $request->boolean('match'),
@@ -83,7 +87,7 @@ class SettingsController extends Controller
         return response()->json(['message' => 'Account deleted.']);
     }
 
-    public function enable2fa(Request $request, \App\Services\TwoFactorService $tfa)
+    public function enable2fa(Request $request, TwoFactorService $tfa)
     {
         $user = $request->user();
         $tfa->enable($user);
@@ -100,7 +104,7 @@ class SettingsController extends Controller
             : back()->with('status', '2FA aktif. Kode verifikasi dikirim ke email ✅');
     }
 
-    public function disable2fa(Request $request, \App\Services\TwoFactorService $tfa)
+    public function disable2fa(Request $request, TwoFactorService $tfa)
     {
         $request->validate(['password' => ['required', 'current_password']]);
         $tfa->disable($request->user());
@@ -112,7 +116,7 @@ class SettingsController extends Controller
 
     public function loginHistory(Request $request)
     {
-        $logs = \App\Models\AuditLog::where('actor_id', $request->user()->id)
+        $logs = AuditLog::where('actor_id', $request->user()->id)
             ->whereIn('action', ['auth.login', 'auth.login.api', 'admin.login'])
             ->orderByDesc('created_at')
             ->paginate(25);

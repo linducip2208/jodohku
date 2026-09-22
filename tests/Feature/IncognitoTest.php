@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\NotificationPreference;
 use App\Models\ProfilePrivacy;
 use App\Models\User;
 use App\Services\DiscoveryService;
 use App\Services\LikeService;
+use App\Services\MatchingEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -31,7 +33,7 @@ class IncognitoTest extends TestCase
         $this->assertContains($ghost->id, $ids2);
 
         // Engine-level candidates honor the same rule.
-        $cands = app(\App\Services\MatchingEngine::class)->candidatesFor($viewer, [], 50)->pluck('id')->all();
+        $cands = app(MatchingEngine::class)->candidatesFor($viewer, [], 50)->pluck('id')->all();
         $this->assertContains($ghost->id, $cands);
     }
 
@@ -48,7 +50,7 @@ class IncognitoTest extends TestCase
 
         $this->actingAs($u)->post('/settings/notifications', ['match' => '1'])
             ->assertRedirect();
-        $np = \App\Models\NotificationPreference::where('user_id', $u->id)->firstOrFail();
+        $np = NotificationPreference::where('user_id', $u->id)->firstOrFail();
         $this->assertTrue((bool) $np->email_matches);
         $this->assertFalse((bool) $np->email_messages);
     }

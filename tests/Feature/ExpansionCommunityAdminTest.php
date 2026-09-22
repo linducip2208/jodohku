@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ConversationType;
 use App\Enums\UserRole;
 use App\Models\BlogPost;
+use App\Models\Conversation;
+use App\Models\ConversationMember;
 use App\Models\Event;
 use App\Models\Forum;
 use App\Models\ForumThread;
+use App\Models\Like;
+use App\Models\Message;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -79,15 +84,15 @@ class ExpansionCommunityAdminTest extends TestCase
         $u1 = User::factory()->create();
         $u2 = User::factory()->create();
         $u3 = User::factory()->create();
-        \App\Models\Like::create(['liker_id' => $u1->id, 'liked_id' => $u2->id]);
-        \App\Models\Like::create(['liker_id' => $u3->id, 'liked_id' => $u2->id]);
-        \App\Models\Like::create(['liker_id' => $admin->id, 'liked_id' => $u2->id]);
-        \App\Models\Like::create(['liker_id' => $u1->id, 'liked_id' => $admin->id]);
+        Like::create(['liker_id' => $u1->id, 'liked_id' => $u2->id]);
+        Like::create(['liker_id' => $u3->id, 'liked_id' => $u2->id]);
+        Like::create(['liker_id' => $admin->id, 'liked_id' => $u2->id]);
+        Like::create(['liker_id' => $u1->id, 'liked_id' => $admin->id]);
 
-        $conv = \App\Models\Conversation::create(['type' => \App\Enums\ConversationType::Direct, 'created_by' => $u1->id]);
-        \App\Models\ConversationMember::create(['conversation_id' => $conv->id, 'user_id' => $u1->id, 'joined_at' => now()]);
-        \App\Models\ConversationMember::create(['conversation_id' => $conv->id, 'user_id' => $u2->id, 'joined_at' => now()]);
-        \App\Models\Message::create(['conversation_id' => $conv->id, 'sender_id' => $u1->id, 'body' => 'Hai']);
+        $conv = Conversation::create(['type' => ConversationType::Direct, 'created_by' => $u1->id]);
+        ConversationMember::create(['conversation_id' => $conv->id, 'user_id' => $u1->id, 'joined_at' => now()]);
+        ConversationMember::create(['conversation_id' => $conv->id, 'user_id' => $u2->id, 'joined_at' => now()]);
+        Message::create(['conversation_id' => $conv->id, 'sender_id' => $u1->id, 'body' => 'Hai']);
 
         $kpi = $this->get('/admin/analytics/kpi')->assertOk()->json();
         $this->assertGreaterThanOrEqual(4, $kpi['users_total']);

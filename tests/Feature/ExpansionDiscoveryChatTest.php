@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Conversation;
 use App\Models\Gift;
 use App\Models\Interest;
 use App\Models\MembershipPlan;

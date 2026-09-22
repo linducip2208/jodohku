@@ -2,12 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Models\Setting;
 use App\Services\MatchingEngine;
 use Livewire\Component;
 
 class AdminMatchingWeights extends Component
 {
     public array $weights = [];
+
     public string $saved = '';
 
     public function mount(MatchingEngine $engine): void
@@ -22,10 +24,10 @@ class AdminMatchingWeights extends Component
             $this->weights[$k] = round(((float) $v) / $total * 100, 2);
         }
         try {
-            \App\Models\Setting::updateOrCreate(['key' => 'matchmaking.weights'], ['value' => json_encode($this->weights)]);
+            Setting::updateOrCreate(['key' => 'matchmaking.weights'], ['value' => json_encode($this->weights)]);
             $this->saved = 'Bobot tersimpan (normalisasi 100). Berlaku via config matchmaking.';
         } catch (\Throwable $e) {
-            $this->saved = 'Gagal menyimpan: ' . $e->getMessage();
+            $this->saved = 'Gagal menyimpan: '.$e->getMessage();
         }
     }
 

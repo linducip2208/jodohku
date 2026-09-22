@@ -20,7 +20,7 @@ class TwoFactorCode extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage())
+        return (new MailMessage)
             ->subject('Kode verifikasi Jodohku: '.$this->code)
             ->greeting('Halo '.$notifiable->displayName().'!')
             ->line('Kode verifikasi 2 langkah kamu:')

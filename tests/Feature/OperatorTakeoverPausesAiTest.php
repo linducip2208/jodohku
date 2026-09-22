@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\AccountType;
 use App\Enums\AiMode;
 use App\Enums\UserRole;
-use App\Enums\UserStatus;
 use App\Enums\VirtualConversationStatus;
 use App\Models\Conversation;
 use App\Models\User;
@@ -13,7 +12,6 @@ use App\Models\VirtualConversation;
 use App\Models\VirtualProfile;
 use App\Services\OperatorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class OperatorTakeoverPausesAiTest extends TestCase

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\BlogPost;
 use App\Models\Coupon;
 use App\Models\Forum;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class CouponBlogForumSeeder extends Seeder
@@ -58,7 +59,7 @@ class CouponBlogForumSeeder extends Seeder
             'sort_order' => 2,
         ]);
 
-        if ($forum->threads()->count() === 0 && ($admin = \App\Models\User::where('role', 'superadmin')->first())) {
+        if ($forum->threads()->count() === 0 && ($admin = User::where('role', 'superadmin')->first())) {
             $thread = $forum->threads()->create([
                 'user_id' => $admin->id,
                 'title' => 'Selamat datang — perkenalkan dirimu di sini',

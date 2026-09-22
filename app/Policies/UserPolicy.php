@@ -2,11 +2,16 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
+use App\Models\Block;
 use App\Models\User;
 
 class UserPolicy
 {
-    public function viewAny(?User $viewer): bool { return true; }
+    public function viewAny(?User $viewer): bool
+    {
+        return true;
+    }
 
     public function view(?User $viewer, User $model): bool
     {
@@ -19,7 +24,7 @@ class UserPolicy
         if ($viewer->isStaff()) {
             return true;
         }
-        if (\App\Models\Block::existsBetween((int) $viewer->id, (int) $model->id)) {
+        if (Block::existsBetween((int) $viewer->id, (int) $model->id)) {
             return false;
         }
 
@@ -28,12 +33,12 @@ class UserPolicy
 
     public function update(User $user, User $model): bool
     {
-        return $user->id === $model->id || $user->role->rank() >= \App\Enums\UserRole::Admin->rank();
+        return $user->id === $model->id || $user->role->rank() >= UserRole::Admin->rank();
     }
 
     public function delete(User $user, User $model): bool
     {
-        return $user->role === \App\Enums\UserRole::Superadmin;
+        return $user->role === UserRole::Superadmin;
     }
 
     public function viewAdminOverview(User $user): bool

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,7 +27,7 @@ return new class extends Migration
         });
 
         // Backfill: previously-approved photos keep their visibility.
-        \Illuminate\Support\Facades\DB::table('profile_photos')
+        DB::table('profile_photos')
             ->where('is_approved', true)->update(['status' => 'approved']);
     }
 

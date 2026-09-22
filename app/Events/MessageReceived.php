@@ -19,7 +19,10 @@ class MessageReceived implements ShouldBroadcast
         return [new PrivateChannel('conversations.'.$this->message->conversation_id)];
     }
 
-    public function broadcastAs(): string { return 'message.received'; }
+    public function broadcastAs(): string
+    {
+        return 'message.received';
+    }
 
     public function broadcastWith(): array
     {

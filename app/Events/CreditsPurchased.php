@@ -19,7 +19,10 @@ class CreditsPurchased implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->user->id)];
     }
 
-    public function broadcastAs(): string { return 'credits.purchased'; }
+    public function broadcastAs(): string
+    {
+        return 'credits.purchased';
+    }
 
     public function broadcastWith(): array
     {

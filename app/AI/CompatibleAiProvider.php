@@ -6,7 +6,10 @@ use Illuminate\Support\Facades\Http;
 
 class CompatibleAiProvider implements AiProviderInterface
 {
-    public function name(): string { return 'compatible'; }
+    public function name(): string
+    {
+        return 'compatible';
+    }
 
     public function chat(string $prompt, array $options = []): array
     {

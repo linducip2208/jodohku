@@ -6,8 +6,14 @@ use App\Events\ProfileViewed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Block;
+use App\Models\Like;
+use App\Models\Message;
 use App\Models\ProfilePrivacy;
+use App\Models\SuperLike;
 use App\Models\User;
+use App\Models\UserMatch;
+use App\Services\PhotoService;
 use App\Services\VirtualMemberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +95,7 @@ class ProfileController extends Controller
         return response()->json(UserResource::make($user->fresh(['profile', 'photos', 'interests'])));
     }
 
-    public function photos(Request $request, \App\Services\PhotoService $photos)
+    public function photos(Request $request, PhotoService $photos)
     {
         $request->validate([
             'photos' => ['required', 'array', 'max:9'],
@@ -112,7 +118,7 @@ class ProfileController extends Controller
             : back()->with('status', count($stored).' foto diupload, menunggu moderasi ✅');
     }
 
-    public function destroyPhoto(Request $request, int $photo, \App\Services\PhotoService $photos)
+    public function destroyPhoto(Request $request, int $photo, PhotoService $photos)
     {
         $record = $request->user()->photos()->findOrFail($photo);
         $photos->destroy($request->user(), $record);
@@ -161,14 +167,30 @@ class ProfileController extends Controller
         $profile = $user->profile;
         $pct = $profile ? $profile->completenessScore() : 0;
         $tips = [];
-        if (empty($user->avatar_path)) $tips[] = 'Tambahkan foto profil';
-        if (empty($profile?->bio)) $tips[] = 'Tulis bio menarik';
-        if (empty($profile?->occupation)) $tips[] = 'Isi pekerjaan';
-        if (empty($profile?->education)) $tips[] = 'Isi pendidikan';
-        if (empty($profile?->headline)) $tips[] = 'Tambahkan headline';
-        if (($user->interests()->count() ?? 0) === 0) $tips[] = 'Pilih minimal 3 minat';
-        if (empty($user->city)) $tips[] = 'Tambahkan lokasi';
-        if (empty($profile?->relationship_goal)) $tips[] = 'Tambahkan tujuan hubungan';
+        if (empty($user->avatar_path)) {
+            $tips[] = 'Tambahkan foto profil';
+        }
+        if (empty($profile?->bio)) {
+            $tips[] = 'Tulis bio menarik';
+        }
+        if (empty($profile?->occupation)) {
+            $tips[] = 'Isi pekerjaan';
+        }
+        if (empty($profile?->education)) {
+            $tips[] = 'Isi pendidikan';
+        }
+        if (empty($profile?->headline)) {
+            $tips[] = 'Tambahkan headline';
+        }
+        if (($user->interests()->count() ?? 0) === 0) {
+            $tips[] = 'Pilih minimal 3 minat';
+        }
+        if (empty($user->city)) {
+            $tips[] = 'Tambahkan lokasi';
+        }
+        if (empty($profile?->relationship_goal)) {
+            $tips[] = 'Tambahkan tujuan hubungan';
+        }
 
         return response()->json(['completeness' => $pct, 'tips' => $tips, 'missing' => count($tips)]);
     }
@@ -179,7 +201,7 @@ class ProfileController extends Controller
         $viewer = $request->user();
         $privacy = $user->profilePrivacy;
         $canView = $privacy ? $privacy->canSee($viewer, $privacy->photos_visibility) : true;
-        $photos = \App\Services\PhotoService::visibleTo($user, $viewer);
+        $photos = PhotoService::visibleTo($user, $viewer);
 
         return response()->json(['can_view' => $canView, 'photos' => $photos, 'visibility' => $privacy?->photos_visibility?->value ?? 'public']);
     }
@@ -193,19 +215,19 @@ class ProfileController extends Controller
         return response()->json([
             'profile_views_total' => \App\Models\ProfileView::where('profile_user_id', $user->id)->count(),
             'profile_views_today' => \App\Models\ProfileView::where('profile_user_id', $user->id)->whereDate('created_at', today())->count(),
-            'likes_received' => \App\Models\Like::where('liked_id', $user->id)->count(),
-            'likes_received_today' => \App\Models\Like::where('liked_id', $user->id)->whereDate('created_at', today())->count(),
-            'superlikes_received' => \App\Models\SuperLike::where('receiver_id', $user->id)->count(),
-            'matches' => \App\Models\UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
-            'messages_sent' => \App\Models\Message::where('sender_id', $user->id)->count(),
-            'messages_received' => \App\Models\Message::where('sender_id', '!=', $user->id)->whereHas('conversation', fn ($q) => $q->whereHas('members', fn ($q2) => $q2->where('user_id', $user->id)))->count(),
+            'likes_received' => Like::where('liked_id', $user->id)->count(),
+            'likes_received_today' => Like::where('liked_id', $user->id)->whereDate('created_at', today())->count(),
+            'superlikes_received' => SuperLike::where('receiver_id', $user->id)->count(),
+            'matches' => UserMatch::where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))->where('is_active', true)->count(),
+            'messages_sent' => Message::where('sender_id', $user->id)->count(),
+            'messages_received' => Message::where('sender_id', '!=', $user->id)->whereHas('conversation', fn ($q) => $q->whereHas('members', fn ($q2) => $q2->where('user_id', $user->id)))->count(),
             'is_self' => $isSelf,
         ]);
     }
 
     public function blocking(Request $request)
     {
-        $items = \App\Models\Block::where('blocker_id', $request->user()->id)->with(['blocked'])->latest('id')->paginate(20);
+        $items = Block::where('blocker_id', $request->user()->id)->with(['blocked'])->latest('id')->paginate(20);
 
         return response()->json($items);
     }

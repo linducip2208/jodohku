@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PaymentStatus;
+use App\Events\ReportCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Requests\CreditSpendRequest;
@@ -13,7 +14,9 @@ use App\Http\Resources\NotificationResource;
 use App\Http\Resources\PaymentResource;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Block;
+use App\Models\Conversation;
 use App\Models\CreditProduct;
+use App\Models\CreditTransaction;
 use App\Models\Payment;
 use App\Models\Report;
 use App\Models\User;
@@ -23,6 +26,7 @@ use App\Services\BoostService;
 use App\Services\CreditService;
 use App\Services\GiftService;
 use App\Services\MembershipService;
+use App\Services\NotificationService;
 use App\Services\PaymentService;
 use App\Services\SubscriptionService;
 use App\Services\VerificationService;
@@ -35,7 +39,7 @@ class AccountController extends Controller
         return response()->json(NotificationResource::collection($request->user()->notifications()->latest('created_at')->paginate(20))->response()->getData());
     }
 
-    public function markNotifications(Request $request, \App\Services\NotificationService $notifications)
+    public function markNotifications(Request $request, NotificationService $notifications)
     {
         return response()->json(['marked' => $notifications->markAllRead($request->user())]);
     }
@@ -159,7 +163,7 @@ class AccountController extends Controller
             'details' => $request->input('details'),
             'status' => 'pending',
         ]);
-        event(new \App\Events\ReportCreated($report));
+        event(new ReportCreated($report));
 
         return response()->json($report, 201);
     }
@@ -221,7 +225,7 @@ class AccountController extends Controller
         return response()->json(['openers' => $assistant->openers($request->user(), $user)]);
     }
 
-    public function aiDigest(Request $request, \App\Models\Conversation $conversation, AiChatAssistantService $assistant)
+    public function aiDigest(Request $request, Conversation $conversation, AiChatAssistantService $assistant)
     {
         $this->authorize('view', $conversation);
 
@@ -239,7 +243,7 @@ class AccountController extends Controller
         ]);
         $receiver = User::findOrFail($request->integer('receiver_id'));
         $conversation = $request->filled('conversation_id')
-            ? \App\Models\Conversation::findOrFail($request->integer('conversation_id'))
+            ? Conversation::findOrFail($request->integer('conversation_id'))
             : null;
 
         try {
@@ -266,7 +270,7 @@ class AccountController extends Controller
         return response()->json($boost->activate($request->user()), 201);
     }
 
-    public function suggestedReplies(Request $request, \App\Models\Conversation $conversation, AiChatAssistantService $assistant)
+    public function suggestedReplies(Request $request, Conversation $conversation, AiChatAssistantService $assistant)
     {
         $this->authorize('view', $conversation);
 
@@ -286,7 +290,7 @@ class AccountController extends Controller
     public function transactions(Request $request, CreditService $credits)
     {
         $type = $request->query('type');
-        $query = \App\Models\CreditTransaction::where('user_id', $request->user()->id)->with('user');
+        $query = CreditTransaction::where('user_id', $request->user()->id)->with('user');
         if ($type) {
             $query->where('type', $type);
         }
@@ -307,15 +311,15 @@ class AccountController extends Controller
     public function paymentSummary(Request $request)
     {
         $monthStart = now()->startOfMonth();
-        $paid = \App\Models\Payment::where('user_id', $request->user()->id)
-            ->where('status', \App\Enums\PaymentStatus::Paid)
+        $paid = Payment::where('user_id', $request->user()->id)
+            ->where('status', PaymentStatus::Paid)
             ->where('paid_at', '>=', $monthStart)
             ->sum('total_amount');
-        $refunded = \App\Models\Payment::where('user_id', $request->user()->id)
-            ->where('status', \App\Enums\PaymentStatus::Refunded)
+        $refunded = Payment::where('user_id', $request->user()->id)
+            ->where('status', PaymentStatus::Refunded)
             ->where('refunded_at', '>=', $monthStart)
             ->sum('total_amount');
-        $count = \App\Models\Payment::where('user_id', $request->user()->id)
+        $count = Payment::where('user_id', $request->user()->id)
             ->where('created_at', '>=', $monthStart)->count();
 
         return response()->json([

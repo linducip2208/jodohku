@@ -20,7 +20,10 @@ class SubscriptionActivated implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->user->id)];
     }
 
-    public function broadcastAs(): string { return 'subscription.activated'; }
+    public function broadcastAs(): string
+    {
+        return 'subscription.activated';
+    }
 
     public function broadcastWith(): array
     {

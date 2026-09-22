@@ -26,7 +26,7 @@ class PaymentService
     ) {}
 
     /**
-     * @param array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string} $order
+     * @param  array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string}  $order
      */
     public function checkout(User $user, array $order): array
     {
@@ -131,7 +131,8 @@ class PaymentService
         });
     }
 
-    public function fulfill(Payment $payment): Payment    {
+    public function fulfill(Payment $payment): Payment
+    {
         return DB::transaction(function () use ($payment) {
             $payment->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
 

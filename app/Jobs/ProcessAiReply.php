@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Conversation;
-use App\Models\User;
 use App\Models\VirtualConversation;
 use App\Services\AiService;
 use App\Services\ChatService;

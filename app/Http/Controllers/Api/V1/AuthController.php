@@ -8,6 +8,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -65,7 +66,7 @@ class AuthController extends Controller
         }
         if ($user->two_factor_enabled) {
             try {
-                app(\App\Services\TwoFactorService::class)->sendChallenge($user);
+                app(TwoFactorService::class)->sendChallenge($user);
             } catch (\RuntimeException $e) {
                 return response()->json(['message' => $e->getMessage()], 429);
             }
@@ -92,7 +93,7 @@ class AuthController extends Controller
         if ($reason = $user->loginBlockedReason()) {
             return response()->json(['message' => $reason], 403);
         }
-        $tfa = app(\App\Services\TwoFactorService::class);
+        $tfa = app(TwoFactorService::class);
         try {
             $ok = $tfa->verify($user, (string) $request->input('code'));
         } catch (\RuntimeException $e) {

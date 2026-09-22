@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Models\ChatRequest;
 use App\Models\Conversation;
-use App\Models\ConversationUserSetting;
 use App\Models\Favorite;
-use App\Models\Message;
+use App\Models\User;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
 
@@ -41,7 +40,7 @@ class ChatController extends Controller
         };
 
         if ($search) {
-            $query->where(function ($q) use ($search, $user) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhereHas('members.user', fn ($u) => $u->where('display_name', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
             });
@@ -152,7 +151,7 @@ class ChatController extends Controller
         }
 
         if ($search) {
-            $query->where(function ($q) use ($search, $user) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")->orWhereHas('members.user', fn ($u) => $u->where('display_name', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
             });
         }
@@ -167,7 +166,7 @@ class ChatController extends Controller
     public function create(Request $request, ChatService $chat)
     {
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'initial_message' => ['nullable', 'string', 'max:2000']]);
-        $target = \App\Models\User::findOrFail($request->integer('user_id'));
+        $target = User::findOrFail($request->integer('user_id'));
         $conversation = $chat->findOrCreateDirect($request->user(), $target);
 
         if ($request->filled('initial_message')) {

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Rejects authenticated users whose account is no longer usable
@@ -17,7 +18,7 @@ class EnsureActiveAccount
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['message' => $user->loginBlockedReason()], 403);
             }
-            \Illuminate\Support\Facades\Auth::guard('web')->logout();
+            Auth::guard('web')->logout();
 
             return redirect()->route('login')->withErrors(['email' => $user->loginBlockedReason()]);
         }

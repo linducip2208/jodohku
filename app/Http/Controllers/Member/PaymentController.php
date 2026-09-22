@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentResource;
 use App\Jobs\ProcessPaymentWebhook;
 use App\Models\Payment;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -54,7 +55,7 @@ class PaymentController extends Controller
         return response()->json(['message' => 'Webhook queued.']);
     }
 
-    public function retry(Request $request, Payment $payment, \App\Services\PaymentService $payments)
+    public function retry(Request $request, Payment $payment, PaymentService $payments)
     {
         $this->authorize('update', $payment);
         if ($payment->status !== 'failed') {

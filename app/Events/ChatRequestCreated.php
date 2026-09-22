@@ -19,7 +19,10 @@ class ChatRequestCreated implements ShouldBroadcast
         return [new PrivateChannel('users.'.$this->chatRequest->receiver_id)];
     }
 
-    public function broadcastAs(): string { return 'chat.requested'; }
+    public function broadcastAs(): string
+    {
+        return 'chat.requested';
+    }
 
     public function broadcastWith(): array
     {

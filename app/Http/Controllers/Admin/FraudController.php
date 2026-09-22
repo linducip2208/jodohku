@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\FraudEvent;
-use App\Models\FraudRiskScore;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\FraudDetectionService;

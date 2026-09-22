@@ -7,13 +7,14 @@ use App\Models\Gift;
 use App\Models\GiftTransaction;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GiftService
 {
     public function __construct(protected CreditService $credits, protected AuditService $audit) {}
 
-    public function catalog(): \Illuminate\Support\Collection
+    public function catalog(): Collection
     {
         return Gift::active()->get();
     }

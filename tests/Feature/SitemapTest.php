@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\BlogPost;
+use App\Models\Forum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,11 +13,11 @@ class SitemapTest extends TestCase
 
     public function test_sitemap_xml_lists_public_content_only(): void
     {
-        \App\Models\BlogPost::create([
+        BlogPost::create([
             'title' => 'Sitemap Post', 'slug' => 'sitemap-post',
             'body' => 'Body', 'status' => 'published', 'published_at' => now(),
         ]);
-        \App\Models\Forum::create(['name' => 'F', 'slug' => 'f']);
+        Forum::create(['name' => 'F', 'slug' => 'f']);
 
         $res = $this->get('/sitemap.xml')->assertOk();
         $this->assertStringContainsString('application/xml', $res->headers->get('Content-Type'));

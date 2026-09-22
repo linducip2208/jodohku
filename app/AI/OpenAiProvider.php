@@ -6,7 +6,10 @@ use Illuminate\Support\Facades\Http;
 
 class OpenAiProvider implements AiProviderInterface
 {
-    public function name(): string { return 'openai'; }
+    public function name(): string
+    {
+        return 'openai';
+    }
 
     protected function base(): string
     {
