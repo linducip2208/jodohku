@@ -54,7 +54,11 @@ class LikeService
     public function like(User $liker, User $liked, bool $isSuper = false): array
     {
         $this->guard($liker, $liked);
-        $this->enforceDailyLikeLimit($liker);
+        // Re-likes don't consume quota: only enforce when no row exists yet.
+        $alreadyLiked = Like::where('liker_id', $liker->id)->where('liked_id', $liked->id)->exists();
+        if (! $alreadyLiked) {
+            $this->enforceDailyLikeLimit($liker);
+        }
 
         return DB::transaction(function () use ($liker, $liked, $isSuper) {
             $like = Like::firstOrCreate(
@@ -77,6 +81,7 @@ class LikeService
                 event(new MutualMatchCreated($match->fresh()));
             }
             event(new ProfileLiked($liker, $liked, (bool) $like->wasRecentlyCreated));
+            $this->bustMatchCaches($liker, $liked);
 
             return ['like' => $like->fresh(), 'match' => $match?->fresh(), 'is_new_match' => $isNewMatch];
         });
@@ -91,9 +96,23 @@ class LikeService
             }
             $like->delete();
             $this->deactivateActiveMatch($liker, $liked);
+            $this->bustMatchCaches($liker, $liked);
 
             return true;
         });
+    }
+
+    protected function bustMatchCaches(User $a, User $b): void
+    {
+        try {
+            [$u1, $u2] = UserMatch::canonical((int) $a->id, (int) $b->id);
+            \Illuminate\Support\Facades\Cache::forget("match:score:{$u1}:{$u2}");
+            \Illuminate\Support\Facades\Cache::forget("match:score:{$u2}:{$u1}");
+            foreach ([$a->id, $b->id] as $uid) {
+                \Illuminate\Support\Facades\Cache::forget('discovery:picks:'.today()->toDateString().':'.$uid);
+            }
+        } catch (\Throwable) {
+        }
     }
 
     /**

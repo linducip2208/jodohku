@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\User;
-use App\Notifications\SubscriptionActive;
+use App\Notifications\BroadcastMessage;
 use App\Services\AuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class NotificationAdminController extends Controller
 {

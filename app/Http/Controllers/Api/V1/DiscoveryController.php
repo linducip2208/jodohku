@@ -21,12 +21,30 @@ class DiscoveryController extends Controller
 {
     public function discover(Request $request, DiscoveryService $discovery)
     {
-        $result = $discovery->discover($request->user(), $request->only([
-            'gender', 'city', 'education', 'religion', 'marital_status', 'relationship_goal',
-            'height_min', 'height_max', 'has_photo', 'keyword',
-            'verified', 'online', 'premium',
-            'min_age', 'max_age', 'max_distance_km', 'sort',
-        ]), (int) $request->input('per_page', 20), $request->query('cursor'));
+        $validated = $request->validate([
+            'gender' => ['nullable', 'in:male,female'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'education' => ['nullable', 'string', 'max:120'],
+            'religion' => ['nullable', 'string', 'max:120'],
+            'marital_status' => ['nullable', 'string', 'max:60'],
+            'relationship_goal' => ['nullable', 'string', 'max:120'],
+            'height_min' => ['nullable', 'integer', 'min:100', 'max:250'],
+            'height_max' => ['nullable', 'integer', 'min:100', 'max:250'],
+            'has_photo' => ['nullable', 'boolean'],
+            'keyword' => ['nullable', 'string', 'max:120'],
+            'verified' => ['nullable', 'boolean'],
+            'online' => ['nullable', 'boolean'],
+            'premium' => ['nullable', 'boolean'],
+            'min_age' => ['nullable', 'integer', 'min:17', 'max:80'],
+            'max_age' => ['nullable', 'integer', 'min:17', 'max:80'],
+            'max_distance_km' => ['nullable', 'integer', 'min:5', 'max:2000'],
+            'sort' => ['nullable', 'in:newest,compatibility,active,distance,popularity'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+        if (isset($validated['min_age'], $validated['max_age']) && $validated['min_age'] > $validated['max_age']) {
+            return response()->json(['message' => 'min_age cannot exceed max_age.'], 422);
+        }
+        $result = $discovery->discover($request->user(), $validated, (int) ($validated['per_page'] ?? 20), $request->query('cursor'));
 
         return UserResource::collection($result)->response();
     }
@@ -74,6 +92,7 @@ class DiscoveryController extends Controller
     {
         $this->authorize('view', $user);
         $ttl = (int) $request->input('ttl', 300);
+        $ttl = max(60, min(3600, $ttl));
         $result = $engine->scoreWithCache($request->user(), $user, $ttl);
 
         return response()->json($result);
@@ -81,8 +100,15 @@ class DiscoveryController extends Controller
 
     public function batchScore(Request $request, MatchingEngine $engine)
     {
-        $request->validate(['candidate_ids' => 'required|array', 'candidate_ids.*' => 'integer|exists:users,id', 'limit' => 'nullable|integer|min:1|max:100']);
-        $candidates = array_slice($request->input('candidate_ids'), 0, $request->input('limit', 50));
+        $request->validate([
+            'candidate_ids' => 'required|array|max:100',
+            'candidate_ids.*' => 'integer|exists:users,id',
+            'limit' => 'nullable|integer|min:1|max:100',
+        ]);
+        $candidates = array_values(array_unique(array_slice($request->input('candidate_ids'), 0, $request->input('limit', 50))));
+        // Privacy: never score incognito/blocked/inactive users via batch enumeration.
+        $me = $request->user();
+        $candidates = array_values(array_filter($candidates, fn ($id) => $id !== (int) $me->id && $engine->passesHardFilter($me, User::find($id) ?? $me)));
         $result = $engine->batchScore($request->user(), $candidates, $request->input('limit', 50));
 
         return response()->json($result);
@@ -112,6 +138,13 @@ class DiscoveryController extends Controller
         $likes->pass($request->user(), $user);
 
         return response()->json(['message' => 'Passed.']);
+    }
+
+    public function unlike(Request $request, User $user, LikeService $likes)
+    {
+        $likes->unlike($request->user(), $user);
+
+        return response()->json(['message' => 'Like removed.']);
     }
 
     public function superlike(Request $request, User $user, LikeService $likes)
@@ -172,8 +205,13 @@ class DiscoveryController extends Controller
     public function history(Request $request)
     {
         $user = $request->user();
+        $request->validate([
+            'type' => ['nullable', 'in:all,likes,superlikes'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'target_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
         $type = $request->query('type', 'all');
-        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, (int) $request->query('per_page', 20)));
 
         $query = Like::where('liker_id', $user->id)->with(['liked']);
 

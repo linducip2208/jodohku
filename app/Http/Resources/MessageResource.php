@@ -31,6 +31,11 @@ class MessageResource extends JsonResource
             ] : null),
             'is_edited' => (bool) $this->is_edited,
             'is_ai_generated' => (bool) $this->is_ai_generated,
+            'is_read' => $this->when(
+                (bool) $request->user(),
+                fn () => $this->reads()->where('user_id', $request->user()->id)->exists()
+                    || (int) $this->sender_id === (int) $request->user()->id
+            ),
             'attachments' => $this->whenLoaded('attachments'),
             'reactions' => $this->whenLoaded('reactions'),
             'created_at' => $this->created_at,

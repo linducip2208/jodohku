@@ -478,6 +478,27 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
 
-        return response()->json(['marked' => $chat->markAllRead($request->user())]);
+        return response()->json(['marked' => $chat->markConversationRead($conversation, $request->user())]);
+    }
+
+    public function gallery(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        $request->validate([
+            'type' => ['nullable', 'in:image,video,audio,file,pdf'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'cursor' => ['nullable', 'integer', 'min:1'],
+        ]);
+        try {
+            $result = $chat->gallery(
+                $conversation, $request->user(),
+                $request->query('type'), (int) $request->query('per_page', 20),
+                $request->query('cursor') ? (int) $request->query('cursor') : null
+            );
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return response()->json($result);
     }
 }

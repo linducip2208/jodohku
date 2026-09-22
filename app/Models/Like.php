@@ -52,10 +52,26 @@ class Like extends Model
 
         [$a, $b] = UserMatch::canonical($liker->id, $liked->id);
 
-        return UserMatch::firstOrCreate(
-            ['user_a_id' => $a, 'user_b_id' => $b],
-            ['like_id' => $like?->id, 'matched_at' => now(), 'is_active' => true]
-        );
+        $existing = UserMatch::where('user_a_id', $a)->where('user_b_id', $b)->first();
+        if ($existing) {
+            // Reactivate dead match (unmatch/pass) instead of returning a dead row.
+            if (! $existing->is_active) {
+                $existing->update([
+                    'is_active' => true,
+                    'matched_at' => now(),
+                    'unmatched_at' => null,
+                    'like_id' => $like?->id ?? $existing->like_id,
+                ]);
+                $existing->wasRecentlyCreated = true;
+            }
+
+            return $existing;
+        }
+
+        return UserMatch::create([
+            'user_a_id' => $a, 'user_b_id' => $b,
+            'like_id' => $like?->id, 'matched_at' => now(), 'is_active' => true,
+        ]);
     }
 
     public function isMutual(): bool

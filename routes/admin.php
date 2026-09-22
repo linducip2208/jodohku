@@ -46,6 +46,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::post('/moderation/{queue}/decide', [ModerationController::class, 'decide'])->name('moderation.decide');
         Route::get('/moderation/words', [ModerationController::class, 'words'])->name('moderation.words');
         Route::post('/moderation/words', [ModerationController::class, 'storeWord'])->name('moderation.words.store');
+        Route::post('/moderation/words/test', [ModerationController::class, 'testWord'])->name('moderation.words.test');
         Route::put('/moderation/words/{word}', [ModerationController::class, 'updateWord'])->name('moderation.words.update');
         Route::delete('/moderation/words/{word}', [ModerationController::class, 'destroyWord'])->name('moderation.words.destroy');
         Route::post('/reports/{report}/resolve', [ModerationController::class, 'resolveReport'])->name('reports.resolve');

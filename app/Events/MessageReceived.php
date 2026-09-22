@@ -26,11 +26,15 @@ class MessageReceived implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        $status = $this->message->status instanceof \BackedEnum ? $this->message->status->value : $this->message->status;
+        $isHidden = in_array($status, ['deleted', 'moderated'], true);
+
         return [
             'id' => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
             'sender_id' => $this->message->sender_id,
-            'body' => $this->message->body,
+            'body' => $isHidden ? null : $this->message->body,
+            'status' => $status,
             'created_at' => $this->message->created_at?->toISOString(),
         ];
     }

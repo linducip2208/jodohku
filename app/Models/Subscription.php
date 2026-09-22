@@ -73,11 +73,19 @@ class Subscription extends Model
 
     public function cancel(bool $immediate = false): bool
     {
+        // Scheduled cancel keeps entitlement until ends_at: only stop renewal.
+        if (! $immediate) {
+            return $this->update([
+                'cancelled_at' => now(),
+                'auto_renew' => false,
+            ]);
+        }
+
         return $this->update([
             'status' => SubscriptionStatus::Cancelled,
             'cancelled_at' => now(),
             'auto_renew' => false,
-            'ends_at' => $immediate ? now() : $this->ends_at,
+            'ends_at' => now(),
         ]);
     }
 }

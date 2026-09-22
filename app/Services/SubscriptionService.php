@@ -16,9 +16,13 @@ class SubscriptionService
     public function activate(User $user, MembershipPlan $plan, array $opts = []): Subscription
     {
         return DB::transaction(function () use ($user, $plan, $opts) {
+            // Serialize per-user activation: concurrent checkouts must not
+            // produce two active subscriptions.
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
             // Expire overlapping actives
-            Subscription::where('user_id', $user->id)
+            Subscription::where('user_id', $lockedUser->id)
                 ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
+                ->lockForUpdate()
                 ->update(['status' => SubscriptionStatus::Expired->value]);
 
             $now = now();
@@ -58,9 +62,7 @@ class SubscriptionService
     {
         return DB::transaction(function () use ($subscription, $immediate) {
             $ok = $subscription->cancel($immediate);
-            if ($immediate) {
-                $this->syncPremiumFlag($subscription->user);
-            }
+            $this->syncPremiumFlag($subscription->user);
             $this->audit->log('subscription.cancelled', $subscription->user, $subscription);
 
             return $ok;

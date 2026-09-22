@@ -105,10 +105,12 @@ class AiChatAssistantService
             ->where('user_id', $user->id)->first();
         $since = $member?->last_read_at;
         $items = $conversation->messages()->with('sender')
+            ->whereNotIn('status', ['deleted', 'moderated'])
+            ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
             ->when($since, fn ($q) => $q->where('created_at', '>', $since))
             ->latest('id')->limit($limit)->get()->reverse()->values();
         if ($items->isEmpty()) {
-            return ['has_updates' => false, 'count' => 0, 'digest' => null];
+            return ['has_updates' => false, 'count' => 0, 'digest' => null, 'message_ids' => [], 'unread_first_id' => null, 'mentions' => []];
         }
         $history = $items->map(fn ($m) => ($m->sender?->displayName() ?? '?').': '.mb_substr((string) $m->body, 0, 150))->implode("\n");
         $prompt = "Ringkas update terbaru percakapan berikut maksimal 3 kalimat, Bahasa Indonesia:\n{$history}";
@@ -119,8 +121,23 @@ class AiChatAssistantService
         } catch (\Throwable) {
             $digest = null;
         }
+        // Extractive fallback when AI is unavailable: first + last unread slice.
+        if ($digest === null) {
+            $first = $items->first();
+            $last = $items->last();
+            $digest = $items->count() === 1
+                ? mb_substr((string) $first->body, 0, 160)
+                : mb_substr((string) $first->body, 0, 80).' … '.mb_substr((string) $last->body, 0, 80).' ('.$items->count().' pesan belum dibaca)';
+        }
 
-        return ['has_updates' => true, 'count' => $items->count(), 'digest' => $digest];
+        return [
+            'has_updates' => true,
+            'count' => $items->count(),
+            'digest' => $digest,
+            'message_ids' => $items->pluck('id')->values()->all(),
+            'unread_first_id' => $items->first()?->id,
+            'mentions' => [],
+        ];
     }
 
     /**

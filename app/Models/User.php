@@ -358,8 +358,17 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->subscriptions()
             ->whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
+            ->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })
             ->latest('id')
             ->first();
+    }
+
+    /** Single source of truth for entitlement: valid subscription only. Cached column is synced async. */
+    public function hasValidSubscription(): bool
+    {
+        return $this->activeSubscription() !== null;
     }
 
     public function creditBalance(): int

@@ -26,13 +26,20 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        $isHidden = in_array($this->message->status?->value, ['deleted', 'moderated'], true);
+        if (is_string($this->message->status) && in_array($this->message->status, ['deleted', 'moderated'], true)) {
+            $isHidden = true;
+        }
+
         return [
             'id' => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
             'sender_id' => $this->message->sender_id,
-            'body' => $this->message->body,
+            'body' => $isHidden ? null : $this->message->body,
             'type' => $this->message->type,
             'client_message_id' => $this->message->client_message_id,
+            'is_edited' => (bool) ($this->message->is_edited ?? false),
+            'status' => $this->message->status instanceof \BackedEnum ? $this->message->status->value : $this->message->status,
             'created_at' => $this->message->created_at?->toISOString(),
         ];
     }

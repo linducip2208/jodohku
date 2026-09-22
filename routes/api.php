@@ -78,7 +78,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/visitors', [MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
         Route::get('/likes/quota', [DiscoveryController::class, 'likeQuota']);
-        Route::delete('/likes/{user}', [DiscoveryController::class, 'pass']);
+        Route::delete('/likes/{user}', [DiscoveryController::class, 'unlike']);
+        Route::post('/passes/{user}', [DiscoveryController::class, 'pass']);
+        // Backward compat: old clients used DELETE /likes as pass.
+        Route::post('/likes/{user}/pass', [DiscoveryController::class, 'pass']);
         Route::post('/superlikes/{user}', [DiscoveryController::class, 'superlike']);
         Route::post('/favorites/{user}', [DiscoveryController::class, 'favorite']);
         Route::delete('/favorites/{user}', [DiscoveryController::class, 'unfavorite']);
@@ -122,6 +125,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('/scheduled-messages/{scheduled}', [ChatController::class, 'cancelScheduled']);
         Route::patch('/conversations/{conversation}/settings', [ChatController::class, 'setting']);
         Route::get('/conversations/{conversation}/search', [ChatController::class, 'searchInConversation']);
+        Route::get('/conversations/{conversation}/gallery', [ChatController::class, 'gallery']);
         Route::get('/conversations/{conversation}/export', [ChatController::class, 'export']);
         Route::patch('/messages/{message}', [ChatController::class, 'edit']);
         Route::delete('/messages/{message}', [ChatController::class, 'delete']);

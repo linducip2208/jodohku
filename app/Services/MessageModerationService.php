@@ -38,7 +38,8 @@ class MessageModerationService
             $risk += $prof['max_severity'] >= 4 ? 30 + $hitCount * 5 : min(40, 12 + $hitCount * 8);
         }
 
-        $scam = $this->scam->analyze($body);
+        $normalized = $this->profanity->normalize($body);
+        $scam = $this->scam->analyze($body, $normalized);
         foreach ($scam['flags'] as $f) {
             $flags[] = $f;
         }

@@ -259,20 +259,55 @@ class ChatService
         if ((int) $message->sender_id !== (int) $user->id) {
             throw new \RuntimeException('Only sender can edit.');
         }
+        // Edit window: default 15 minutes, configurable via settings group `chat`.
+        $window = max(0, (int) Setting::get('edit_window_minutes', 15, 'chat'));
+        if ($window > 0 && $message->created_at && $message->created_at->diffInMinutes(now()) > $window) {
+            throw new \RuntimeException('Edit window expired.');
+        }
+        if (in_array($message->status?->value, ['deleted', 'moderated'], true)) {
+            throw new \RuntimeException('Message cannot be edited.');
+        }
         $mod = $this->moderation->moderate($newBody, $user, $message);
         if ($mod['decision'] === 'block') {
             throw new \RuntimeException('Edited message blocked by moderation.');
         }
-        $message->update(['body' => $mod['clean'], 'is_edited' => true]);
+        $meta = $message->metadata ?? [];
+        $history = $meta['edit_history'] ?? [];
+        $history[] = ['body' => $message->body, 'at' => now()->toDateTimeString(), 'by' => $user->id];
+        $meta['edit_history'] = array_slice($history, -10);
+        $meta['moderation'] = ['risk' => $mod['risk'], 'decision' => $mod['decision'], 'flags' => $mod['flags']];
+        $message->update(['body' => $mod['clean'], 'is_edited' => true, 'metadata' => $meta]);
+        $fresh = $message->fresh();
+        // Reuse existing broadcast channel so the peer sees the edit in realtime.
+        try {
+            event(new MessageSent($fresh));
+        } catch (\Throwable) {
+        }
 
-        return $message->fresh();
+        return $fresh;
     }
 
-    /** Soft delete per user; for_everyone only by sender. */
+    /** Soft delete per user; for_everyone only by sender (redacts body + removes files). */
     public function deleteMessage(Message $message, User $user, string $scope = 'for_me'): bool
     {
         if ($scope === 'for_everyone' && (int) $message->sender_id !== (int) $user->id) {
             throw new \RuntimeException('Only sender can delete for everyone.');
+        }
+        if ($scope === 'for_everyone') {
+            $message->update(['status' => MessageStatus::Deleted, 'body' => '[deleted]']);
+            try {
+                foreach ($message->attachments as $att) {
+                    if (! empty($att->file_path)) {
+                        Storage::disk((string) config('chat.attachments.disk', 'chat'))->delete($att->file_path);
+                    }
+                    $att->delete();
+                }
+            } catch (\Throwable) {
+            }
+            try {
+                event(new MessageSent($message->fresh()));
+            } catch (\Throwable) {
+            }
         }
 
         return (bool) MessageDeletion::updateOrCreate(
@@ -456,6 +491,12 @@ class ChatService
         return $messages->count();
     }
 
+    /** Scoped mark-read for ONE conversation (used by the per-conversation endpoint). */
+    public function markConversationRead(Conversation $conversation, User $user): int
+    {
+        return $this->markRead($conversation, $user);
+    }
+
     /** Aggregate inbox statistics for a user. */
     public function overview(User $user): array
     {
@@ -548,6 +589,36 @@ class ChatService
 
             return $ids->count();
         });
+    }
+
+    /** Conversation media gallery: paginated attachments without scanning all messages. */
+    public function gallery(Conversation $conversation, User $user, ?string $type = null, int $perPage = 20, ?int $cursor = null): array
+    {
+        if (! $conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+        $perPage = max(1, min(50, $perPage));
+        $query = MessageAttachment::whereHas('message', fn ($q) => $q
+            ->where('conversation_id', $conversation->id)
+            ->whereNotIn('status', ['deleted', 'moderated'])
+            ->whereDoesntHave('deletions', fn ($qq) => $qq->where('user_id', $user->id)->where('scope', 'for_me')))
+            ->with(['message:id,conversation_id,sender_id,body,type,created_at'])
+            ->latest('id');
+        if ($type) {
+            $mimeMap = ['image' => 'image/%', 'video' => 'video/%', 'audio' => 'audio/%', 'file' => 'application/%', 'pdf' => 'application/pdf'];
+            if (isset($mimeMap[$type])) {
+                $query->where('mime_type', 'like', $mimeMap[$type]);
+            }
+        }
+        if ($cursor) {
+            $query->where('id', '<', $cursor);
+        }
+        $items = $query->limit($perPage + 1)->get();
+        $hasMore = $items->count() > $perPage;
+        $items = $items->take($perPage)->values();
+        $nextCursor = $hasMore ? $items->last()?->id : null;
+
+        return ['data' => $items, 'next_cursor' => $nextCursor, 'has_more' => $hasMore];
     }
 
     public function createConversation(User $a, User $b): Conversation

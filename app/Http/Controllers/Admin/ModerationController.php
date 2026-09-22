@@ -84,17 +84,52 @@ class ModerationController extends Controller
     public function updateWord(Request $request, ProfanityWord $word, AuditService $audit)
     {
         $before = $word->only(['word', 'replacement', 'is_active']);
-        $word->update($request->validate([
+        $data = $request->validate([
+            'word' => ['sometimes', 'string', 'max:120', 'unique:profanity_words,word,'.$word->id],
             'replacement' => ['nullable', 'string', 'max:120'],
             'severity' => ['nullable', 'integer', 'min:1', 'max:5'],
             'is_regex' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'profanity_category_id' => ['nullable', 'integer', 'exists:profanity_categories,id'],
-        ]));
+        ]);
+        // Validate regex before saving to avoid ReDoS / broken patterns.
+        if (array_key_exists('is_regex', $data) || array_key_exists('word', $data)) {
+            $isRegex = (bool) ($data['is_regex'] ?? $word->is_regex);
+            $pattern = (string) ($data['word'] ?? $word->word);
+            if ($isRegex) {
+                $ok = @preg_match($pattern, '');
+                if ($ok === false) {
+                    return response()->json(['message' => 'Invalid regex pattern.'], 422);
+                }
+                // Reject catastrophic patterns: nested quantifiers.
+                if (preg_match('/(\+|\*|\{[^}]+\})(\+|\*|\?)?[^\/]*(\+|\*|\{)/', $pattern) && strlen($pattern) > 60) {
+                    return response()->json(['message' => 'Regex too complex (ReDoS risk).'], 422);
+                }
+            }
+        }
+        $word->update($data);
         $this->bustDictionaryCache();
         $audit->log('admin.profanity.updated', $request->user(), $word, $before, []);
 
         return $request->wantsJson() ? response()->json($word->fresh()) : back()->with('status', 'Kata diperbarui.');
+    }
+
+    /** Dry-run: test a sentence against the dictionary before saving. */
+    public function testWord(Request $request, \App\Services\ProfanityService $profanity, \App\Services\ScamDetectionService $scam)
+    {
+        $request->validate(['text' => ['required', 'string', 'max:2000']]);
+        $text = (string) $request->input('text');
+        $censor = $profanity->censor($text);
+        $normalized = $profanity->normalize($text);
+
+        return response()->json([
+            'clean' => $censor['clean'],
+            'hits' => $censor['hits'],
+            'obfuscated' => $censor['obfuscated'],
+            'categories' => $censor['categories'],
+            'normalized' => $normalized,
+            'scam' => $scam->analyze($text, $normalized),
+        ]);
     }
 
     public function destroyWord(Request $request, ProfanityWord $word, AuditService $audit)

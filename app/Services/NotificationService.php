@@ -18,11 +18,21 @@ class NotificationService
     public function send(User $user, Notification $notification): void
     {
         $prefs = $user->notificationPreference;
-        // Respect coarse preferences for match/message categories
+        // Respect coarse preferences for match/message/like categories.
         if ($prefs && $notification instanceof MatchFound && ! $prefs->push_matches) {
             return;
         }
         if ($prefs && $notification instanceof NewMessage && ! $prefs->push_messages) {
+            return;
+        }
+        if ($prefs && $notification instanceof ChatRequestReceived && ! $prefs->push_messages) {
+            return;
+        }
+        // Like / super-like pushes share the like preference gates.
+        if ($prefs && str_contains(get_class($notification), 'Like') && ! $prefs->push_likes) {
+            return;
+        }
+        if ($prefs && str_contains(get_class($notification), 'SuperLike') && ! $prefs->push_super_likes) {
             return;
         }
         if ($this->isDuplicateUnread($user, $notification)) {
@@ -42,6 +52,9 @@ class NotificationService
             SubscriptionActive::class => 'subscription_id',
             VerificationDecided::class => 'request_id',
             ReportStatusChanged::class => 'report_id',
+            \App\Notifications\CourtshipStageChanged::class => 'courtship_id',
+            \App\Notifications\ConsultationStatusChanged::class => 'consultation_id',
+            \App\Notifications\BroadcastMessage::class => 'broadcast_id',
         ];
         $class = get_class($notification);
         if (! isset($keyMap[$class]) || ! method_exists($notification, 'toDatabase')) {

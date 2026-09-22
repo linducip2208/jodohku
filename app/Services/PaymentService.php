@@ -94,11 +94,24 @@ class PaymentService
     }
 
     /**
-     * @param  array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string}  $order
+     * @param  array{items?:array, subscription_plan?:string, credit_product?:string, gateway?:string, return_url?:string, coupon_code?:string, idempotency_key?:string}  $order
      */
     public function checkout(User $user, array $order): array
     {
         return DB::transaction(function () use ($user, $order) {
+            $idempotencyKey = trim((string) ($order['idempotency_key'] ?? ''));
+            if ($idempotencyKey !== '') {
+                // Client-driven idempotency: double-click / retry within 24h
+                // returns the SAME pending payment instead of creating a duplicate.
+                $existing = Payment::where('user_id', $user->id)
+                    ->where('status', PaymentStatus::Pending)
+                    ->where('created_at', '>=', now()->subDay())
+                    ->whereJsonContains('gateway_response', ['idempotency_key' => $idempotencyKey])
+                    ->latest('id')->first();
+                if ($existing) {
+                    return ['payment' => $existing, 'gateway' => $existing->gateway_response['gateway_result'] ?? [], 'idempotent' => true];
+                }
+            }
             $quote = $this->quoteOrder($user, $order);
             $gatewayCode = $quote['gateway'];
             $items = $quote['items'];
@@ -114,6 +127,7 @@ class PaymentService
                 'total_amount' => $total,
                 'currency' => config('payments.currency', 'IDR'),
                 'status' => PaymentStatus::Pending,
+                'gateway_response' => $idempotencyKey !== '' ? ['idempotency_key' => $idempotencyKey] : null,
             ]);
             foreach ($items as $it) {
                 $payment->items()->create($it);
@@ -132,6 +146,10 @@ class PaymentService
                 // pending payment is left behind; controllers map to 503.
                 throw new \RuntimeException('Payment gateway unavailable: '.$e->getMessage());
             }
+            // Persist gateway result alongside idempotency key for retry lookups.
+            $payment->update(['gateway_response' => array_merge($payment->gateway_response ?? [], [
+                'gateway_result' => is_array($result) ? $result : ['result' => $result],
+            ])]);
             $this->audit->log('payment.created', $user, $payment, [], ['gateway' => $gatewayCode, 'total' => $total, 'coupon' => $coupon?->code]);
 
             return ['payment' => $payment->fresh(), 'gateway' => $result];
@@ -145,19 +163,18 @@ class PaymentService
         $normalized = $driver->handleWebhook($payload, $headers);
         $eventId = $normalized['event_id'] ?? $gatewayCode.':'.md5(json_encode($payload));
 
-        // Idempotency: skip if same event already processed
-        $existing = PaymentWebhook::where('gateway', $gatewayCode)
-            ->where('payload->event_id', $eventId)->first()
-            ?? PaymentWebhook::where('gateway', $gatewayCode)->whereJsonContains('payload', ['event_id' => $eventId])->first();
-        if ($existing && $existing->is_processed) {
-            return $existing;
-        }
-
-        return DB::transaction(function () use ($gatewayCode, $payload, $normalized, $eventId, $existing) {
+        return DB::transaction(function () use ($gatewayCode, $payload, $normalized, $eventId) {
+            // Lock-first dedup: concurrent duplicate webhooks serialize here.
+            $existing = PaymentWebhook::where('gateway', $gatewayCode)
+                ->where('payload->event_id', $eventId)->lockForUpdate()->first()
+                ?? PaymentWebhook::where('gateway', $gatewayCode)->whereJsonContains('payload', ['event_id' => $eventId])->lockForUpdate()->first();
+            if ($existing && $existing->is_processed) {
+                return $existing;
+            }
             $payment = null;
             if (! empty($normalized['reference'])) {
                 $payment = Payment::where('invoice_number', $normalized['reference'])
-                    ->orWhere('gateway_transaction_id', $normalized['reference'])->first();
+                    ->orWhere('gateway_transaction_id', $normalized['reference'])->lockForUpdate()->first();
             }
             $webhook = $existing ?? PaymentWebhook::create([
                 'gateway' => $gatewayCode,
@@ -178,31 +195,37 @@ class PaymentService
     public function fulfill(Payment $payment): Payment
     {
         return DB::transaction(function () use ($payment) {
-            $payment->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
+            // Row-level lock: parallel webhooks cannot fulfill twice.
+            $locked = Payment::where('id', $payment->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === PaymentStatus::Paid) {
+                return $locked;
+            }
+            $locked->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
+            $locked->loadMissing(['items', 'user']);
 
-            foreach ($payment->items as $item) {
+            foreach ($locked->items as $item) {
                 if ($item->item_type === 'subscription' && $item->item_id) {
                     $plan = MembershipPlan::find($item->item_id);
                     if ($plan) {
-                        $sub = $this->subscriptions->activate($payment->user, $plan);
-                        $payment->update(['subscription_id' => $sub->id]);
+                        $sub = $this->subscriptions->activate($locked->user, $plan);
+                        $locked->update(['subscription_id' => $sub->id]);
                     }
                 }
                 if ($item->item_type === 'credits' && $item->item_id) {
                     $product = CreditProduct::find($item->item_id);
                     if ($product) {
-                        $this->credits->record($payment->user, CreditTxnType::Purchase, $product->totalCredits(), 'Credit purchase '.$product->code, [
-                            'reference_type' => Payment::class, 'reference_id' => $payment->id,
+                        $this->credits->record($locked->user, CreditTxnType::Purchase, $product->totalCredits(), 'Credit purchase '.$product->code, [
+                            'reference_type' => Payment::class, 'reference_id' => $locked->id,
                         ]);
-                        event(new CreditsPurchased($payment->user, $product->totalCredits()));
+                        event(new CreditsPurchased($locked->user, $product->totalCredits()));
                     }
                 }
             }
 
-            $this->audit->log('payment.paid', $payment->user, $payment);
-            event(new PaymentPaid($payment->fresh()));
+            $this->audit->log('payment.paid', $locked->user, $locked);
+            event(new PaymentPaid($locked->fresh()));
 
-            return $payment->fresh();
+            return $locked->fresh();
         });
     }
 
