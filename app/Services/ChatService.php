@@ -315,7 +315,7 @@ class ChatService
         }
 
         return Message::where('conversation_id', $conversation->id)
-            ->where('body', 'like', '%'.$keyword.'%')
+            ->whereRaw('LOWER(body) LIKE ?', ['%'.strtolower($keyword).'%'])
             ->whereDoesntHave('deletions', fn ($q) => $q->where('user_id', $user->id))
             ->latest('id')->limit($limit)->get();
     }

@@ -53,6 +53,6 @@ class RegisteredUserController extends Controller
             return response()->json(['message' => 'Registered.', 'user_id' => $user->id], 201);
         }
 
-        return redirect()->intended('/app');
+        return redirect()->intended('/home');
     }
 }

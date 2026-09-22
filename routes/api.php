@@ -77,6 +77,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
         Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1,chat-send');
         Route::post('/chat/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
+        Route::post('/conversations/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
         Route::get('/chat/conversations', [ChatController::class, 'conversations']);
         Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels']);
         Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel']);
@@ -119,6 +120,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/gifts', [AccountController::class, 'gifts']);
         Route::post('/boost', [AccountController::class, 'boost']);
+        Route::post('/checkout', [AccountController::class, 'checkout'])->middleware('throttle:30,1,checkout');
         Route::get('/ai/replies/{conversation}', [AccountController::class, 'suggestedReplies']);
         Route::post('/ai/matchmaker', [AccountController::class, 'matchmaker']);
         Route::get('/settings', [AccountController::class, 'settings']);

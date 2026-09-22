@@ -11,7 +11,7 @@ class VerificationController extends Controller
     public function notice(Request $request)
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended('/app');
+            return redirect()->intended('/home');
         }
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Email not verified.'], 403);
@@ -28,7 +28,7 @@ class VerificationController extends Controller
             return response()->json(['message' => 'Email verified.']);
         }
 
-        return redirect()->intended('/app?verified=1');
+        return redirect()->intended('/home?verified=1');
     }
 
     public function resend(Request $request)
@@ -36,7 +36,7 @@ class VerificationController extends Controller
         if ($request->user()->hasVerifiedEmail()) {
             return $request->wantsJson()
                 ? response()->json(['message' => 'Already verified.'])
-                : redirect()->intended('/app');
+                : redirect()->intended('/home');
         }
         $request->user()->sendEmailVerificationNotification();
 

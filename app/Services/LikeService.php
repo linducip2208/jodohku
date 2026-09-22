@@ -148,7 +148,7 @@ class LikeService
 
     public function unfavorite(User $user, User $target): bool
     {
-        return (bool) Favorite::where('user_id', $user->id)->where('favorited_id', $target->id)->delete() || true;
+        return (bool) Favorite::where('user_id', $user->id)->where('favorited_id', $target->id)->delete();
     }
 
     /** Undo the last pass/like action. */

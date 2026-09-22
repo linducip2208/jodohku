@@ -495,6 +495,7 @@ class MatchingEngine
             'scores' => $r,
             'common' => $common,
             'differences' => $diffs,
+            'breakdown' => $r['breakdown'],
             'summary' => [
                 'mutual_score' => $r['mutual'],
                 'strength' => $r['mutual'] >= 80 ? 'Sangat Cocok' : ($r['mutual'] >= 60 ? 'Cocok' : ($r['mutual'] >= 40 ? 'Cukup Cocok' : 'Kurang Cocok')),

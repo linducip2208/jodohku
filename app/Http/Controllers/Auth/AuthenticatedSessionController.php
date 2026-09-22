@@ -47,7 +47,7 @@ class AuthenticatedSessionController extends Controller
             return response()->json(['message' => 'Logged in.', 'user_id' => $request->user()->id]);
         }
 
-        return redirect()->intended('/app');
+        return redirect()->intended('/home');
     }
 
     public function destroy(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse

@@ -10,7 +10,7 @@ class QuestionCategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['key', 'name', 'description', 'sort_order', 'is_active'];
+    protected $fillable = ['key', 'slug', 'name', 'description', 'sort_order', 'is_active'];
 
     protected function casts(): array
     {
