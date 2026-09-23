@@ -5,7 +5,7 @@
 <p class="ld-sub">Matching cerdas berbasis kepribadian, minat &amp; tujuan hubungan. Chat realtime, profil terverifikasi, dan event seru di kotamu. Gratis untuk memulai.</p>
 <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
 <a class="ld-btn" href="{{ route('register') }}">Mulai Gratis →</a>
-<a class="ld-btn ghost" href="/discover">Lihat Discover</a>
+<a class="ld-btn ghost" href="#demo">Lihat Demo Member</a>
 </div>
 <div style="display:flex;gap:18px;margin-top:18px;font-size:13px;color:#52525b">
 <span>⭐ 4.8/5 rating</span><span>✅ 380rb profil terverifikasi</span><span>💬 Realtime chat</span>
