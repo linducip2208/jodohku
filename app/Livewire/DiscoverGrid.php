@@ -36,6 +36,22 @@ class DiscoverGrid extends Component
     public function mount(): void
     {
         $this->keyword = (string) request('keyword', '');
+        // Landing search deep-links here (guests land after login).
+        if (is_string(request('gender')) && in_array(request('gender'), ['male', 'female'], true)) {
+            $this->gender = request('gender');
+        }
+        if (is_string(request('city')) && mb_strlen(request('city')) <= 120) {
+            $this->city = trim((string) request('city'));
+        }
+        if (is_numeric(request('min_age'))) {
+            $this->minAge = max(17, min(80, (int) request('min_age')));
+        }
+        if (is_numeric(request('max_age'))) {
+            $this->maxAge = max(17, min(80, (int) request('max_age')));
+        }
+        if ($this->minAge > $this->maxAge) {
+            [$this->minAge, $this->maxAge] = [$this->maxAge, $this->minAge];
+        }
     }
 
     public function updated($field): void

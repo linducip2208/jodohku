@@ -22,6 +22,13 @@
 </div>
 <div class="jk-progress" style="margin-top:8px"><div style="width:{{ (int) ($courtshipProgress['index'] / max(1, $courtshipProgress['total']) * 100) }}%"></div></div>
 </div>
+@elseif(!empty($canStartTaaruf))
+<div class="jk-section" aria-label="Mulai taaruf">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div style="flex:1;min-width:180px"><strong>Siap ke tahap serius?</strong><div class="jk-muted" style="font-size:12px">Kalian sudah match. Mulai perjalanan taaruf terpandu.</div></div>
+<form method="POST" action="/biro-jodoh/taaruf/mulai" style="display:inline">@csrf<input type="hidden" name="partner_id" value="{{ $other?->id }}"><input type="hidden" name="conversation_id" value="{{ $conv?->id }}"><button class="jk-btn jk-btn-like" style="padding:8px 16px" type="submit">Mulai Taaruf</button></form>
+</div>
+</div>
 @endif
 @if(in_array($peerRisk ?? null, ['medium', 'high'], true))
 <div class="jk-alert err" role="alert">Perhatikan keamanan saat berkomunikasi. Jangan kirim uang atau kode OTP kepada orang lain.</div>

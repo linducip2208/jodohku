@@ -22,7 +22,7 @@ body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'I
 .jk-card{background:var(--jk-card);border:1px solid var(--jk-line);border-radius:var(--jk-radius);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .jk-profile-card{position:relative}
 .jk-photo{position:relative;aspect-ratio:3/4;background:linear-gradient(135deg,#ffe4e6,#fce7f3,#ede9fe);overflow:hidden}
-.jk-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.jk-photo img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;background:inherit}
 .jk-photo-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--jk-rose),var(--jk-violet))}
 .jk-online{position:absolute;top:10px;right:10px;width:14px;height:14px;border-radius:50%;background:var(--jk-green);border:3px solid #fff}
 .jk-offline{position:absolute;top:10px;right:10px;width:14px;height:14px;border-radius:50%;background:#d4d4d8;border:3px solid #fff}

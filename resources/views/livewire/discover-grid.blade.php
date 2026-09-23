@@ -30,5 +30,3 @@
 @endif
 @endif
 </div>
-@endif
-</div>

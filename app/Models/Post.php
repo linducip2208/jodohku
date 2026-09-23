@@ -15,7 +15,7 @@ class Post extends Model
 
     protected $fillable = [
         'user_id', 'group_id', 'body', 'media_paths',
-        'visibility', 'likes_count', 'comments_count',
+        'visibility', 'likes_count', 'comments_count', 'is_hidden',
     ];
 
     protected function casts(): array
@@ -23,6 +23,7 @@ class Post extends Model
         return [
             'media_paths' => 'array',
             'visibility' => PrivacyVisibility::class,
+            'is_hidden' => 'boolean',
         ];
     }
 

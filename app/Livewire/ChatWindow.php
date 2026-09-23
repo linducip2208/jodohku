@@ -13,6 +13,7 @@ use App\Models\FraudRiskScore;
 use App\Models\Message;
 use App\Models\MessageBookmark;
 use App\Models\ScheduledMessage;
+use App\Models\UserMatch;
 use App\Services\AiService;
 use App\Services\CallService;
 use App\Services\ChatService;
@@ -369,6 +370,7 @@ class ChatWindow extends Component
         $giftCatalog = collect();
         $courtshipStage = null;
         $courtshipProgress = null;
+        $canStartTaaruf = false;
         $peerRisk = null;
         $scheduled = collect();
         $activeCall = null;
@@ -393,6 +395,10 @@ class ChatWindow extends Component
                         ->orWhere(fn ($qq) => $qq->where('initiator_id', $other->id)->where('partner_id', $me->id)))
                         ->where('status', CourtshipStatus::Active)->latest('id')->first();
                     $courtshipStage = $courtship?->stage->label();
+                    $canStartTaaruf = ! $courtship && UserMatch::where(fn ($q) => $q
+                        ->where(fn ($qq) => $qq->where('user_a_id', $me->id)->where('user_b_id', $other->id))
+                        ->orWhere(fn ($qq) => $qq->where('user_a_id', $other->id)->where('user_b_id', $me->id)))
+                        ->where('is_active', true)->exists();
                     if ($courtship) {
                         $stages = CourtshipStage::cases();
                         $idx = array_search($courtship->stage, $stages, true);
@@ -409,6 +415,6 @@ class ChatWindow extends Component
             }
         }
 
-        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog, 'courtshipStage' => $courtshipStage, 'courtshipProgress' => $courtshipProgress ?? null, 'peerRisk' => $peerRisk, 'scheduledItems' => $scheduled, 'activeCall' => $activeCall, 'stickerCatalog' => $chat->stickers(), 'bookmarks' => $this->bookmarks]);
+        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog, 'courtshipStage' => $courtshipStage, 'courtshipProgress' => $courtshipProgress ?? null, 'canStartTaaruf' => $canStartTaaruf, 'peerRisk' => $peerRisk, 'scheduledItems' => $scheduled, 'activeCall' => $activeCall, 'stickerCatalog' => $chat->stickers(), 'bookmarks' => $this->bookmarks]);
     }
 }

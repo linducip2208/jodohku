@@ -8,6 +8,7 @@ use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
+use App\Http\Controllers\Member\CommunityController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\ForumController;
 use App\Http\Controllers\Member\MatchController;
@@ -21,8 +22,11 @@ use App\Models\Block;
 use App\Models\ContactMessage;
 use App\Models\Conversation;
 use App\Models\Event;
+use App\Models\MembershipPlan;
 use App\Models\Report;
+use App\Models\SuccessStory;
 use App\Models\User;
+use App\Models\UserMatch;
 use App\Models\VerificationRequest;
 use App\Services\BoostService;
 use App\Services\ChatService;
@@ -42,7 +46,32 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 /* ---------- Landing ---------- */
-Route::get('/', fn () => view('welcome'))->name('landing');
+Route::get('/', function () {
+    $stats = ['members' => 0, 'verified' => 0, 'matches' => 0];
+    $demoMembers = collect();
+    $stories = collect();
+    $plans = collect();
+    try {
+        $stats = Cache::remember('landing:stats', 3600, fn () => [
+            'members' => User::active()->count(),
+            'verified' => User::active()->where('is_verified', true)->count(),
+            'matches' => UserMatch::where('is_active', true)->count(),
+        ]);
+        // Public demo showcase ONLY: demo-marked, active, real profile,
+        // approved public photos. Never real members, never private photos.
+        $demoMembers = User::active()->where('is_demo', true)->whereHas('profile')
+            ->with(['profile', 'interests' => fn ($q) => $q->limit(4),
+                'photos' => fn ($q) => $q->where('status', 'approved')->where('is_private', false)->ordered()])
+            ->inRandomOrder()->limit(24)->get()
+            ->filter(fn ($u) => $u->photos->isNotEmpty())
+            ->take(12)->values();
+        $stories = SuccessStory::where('status', 'published')->latest('published_at')->latest('id')->limit(3)->get();
+        $plans = MembershipPlan::where('is_active', true)->orderBy('sort_order')->get();
+    } catch (Throwable) {
+    }
+
+    return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans'));
+})->name('landing');
 
 /* ---------- Health (public, no secrets/internals) ---------- */
 Route::get('/health', function () {
@@ -443,6 +472,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
 
     Route::get('/biro-jodoh/taaruf', [BiroJodohController::class, 'courtships'])->name('member.biro-jodoh.courtships');
+    Route::post('/biro-jodoh/taaruf/mulai', [BiroJodohController::class, 'startCourtship'])->name('member.biro-jodoh.start');
     Route::get('/biro-jodoh/taaruf/{courtship}', [BiroJodohController::class, 'showCourtship'])->name('member.biro-jodoh.courtship');
     Route::post('/biro-jodoh/taaruf/{courtship}/lanjut', [BiroJodohController::class, 'advanceCourtship'])->name('member.biro-jodoh.advance');
     Route::post('/biro-jodoh/taaruf/{courtship}/mundur', [BiroJodohController::class, 'withdrawCourtship'])->name('member.biro-jodoh.withdraw');
@@ -461,6 +491,11 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
     Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
     Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');
+    Route::get('/komunitas', [CommunityController::class, 'index'])->name('member.community');
+    Route::post('/komunitas', [CommunityController::class, 'store'])->name('member.community.store')->middleware('throttle:10,1,community-post');
+    Route::post('/komunitas/{post}/like', [CommunityController::class, 'toggleLike'])->name('member.community.like');
+    Route::post('/komunitas/{post}/komentar', [CommunityController::class, 'comment'])->name('member.community.comment')->middleware('throttle:30,1,community-comment');
+    Route::delete('/komunitas/{post}', [CommunityController::class, 'destroy'])->name('member.community.destroy');
     Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
     Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
     Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');

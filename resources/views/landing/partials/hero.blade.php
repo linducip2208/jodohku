@@ -1,14 +1,14 @@
 <section class="ld-hero"><div class="ld-wrap ld-hero-grid">
 <div>
-<div class="ld-card" style="display:inline-block;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#be123c;background:#fff1f2;border-color:#fecdd3">❤️ 2,4 jt+ single Indonesia</div>
+<div class="ld-card" style="display:inline-block;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#be123c;background:#fff1f2;border-color:#fecdd3">{{ number_format($stats['members'] ?? 0) }} member aktif</div>
 <h1>Temukan jodoh yang <span style="background:linear-gradient(135deg,#f43f5e,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent">benar-benar cocok.</span></h1>
 <p class="ld-sub">Matching cerdas berbasis kepribadian, minat &amp; tujuan hubungan. Chat realtime, profil terverifikasi, dan event seru di kotamu. Gratis untuk memulai.</p>
 <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
 <a class="ld-btn" href="{{ route('register') }}">Mulai Gratis →</a>
-<a class="ld-btn ghost" href="/discover">Lihat Discover</a>
+<a class="ld-btn ghost" href="#demo">Lihat Demo Member</a>
 </div>
-<div style="display:flex;gap:18px;margin-top:18px;font-size:13px;color:#52525b">
-<span>⭐ 4.8/5 rating</span><span>✅ 380rb profil terverifikasi</span><span>💬 Realtime chat</span>
+<div style="display:flex;gap:18px;margin-top:18px;font-size:13px;color:#52525b;flex-wrap:wrap">
+<span>{{ number_format($stats['verified'] ?? 0) }} profil terverifikasi</span><span>{{ number_format($stats['matches'] ?? 0) }} match aktif</span><span>Chat realtime</span>
 </div>
 </div>
 <div class="ld-phones">
