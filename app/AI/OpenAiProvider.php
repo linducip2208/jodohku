@@ -30,7 +30,7 @@ class OpenAiProvider implements AiProviderInterface
             ->post($this->base().'/chat/completions', [
                 'model' => $model,
                 'messages' => [
-                    ['role' => 'system', 'content' => $options['system'] ?? 'You are a helpful dating assistant for Jodohku (Indonesia). Reply in Indonesian unless asked otherwise.'],
+                    ['role' => 'system', 'content' => $options['system'] ?? 'You are a helpful dating assistant for '.config('app.name').' (Indonesia). Reply in Indonesian unless asked otherwise.'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => $options['temperature'] ?? 0.7,

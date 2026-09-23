@@ -39,7 +39,7 @@ class VirtualMemberService
                 'ai_personality_id' => $attrs['ai_personality_id'] ?? AiPersonality::active()->first()?->id,
                 'mode' => $attrs['mode'] ?? AiMode::Template->value,
                 'persona_prompt' => $attrs['persona_prompt'] ?? null,
-                'greeting_message' => $attrs['greeting_message'] ?? ('Halo! Aku '.$user->displayName().' 👋 (profil virtual Jodohku)'),
+                'greeting_message' => $attrs['greeting_message'] ?? ('Halo! Aku '.$user->displayName().' 👋 (profil virtual '.config('app.name').')'),
                 'reply_templates' => $attrs['reply_templates'] ?? ['Hai! Senang kenalan denganmu 😊', 'Wah menarik! Ceritakan lebih banyak dong.'],
                 'is_active' => true,
             ]);
@@ -53,10 +53,10 @@ class VirtualMemberService
     public function label(User $user): string
     {
         if ($user->account_type === AccountType::Ai) {
-            return 'AI Persona — dikelola otomatis oleh Jodohku';
+            return 'AI Persona — dikelola otomatis oleh '.config('app.name');
         }
         if ($user->account_type === AccountType::Virtual) {
-            return 'Profil Virtual — dikelola Jodohku/operator';
+            return 'Profil Virtual — dikelola '.config('app.name').'/operator';
         }
 
         return '';
@@ -157,7 +157,7 @@ class VirtualMemberService
                 /** @var AiService $ai */
                 $ai = app(AiService::class);
                 $res = $ai->chat(
-                    'Kamu persona ramah Jodohku bernama '.$profile->user?->displayName().'. Event: '.$event.'. Sapa user '.$realUser->displayName().' singkat (max 40 kata), Bahasa Indonesia.',
+                    'Kamu persona ramah '.config('app.name').' bernama '.$profile->user?->displayName().'. Event: '.$event.'. Sapa user '.$realUser->displayName().' singkat (max 40 kata), Bahasa Indonesia.',
                     ['max_tokens' => 120], null, 'virtual_reply'
                 );
 

@@ -16,6 +16,12 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+    | Application version (surfaced by /health and license:status).
+    | Bump on commercial releases; see CHANGELOG.md.
+    */
+    'version' => env('APP_VERSION', '1.4.0'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------

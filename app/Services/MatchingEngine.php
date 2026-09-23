@@ -15,6 +15,14 @@ class MatchingEngine
 {
     public function weights(): array
     {
+        // Memoized per request AND version: 8 Setting queries per scorePair
+        // became ~1000 queries on a dailyPicks run. Version key keeps admin
+        // tuning effective immediately after the bump.
+        static $memo = [];
+        $version = $this->weightsVersion();
+        if (isset($memo[$version])) {
+            return $memo[$version];
+        }
         $defaults = [
             'age' => 10, 'location' => 10, 'preference' => 20, 'personality' => 20,
             'interest' => 10, 'lifestyle' => 10, 'goal' => 10, 'behavior' => 10,
@@ -41,7 +49,7 @@ class MatchingEngine
             $merged[$k] = round($v / $total * 100, 2);
         }
 
-        return $merged;
+        return $memo[$version] = $merged;
     }
 
     /** Bump when admin changes weights so versioned score caches invalidate. */
@@ -69,6 +77,40 @@ class MatchingEngine
             return false;
         }
         if (Block::existsBetween((int) $a->id, (int) $b->id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Block ids touching $user, memoized per request (kills pool-loop N+1). */
+    public function blockedIdsFor(User $user): array
+    {
+        static $cache = [];
+        $key = (int) $user->id;
+        if (! array_key_exists($key, $cache)) {
+            try {
+                $cache[$key] = Block::where('blocker_id', $key)->pluck('blocked_id')
+                    ->merge(Block::where('blocked_id', $key)->pluck('blocker_id'))
+                    ->map(fn ($id) => (int) $id)->all();
+            } catch (\Throwable) {
+                $cache[$key] = [];
+            }
+        }
+
+        return $cache[$key];
+    }
+
+    /** passesHardFilter() with a preloaded block list (hot loops). */
+    public function passesHardFilterFast(User $a, User $b, array $blockedIds): bool
+    {
+        if ((int) $a->id === (int) $b->id) {
+            return false;
+        }
+        if (($b->status?->value ?? 'active') !== 'active') {
+            return false;
+        }
+        if (in_array((int) $b->id, $blockedIds, true)) {
             return false;
         }
 
@@ -492,8 +534,8 @@ class MatchingEngine
             ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
             ->limit(max($limit * 5, $limit + 20))->get();
 
-        $scored = $pool->map(function (User $cand) use ($u) {
-            if (! $this->passesHardFilter($u, $cand)) {
+        $scored = $pool->map(function (User $cand) use ($u, $blockedIds) {
+            if (! $this->passesHardFilterFast($u, $cand, $blockedIds)) {
                 return null;
             }
             $r = $this->scorePair($u, $cand);
@@ -605,9 +647,10 @@ class MatchingEngine
     public function batchScore(User $user, array $candidateIds, int $limit = 50): array
     {
         $candidates = User::whereIn('id', array_slice($candidateIds, 0, $limit))->get();
+        $blockedIds = $this->blockedIdsFor($user);
         $results = [];
         foreach ($candidates as $cand) {
-            if (! $this->passesHardFilter($user, $cand)) {
+            if (! $this->passesHardFilterFast($user, $cand, $blockedIds)) {
                 continue;
             }
             $score = $this->scorePair($user, $cand);

@@ -39,7 +39,7 @@ class MatchNudge extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Sapa match-mu di Jodohku!')
+            ->subject('Sapa match-mu di '.config('app.name').'!')
             ->greeting('Halo '.$notifiable->displayName().'!')
             ->line('Kamu dan '.$this->other->displayName().' sudah match tapi belum ngobrol. Sapa duluan ya!')
             ->action('Buka Chat', url('/chat'));

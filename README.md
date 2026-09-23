@@ -57,5 +57,7 @@ php artisan test
 - `VIRTUAL-MEMBER.md` — transparansi virtual/AI
 - `DEMO.md` — dataset demo 5000 user, foto, reset
 - `SEO.md` / `GEO.md` / `PSEO.md` — arsitektur SEO + PSEO kota/panduan
+- `SECURITY.md` / `PRIVACY.md` — model ancaman & matriks privasi
+- `CHANGELOG.md` — versi & riwayat rilis
 
 Seed persons bersifat **fiksi** (`*.example.test`) khusus untuk development.

@@ -132,6 +132,9 @@ class AccountController extends Controller
     public function retry(Request $request, Payment $payment, PaymentService $payments)
     {
         $this->authorize('view', $payment);
+        // Retry is a member self-action: staff may VIEW payments in admin,
+        // but must never mint new payment rows on another member's behalf.
+        abort_unless((int) $payment->user_id === (int) $request->user()->id, 403);
         if ($payment->status !== PaymentStatus::Failed) {
             return response()->json(['message' => 'Only failed payments can be retried.'], 422);
         }

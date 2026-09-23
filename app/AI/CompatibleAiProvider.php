@@ -22,7 +22,7 @@ class CompatibleAiProvider implements AiProviderInterface
             ->post($base.'/chat/completions', [
                 'model' => $model,
                 'messages' => [
-                    ['role' => 'system', 'content' => $options['system'] ?? 'You are a helpful dating assistant for Jodohku (Indonesia).'],
+                    ['role' => 'system', 'content' => $options['system'] ?? 'You are a helpful dating assistant for '.config('app.name').' (Indonesia).'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => $options['temperature'] ?? 0.7,

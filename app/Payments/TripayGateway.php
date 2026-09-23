@@ -21,7 +21,7 @@ class TripayGateway extends BaseGateway
                 'customer_name' => $payment->user?->displayName() ?? 'Customer',
                 'customer_email' => $payment->user?->email,
                 'order_items' => [[
-                    'name' => 'Jodohku payment '.$payment->invoice_number,
+                    'name' => config('app.name').' payment '.$payment->invoice_number,
                     'price' => (int) $payment->total_amount,
                     'quantity' => 1,
                 ]],

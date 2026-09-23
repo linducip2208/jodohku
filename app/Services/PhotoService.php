@@ -134,7 +134,7 @@ class PhotoService
         $isSelf = $viewer && (int) $viewer->id === (int) $owner->id;
         $isStaff = $viewer && $viewer->isStaff();
         if (! ($isSelf || $isStaff)) {
-            $query->where('status', 'approved');
+            $query->where('status', 'approved')->where('is_private', false);
         }
 
         return $query->get();

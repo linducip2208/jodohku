@@ -33,6 +33,6 @@ class ReportStatusChanged extends Notification implements ShouldQueue
         return (new MailMessage)
             ->subject('Status laporanmu diperbarui')
             ->line('Laporan #'.$this->report->id.' kini berstatus: '.($this->report->status->value ?? ''))
-            ->line('Terima kasih telah membantu menjaga Jodohku aman.');
+            ->line('Terima kasih telah membantu menjaga '.config('app.name').' aman.');
     }
 }

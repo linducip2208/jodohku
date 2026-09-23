@@ -43,7 +43,7 @@ body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'I
 .jk-input,.jk-select{border:1px solid #e4e4e7;border-radius:10px;padding:8px 10px;font-size:13px;background:#fff}
 .jk-bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#fff;border-top:1px solid var(--jk-line);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
 @media(min-width:1024px){.jk-bottomnav{display:none}}
-.jk-navlink{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--jk-mute);text-decoration:none;padding:6px 12px;border-radius:12px}
+.jk-navlink{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--jk-mute);text-decoration:none;padding:10px 12px;border-radius:12px;min-height:56px;justify-content:center}
 .jk-navlink.active{color:var(--jk-rose);font-weight:700}
 .jk-navlink .ico{font-size:20px}
 .jk-navlink svg.ico{width:22px;height:22px}

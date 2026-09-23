@@ -19,7 +19,7 @@ class XenditGateway extends BaseGateway
                 'amount' => (float) $payment->total_amount,
                 'currency' => $payment->currency ?? 'IDR',
                 'payer_email' => $payment->user?->email,
-                'description' => 'Jodohku payment '.$payment->invoice_number,
+                'description' => config('app.name').' payment '.$payment->invoice_number,
                 'success_redirect_url' => $options['return_url'] ?? url('/payments/'.$payment->ulid.'/return'),
                 'failure_redirect_url' => $options['cancel_url'] ?? url('/payments/'.$payment->ulid.'/cancel'),
             ]);

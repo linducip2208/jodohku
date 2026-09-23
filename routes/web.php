@@ -35,27 +35,44 @@ use App\Services\TwoFactorService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /* ---------- Landing ---------- */
 Route::get('/', fn () => view('welcome'))->name('landing');
 
 /* ---------- Health (public, no secrets/internals) ---------- */
 Route::get('/health', function () {
-    $database = 'ok';
+    $checks = ['database' => 'down', 'cache' => 'down', 'storage' => 'down', 'queue' => 'down'];
     try {
         DB::connection()->getPdo();
+        $checks['database'] = 'ok';
     } catch (Throwable) {
-        $database = 'down';
     }
+    try {
+        Cache::put('health:ping', 'ok', 30);
+        $checks['cache'] = Cache::get('health:ping') === 'ok' ? 'ok' : 'down';
+    } catch (Throwable) {
+    }
+    try {
+        $checks['storage'] = is_dir(Storage::disk('public')->path('')) ? 'ok' : 'down';
+    } catch (Throwable) {
+    }
+    try {
+        $checks['queue'] = DB::table('jobs')->count() > 1000 ? 'congested' : 'ok';
+    } catch (Throwable) {
+    }
+    $degraded = in_array('down', $checks, true);
 
     return response()->json([
-        'status' => $database === 'ok' ? 'ok' : 'degraded',
-        'database' => $database,
+        'status' => $degraded ? 'degraded' : 'ok',
+        'version' => config('app.version', '1.0.0'),
+        'checks' => $checks,
         'time' => now()->toIso8601String(),
-    ], $database === 'ok' ? 200 : 503);
+    ], $degraded ? 503 : 200);
 })->name('health');
 Route::get('/privacy', fn () => view('landing.privacy'))->name('legal.privacy');
 Route::get('/terms', fn () => view('landing.terms'))->name('legal.terms');
@@ -226,7 +243,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         $isSelf = $me && (int) $me->id === (int) $user->id;
         $user->loadMissing([
             'profile', 'interests',
-            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($me && $me->isStaff())), fn ($qq) => $qq->where('status', 'approved')),
+            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($me && $me->isStaff())), fn ($qq) => $qq->where('status', 'approved')->where('is_private', false)),
         ]);
 
         return view('member.profile.show', ['profileUser' => $user, 'score' => $score]);

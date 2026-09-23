@@ -41,7 +41,7 @@ class AiMatchmakerService
 
         // Build grounded prompt: model may ONLY use supplied profiles
         $list = collect($items)->map(fn ($i) => "- {$i['display_name']} ({$i['age']} th, {$i['city']}) skor {$i['compatibility']}: ".implode('; ', $i['why']))->implode("\n");
-        $prompt = "Kamu adalah mak comblang Jodohku. User bertanya: \"{$question}\".\n".
+        $prompt = 'Kamu adalah mak comblang '.config('app.name').'. User bertanya: "'.$question.'".'."\n".
             "Berikut kandidat NYATA (jangan tambah nama lain, jangan karang kontak/foto):\n{$list}\n".
             'Jawab singkat dalam Bahasa Indonesia: sebutkan 3 teratas dan alasan tiap pilihan (max 120 kata).';
 

@@ -54,12 +54,13 @@ class DiscoveryService
         }
 
         $scored = collect();
+        $blockedIds = $this->engine->blockedIdsFor($user);
         // Leftover rows from the previous page come first (already filtered).
         if ($leftoverIds) {
             $preloaded = User::whereIn('id', array_slice($leftoverIds, 0, $perPage * 2))
                 ->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
                 ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
-                ->get()->filter(fn (User $cand) => $this->engine->passesHardFilter($user, $cand))->values();
+                ->get()->filter(fn (User $cand) => $this->engine->passesHardFilterFast($user, $cand, $blockedIds))->values();
             if ($preloaded->isNotEmpty()) {
                 foreach ($this->engine->scoreMany($user, $preloaded) as $id => $r) {
                     $cand = $preloaded->firstWhere('id', $id);
@@ -82,7 +83,7 @@ class DiscoveryService
                 ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
                 ->cursorPaginate($limit, ['*'], 'cursor', $poolCursor);
             $poolNext = $pool->nextCursor();
-            $batch = $pool->getCollection()->filter(fn (User $cand) => $this->engine->passesHardFilter($user, $cand))->values();
+            $batch = $pool->getCollection()->filter(fn (User $cand) => $this->engine->passesHardFilterFast($user, $cand, $blockedIds))->values();
             if ($batch->isNotEmpty()) {
                 // MatchScore read-path: fresh rows reused, missing recomputed + persisted.
                 foreach ($this->engine->scoreMany($user, $batch) as $id => $r) {

@@ -34,7 +34,7 @@ class ProcessAiReply implements ShouldQueue
         if (! $lastReal) {
             return;
         }
-        $prompt = 'Kamu persona ramah Jodohku. Balas pesan berikut singkat (max 50 kata), Bahasa Indonesia, sopan: "'.$lastReal->body.'"';
+        $prompt = 'Kamu persona ramah '.config('app.name').'. Balas pesan berikut singkat (max 50 kata), Bahasa Indonesia, sopan: "'.$lastReal->body.'"';
         try {
             $res = $ai->chat($prompt, ['max_tokens' => 150], null, 'virtual_ai_reply');
             $chat->sendMessage($conv, $virtualUser, [

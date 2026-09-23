@@ -40,7 +40,15 @@ $profile = $profileUser->profile;
 </div>
 </div>
 
-@if($profile?->bio)
+@php
+$bioVisible = $isSelf;
+if (! $bioVisible) {
+    $bv = $profileUser->profilePrivacy?->bio_visibility;
+    $bv = $bv?->value ?? (string) ($bv ?? 'public');
+    $bioVisible = $bv === 'public' || auth()->check() && $bv === 'members_only' || (auth()->user()?->isStaff() ?? false);
+}
+@endphp
+@if($profile?->bio && $bioVisible)
 <section class="jk-section" aria-labelledby="p-about"><h2 class="jk-h2" id="p-about">Tentang</h2><p style="margin:0">{{ $profile->bio }}</p></section>
 @endif
 

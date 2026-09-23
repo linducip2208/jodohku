@@ -40,7 +40,7 @@ class MatchFound extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Kamu punya match baru di Jodohku!')
+            ->subject('Kamu punya match baru di '.config('app.name').'!')
             ->greeting('Halo '.$notifiable->displayName().'!')
             ->line('Kamu dan '.$this->other->displayName().' saling suka. Skor kecocokan: '.($this->match->compatibility_score ?? '-'))
             ->action('Lihat Match', url('/matches/'.$this->match->id))

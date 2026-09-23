@@ -27,7 +27,8 @@ class ProfileController extends Controller
         $isSelf = $viewer && (int) $viewer->id === (int) $user->id;
         $user->load([
             'profile', 'interests',
-            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($viewer && $viewer->isStaff())), fn ($qq) => $qq->where('status', 'approved')),
+            'photos' => fn ($q) => $q->ordered()->when(! ($isSelf || ($viewer && $viewer->isStaff())),
+                fn ($qq) => $qq->where('status', 'approved')->where('is_private', false)),
         ]);
         if (! $isSelf) {
             event(new ProfileViewed($user, $viewer));

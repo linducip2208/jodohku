@@ -39,6 +39,7 @@ try {
 } catch (\Throwable) {}
 @endphp
 <div class="jk-app">
+<a href="#jk-content" class="jk-skip">Lewati ke konten utama</a>
 <aside class="jk-sidebar" style="display:block" x-show="true">
 <div class="jk-logo" style="padding:4px 12px 16px">Jodoh<span style="background:linear-gradient(135deg,#f43f5e,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent">ku</span></div>
 <nav aria-label="Navigasi desktop">

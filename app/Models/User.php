@@ -388,9 +388,11 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $path = $this->avatar_path;
         if (! $path) {
+            // Avatar is inherently public: never fall back to a private or
+            // unapproved photo (prevents private-photo URL disclosure).
             $photo = $this->relationLoaded('photos')
                 ? $this->photos->first()
-                : $this->photos()->ordered()->first();
+                : $this->photos()->ordered()->where('status', 'approved')->where('is_private', false)->first();
             $path = $photo?->path;
         }
         if (! $path) {

@@ -25,7 +25,9 @@ class Setting extends Model
         $setting = static::where('group', $group)->where('key', $key)->first();
 
         if (! $setting) {
-            return $default;
+            // Cache the miss too: unconfigured keys otherwise re-query on
+            // every read (hundreds of queries per discovery run).
+            return self::$cache[$cacheKey] = $default;
         }
 
         return self::$cache[$cacheKey] = self::castValue($setting->value, $setting->type);
