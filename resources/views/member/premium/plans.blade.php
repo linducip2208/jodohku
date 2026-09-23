@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Premium — Jodohku')
 @section('content')
-<h1 class="jk-h1">⭐ Premium</h1><p class="jk-muted">Didukung MembershipService + SubscriptionService + PaymentService.</p>
+<h1 class="jk-h1">Premium</h1><p class="jk-muted">Didukung MembershipService + SubscriptionService + PaymentService.</p>
 @php $plans = collect(); try { $plans = app(\App\Services\MembershipService::class)->plans(); } catch (\Throwable) {} @endphp
 <div class="jk-grid" style="grid-template-columns:1fr">
 @forelse($plans as $p)
@@ -11,7 +11,7 @@
 @if(auth()->check())<form method="POST" action="/premium/checkout">@csrf<input type="hidden" name="plan" value="{{ $p->code ?? $p->id }}"><button class="jk-submit" type="submit">Pilih Paket →</button></form>@endif
 </div>
 @empty
-<div class="jk-section"><div class="jk-h2">Premium ⭐ — Rp49rb/bln</div><p class="jk-muted">Like tanpa batas · lihat siapa yang like · filter lanjutan · rewind · incognito · prioritas Discover.</p><form method="POST" action="/premium/checkout">@csrf<input type="hidden" name="plan" value="premium_monthly"><button class="jk-submit" type="submit">Pilih Premium →</button></form></div>
+@include('components.empty', ['icon' => 'bintang', 'title' => 'Paket belum tersedia', 'hint' => 'Hubungi admin untuk mengaktifkan paket membership.'])
 @endforelse
 </div>
 @endsection
