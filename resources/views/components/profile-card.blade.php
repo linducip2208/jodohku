@@ -13,10 +13,9 @@ $interestNames = collect($user->interests ?? [])->pluck('name')->filter()->take(
 @endphp
 <article class="jk-card jk-profile-card">
 <div class="jk-photo">
-@if($photo)
-<img src="{{ $photo }}" alt="Foto {{ $name }}" loading="lazy">
-@else
 <div class="jk-photo-fallback" aria-hidden="true">{{ $initial }}</div>
+@if($photo)
+<img src="{{ $photo }}" alt="Foto {{ $name }}" loading="lazy" onerror="this.remove()">
 @endif
 @if($score !== null)<span class="jk-compat">{{ (int) $score }}% cocok</span>@endif
 <span class="{{ !empty($user->is_online) ? 'jk-online' : 'jk-offline' }}" title="{{ !empty($user->is_online) ? 'Online' : 'Offline' }}"></span>
