@@ -1,5 +1,6 @@
 @extends('layouts.landing')
 @section('title', 'Daftar — Jodohku')
+@section('robots', 'noindex, nofollow')
 @section('content')
 <section class="ld-section"><div class="ld-wrap" style="max-width:480px">
 <div class="ld-card">

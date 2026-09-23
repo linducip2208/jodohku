@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\AuditService;
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -38,6 +39,12 @@ class SettingsController extends Controller
             ]);
         }
         Setting::clearCache();
+        // SEO content (sitemap, PSEO counts) is cached publicly: bust it
+        // whenever any seo-group setting changes.
+        try {
+            app(SeoService::class)->bust();
+        } catch (\Throwable) {
+        }
         $audit->log('admin.settings.updated', $request->user());
 
         return response()->json(['message' => 'Settings saved.']);

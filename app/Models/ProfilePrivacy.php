@@ -17,7 +17,7 @@ class ProfilePrivacy extends Model
         'user_id', 'photos_visibility', 'videos_visibility', 'bio_visibility',
         'location_visibility', 'online_visibility', 'age_visibility',
         'show_distance', 'show_online_status', 'allow_profile_views',
-        'is_incognito',
+        'is_incognito', 'is_public_index',
     ];
 
     protected function casts(): array
@@ -33,6 +33,7 @@ class ProfilePrivacy extends Model
             'show_online_status' => 'boolean',
             'allow_profile_views' => 'boolean',
             'is_incognito' => 'boolean',
+            'is_public_index' => 'boolean',
         ];
     }
 

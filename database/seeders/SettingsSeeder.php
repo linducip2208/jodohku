@@ -62,6 +62,19 @@ class SettingsSeeder extends Seeder
             ['group' => 'seo', 'key' => 'default_title', 'value' => 'Jodohku — Temukan Jodohmu', 'type' => 'string'],
             ['group' => 'seo', 'key' => 'default_description', 'value' => 'Platform biro jodoh modern Indonesia: matchmaking, chat aman, verifikasi, virtual member transparan.', 'type' => 'string'],
             ['group' => 'seo', 'key' => 'robots_index', 'value' => '1', 'type' => 'boolean'],
+            ['group' => 'seo', 'key' => 'keywords', 'value' => 'biro jodoh, taaruf, matchmaking indonesia, dating serius, cari jodoh', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'default_image', 'value' => '/og-cover.jpg', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'logo', 'value' => '/favicon.ico', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'twitter_handle', 'value' => '', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'locale', 'value' => 'id_ID', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'sitemap_enabled', 'value' => '1', 'type' => 'boolean'],
+            ['group' => 'seo', 'key' => 'pseo_enabled', 'value' => '1', 'type' => 'boolean'],
+            ['group' => 'seo', 'key' => 'geo_enabled', 'value' => '1', 'type' => 'boolean'],
+            ['group' => 'seo', 'key' => 'schema_enabled', 'value' => '1', 'type' => 'boolean'],
+            ['group' => 'seo', 'key' => 'pseo_min_members', 'value' => '10', 'type' => 'integer'],
+            ['group' => 'seo', 'key' => 'google_site_verification', 'value' => '', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'bing_site_verification', 'value' => '', 'type' => 'string'],
+            ['group' => 'seo', 'key' => 'analytics_id', 'value' => '', 'type' => 'string'],
         ];
 
         foreach ($rows as $r) {

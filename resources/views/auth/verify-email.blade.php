@@ -1,5 +1,6 @@
 @extends('layouts.landing')
 @section('title', 'Verifikasi Email — Jodohku')
+@section('robots', 'noindex, nofollow')
 @section('content')
 <section class="ld-section"><div class="ld-wrap" style="max-width:440px"><div class="ld-card" style="text-align:center">
 <div style="font-size:44px">📧</div><h2 class="ld-h2">Cek email kamu</h2>

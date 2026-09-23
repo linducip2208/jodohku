@@ -20,6 +20,11 @@
 <option value="{{ $s->value }}" {{ request('status') === $s->value ? 'selected' : '' }}>{{ $s->label() }}</option>
 @endforeach
 </select>
+<select name="demo" class="form-select form-select-sm" aria-label="Filter demo">
+<option value="">Semua + demo</option>
+<option value="1" {{ request('demo') === '1' ? 'selected' : '' }}>Demo saja</option>
+<option value="0" {{ request('demo') === '0' ? 'selected' : '' }}>Bukan demo</option>
+</select>
 <button class="btn btn-primary btn-sm">Terapkan</button>
 @if (request()->query())<a class="btn btn-ghost-secondary btn-sm" href="{{ route('admin.users.index') }}">Reset</a>@endif
 </form>
@@ -37,7 +42,7 @@
 @forelse ($users as $u)
 <tr>
 <td>{{ $u->id }}</td>
-<td>{{ $u->displayName() }} @if ($u->is_verified)<i class="ti ti-badge-check text-blue" title="Terverifikasi"></i>@endif</td>
+<td>{{ $u->displayName() }} @if ($u->is_verified)<i class="ti ti-badge-check text-blue" title="Terverifikasi"></i>@endif @if ($u->is_demo)<span class="badge bg-purple-lt" title="Akun demo">Demo</span>@endif</td>
 <td>{{ $u->email ?: '—' }}</td>
 <td>{{ $u->account_type?->label() ?? $u->account_type }}</td>
 <td>{{ $u->status?->label() ?? $u->status }}</td>

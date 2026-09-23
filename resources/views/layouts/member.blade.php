@@ -6,6 +6,7 @@
 <title>@yield('title', 'Jodohku')</title>
 <meta name="description" content="Jodohku — temukan pasangan yang sejalan nilai dan tujuan pernikahan.">
 <meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="{{ app(\App\Services\SeoService::class)->canonical() }}">
 <meta name="theme-color" content="#f43f5e">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" href="/favicon.ico">

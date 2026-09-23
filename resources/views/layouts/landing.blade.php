@@ -3,16 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>@yield('title', 'Jodohku — Temukan Jodohmu')</title>
-<meta name="description" content="@yield('meta_description', 'Jodohku adalah aplikasi kencan Indonesia: temukan pasangan serasi dengan matching cerdas, chat realtime, verifikasi aman, dan event komunitas.')">
-<link rel="canonical" href="{{ url()->current() }}">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Jodohku">
-<meta property="og:title" content="@yield('og_title', 'Jodohku — Temukan Jodohmu')">
-<meta property="og:description" content="@yield('og_description', 'Matching cerdas, chat realtime, verifikasi aman. Mulai gratis.')">
-<meta property="og:url" content="{{ url()->current() }}">
-<meta property="og:image" content="{{ url('/favicon.ico') }}">
-<meta name="twitter:card" content="summary_large_image">
+<x-seo :schemas="$seoSchemas ?? []" />
 <link rel="icon" href="/favicon.ico">
 @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
 @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -65,7 +56,7 @@ body{font-family:'Instrument Sans',system-ui,sans-serif;margin:0;color:#18181b;b
 <div><div style="color:#fff;font-weight:800;font-size:18px;margin-bottom:10px">Jodohku</div><p>Temukan pasangan serasi dengan matching cerdas, chat realtime, dan komunitas aman Indonesia.</p></div>
 <div><div style="color:#fff;font-weight:700;margin-bottom:10px">Produk</div><div><a href="/discover">Discover</a></div><div><a href="/premium">Premium</a></div><div><a href="/events">Events</a></div><div><a href="/gifts">Gifts</a></div></div>
 <div><div style="color:#fff;font-weight:700;margin-bottom:10px">Bantuan</div><div><a href="#faq">FAQ</a></div><div><a href="/safety">Pusat Keamanan</a></div><div><a href="/verification">Verifikasi</a></div><div><a href="/contact">Kontak</a></div></div>
-<div><div style="color:#fff;font-weight:700;margin-bottom:10px">Legal</div><div><a href="/terms">Syarat &amp; Ketentuan</a></div><div><a href="/privacy">Privasi</a></div></div>
+<div><div style="color:#fff;font-weight:700;margin-bottom:10px">Legal</div><div><a href="/terms">Syarat &amp; Ketentuan</a></div><div><a href="/privacy">Privasi</a></div><div><a href="/guidelines">Panduan Komunitas</a></div></div>
 </div>
 <p style="margin-top:28px">© {{ date('Y') }} Jodohku. Dibuat dengan aman di Indonesia.</p>
 </div></footer>

@@ -30,6 +30,9 @@ class UserController extends Controller
                 $query->where($f, $request->input($f));
             }
         }
+        if ($request->filled('demo')) {
+            $query->where('is_demo', $request->boolean('demo'));
+        }
         $users = $query->paginate(25);
 
         return $request->wantsJson() ? response()->json($users) : view('admin.users', ['users' => $users]);

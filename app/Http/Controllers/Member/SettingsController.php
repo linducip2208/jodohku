@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Member;
 
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\NotificationPreference;
 use App\Models\ProfilePrivacy;
+use App\Services\AuditService;
 use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -54,6 +56,7 @@ class SettingsController extends Controller
             'online_visibility' => $request->boolean('hide_online') ? 'private' : 'public',
             'is_incognito' => $request->boolean('incognito'),
             'show_distance' => ! $request->boolean('hide_distance'),
+            'is_public_index' => $request->boolean('public_index'),
         ]);
 
         return $request->wantsJson()
@@ -81,10 +84,20 @@ class SettingsController extends Controller
     {
         $request->validate(['password' => ['required', 'current_password']]);
         $user = $request->user();
+        try {
+            app(AuditService::class)->log('account.deleted', $user, $user);
+        } catch (\Throwable) {
+        }
+        $user->tokens()->delete();
+        $user->update(['status' => UserStatus::Deleted]);
         auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         $user->delete();
 
-        return response()->json(['message' => 'Account deleted.']);
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Account deleted.'])
+            : redirect('/')->with('status', 'Akun dihapus permanen. Kami akan merindukanmu.');
     }
 
     public function enable2fa(Request $request, TwoFactorService $tfa)

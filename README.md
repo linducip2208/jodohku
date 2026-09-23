@@ -13,7 +13,8 @@ Platform matchmaking + chat aman + verifikasi + virtual member transparan, diban
 - **Verifikasi & fraud**: request dokumen, risk score, event log, scam detector (no HP, invite off-platform, phishing, investment lure).
 - **Foto aman**: pipeline `PhotoService` (validasi MIME asli + dimensi, resize 1600 + thumbnail 400, deteksi duplikat SHA-256, status pending → antrian moderasi admin), foto pending tak terlihat publik.
 - **2FA email OTP**: `TwoFactorService` (kode 6 digit hash + TTL 10 mnt + throttle), wajib di login web & API bila aktif.
-- **SEO publik**: `/sitemap.xml` (blog + forum saja), `robots.txt` menutup area member/admin/API.
+- **SEO publik**: sitemap index dinamis (`/sitemap.xml` → pages/locations/pseo/profiles), `robots.txt` dinamis, PSEO kota + panduan taaruf dengan quality gate, profil publik opt-in (`/u/{username}`), schema WebSite/Organization/FAQ/Breadcrumb/Article/Event/Profile.
+- **Demo komersial**: `php artisan jodohku:demo --users=5000` (deterministik, bulk, foto generated aman) — lihat `DEMO.md`.
 - **Admin/operator**: RBAC zona (`staff/moderator/operator/admin/superadmin` + policies, sidebar `@can`, secret gateway hanya superadmin), audit log tanpa-sekret, gateway secrets terenkripsi (`Crypt`).
 - **E2E teruji**: `EndToEndJourneyTest` (register → match → chat idempoten → webhook premium/kredit → block/report → moderasi + audit), `RbacTest`, `ThrottleIsolationTest`.
 
@@ -54,5 +55,7 @@ php artisan test
 - `MATCHMAKING.md` — pipeline & bobot
 - `MODERATION.md` — kebijakan moderasi
 - `VIRTUAL-MEMBER.md` — transparansi virtual/AI
+- `DEMO.md` — dataset demo 5000 user, foto, reset
+- `SEO.md` / `GEO.md` / `PSEO.md` — arsitektur SEO + PSEO kota/panduan
 
 Seed persons bersifat **fiksi** (`*.example.test`) khusus untuk development.

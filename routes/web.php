@@ -15,12 +15,11 @@ use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\QuestionnaireController;
 use App\Http\Controllers\Member\SafetyController;
 use App\Http\Controllers\Member\SettingsController;
+use App\Http\Controllers\PublicSeoController;
 use App\Models\Block;
-use App\Models\BlogPost;
 use App\Models\ContactMessage;
 use App\Models\Conversation;
 use App\Models\Event;
-use App\Models\Forum;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\VerificationRequest;
@@ -30,6 +29,7 @@ use App\Services\GiftService;
 use App\Services\MatchingEngine;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
+use App\Services\PseoService;
 use App\Services\TwoFactorService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
@@ -58,6 +58,7 @@ Route::get('/health', function () {
 })->name('health');
 Route::get('/privacy', fn () => view('landing.privacy'))->name('legal.privacy');
 Route::get('/terms', fn () => view('landing.terms'))->name('legal.terms');
+Route::get('/guidelines', fn () => view('landing.guidelines'))->name('legal.guidelines');
 Route::get('/contact', fn () => view('landing.contact'))->name('contact');
 Route::post('/contact', function (Request $r) {
     $data = $r->validate([
@@ -71,23 +72,20 @@ Route::post('/contact', function (Request $r) {
     return back()->with('status', 'Pesan terkirim. Tim kami akan membalas via email maksimal 2x24 jam.');
 })->middleware('throttle:5,1,contact')->name('contact.store');
 
-Route::get('/sitemap.xml', function () {
-    $urls = [['loc' => url('/'), 'updated' => now()->toAtomString(), 'freq' => 'daily']];
-    try {
-        foreach (BlogPost::published()->latest('published_at')->take(200)->get(['slug', 'updated_at']) as $p) {
-            $urls[] = ['loc' => url('/blog/'.$p->slug), 'updated' => $p->updated_at?->toAtomString() ?? now()->toAtomString(), 'freq' => 'weekly'];
-        }
-        $urls[] = ['loc' => url('/blog'), 'updated' => now()->toAtomString(), 'freq' => 'daily'];
-        foreach (Forum::where('is_active', true)->get(['slug', 'updated_at']) as $f) {
-            $urls[] = ['loc' => url('/forums/'.$f->slug), 'updated' => $f->updated_at?->toAtomString() ?? now()->toAtomString(), 'freq' => 'daily'];
-        }
-        $urls[] = ['loc' => url('/forums'), 'updated' => now()->toAtomString(), 'freq' => 'daily'];
-    } catch (Throwable) {
-    }
-    $xml = view('seo.sitemap', ['urls' => $urls])->render();
-
-    return response($xml, 200)->header('Content-Type', 'application/xml');
-})->name('sitemap');
+/* ---------- Public SEO/PSEO (guest-accessible, privacy-safe only) ---------- */
+Route::get('/robots.txt', [PublicSeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [PublicSeoController::class, 'sitemapIndex'])->name('sitemap');
+Route::get('/sitemap-{section}.xml', [PublicSeoController::class, 'sitemapSection'])
+    ->whereIn('section', ['pages', 'locations', 'pseo', 'profiles'])->name('sitemap.section');
+Route::get('/biro-jodoh', [PublicSeoController::class, 'hub'])->name('seo.hub');
+// Constrained to the PSEO taxonomy (single-sourced from PseoService) so
+// member routes (/biro-jodoh/taaruf, /kisah, /konselor, …) keep matching.
+Route::get('/biro-jodoh/{city}', [PublicSeoController::class, 'city'])
+    ->whereIn('city', array_keys(app(PseoService::class)->cities()))
+    ->name('seo.city');
+Route::get('/taaruf', [PublicSeoController::class, 'taaruf'])->name('seo.taaruf');
+Route::get('/panduan/{topic}', [PublicSeoController::class, 'topic'])->name('seo.topic');
+Route::get('/u/{username}', [PublicSeoController::class, 'profile'])->name('seo.profile');
 
 /* ---------- Auth (dating-styled) ---------- */
 Route::middleware('guest')->group(function () {
@@ -356,6 +354,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/settings/notifications', [SettingsController::class, 'notifications'])->name('settings.notifications');
     Route::post('/settings/2fa/enable', [SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
     Route::post('/settings/2fa/disable', [SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
+    Route::delete('/settings/account', [SettingsController::class, 'destroy'])->name('settings.account.destroy')->middleware('throttle:5,1,account-delete');
 
     Route::get('/safety', [SafetyController::class, 'index'])->name('member.safety');
     Route::post('/safety/block', function (Request $r) {

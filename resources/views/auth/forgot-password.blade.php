@@ -1,5 +1,6 @@
 @extends('layouts.landing')
 @section('title', 'Lupa Password — Jodohku')
+@section('robots', 'noindex, nofollow')
 @section('content')
 <section class="ld-section"><div class="ld-wrap" style="max-width:440px"><div class="ld-card">
 <h2 class="ld-h2">Lupa password? 🔑</h2><p class="ld-muted">Masukkan email, kami kirim link reset.</p>

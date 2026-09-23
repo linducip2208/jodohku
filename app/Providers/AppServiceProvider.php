@@ -27,8 +27,11 @@ use App\Policies\PaymentPolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VirtualConversationPolicy;
+use App\Services\FaqService;
+use App\Services\SeoService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -71,6 +74,21 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(LogAudit::class);
         Event::listen(MutualMatchCreated::class, SendMatchNotification::class);
 
+        // Homepage GEO schemas (WebSite + Organization + visible FAQPage).
+        View::composer('welcome', function ($view) {
+            try {
+                $seo = app(SeoService::class);
+                $faqs = app(FaqService::class)->homepage();
+                $schemas = [];
+                if ($seo->site('schema_enabled', true)) {
+                    $schemas[] = $seo->websiteSchema();
+                    $schemas[] = $seo->organizationSchema();
+                    $schemas[] = $seo->faqSchema($faqs);
+                }
+                $view->with('seoSchemas', $schemas);
+            } catch (\Throwable) {
+            }
+        });
         // Match recalculation on data change (not on profile views).
         foreach ([Profile::class, PartnerPreference::class, ProfilePhoto::class, UserInterest::class, QuestionnaireAnswer::class, User::class] as $model) {
             $model::observe(MatchRecalcObserver::class);

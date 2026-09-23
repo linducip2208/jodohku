@@ -1,5 +1,6 @@
 @extends('layouts.landing')
 @section('title', 'Gangguan Server (500) — Jodohku')
+@section('robots', 'noindex, nofollow')
 @section('content')
 <section class="ld-section"><div class="ld-wrap" style="max-width:560px;text-align:center">
 <div class="ld-card">

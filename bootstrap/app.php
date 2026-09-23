@@ -4,6 +4,7 @@ use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureBlocked;
 use App\Http\Middleware\FeatureFlag;
+use App\Http\Middleware\NormalizeTrailingSlash;
 use App\Http\Middleware\PremiumOnly;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => CheckRole::class,
             'feature' => FeatureFlag::class,
             'premium' => PremiumOnly::class,
+        ]);
+        $middleware->web(append: [
+            NormalizeTrailingSlash::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

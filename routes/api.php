@@ -35,6 +35,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/2fa/enable', [SettingsController::class, 'enable2fa']);
             Route::post('/2fa/disable', [SettingsController::class, 'disable2fa']);
+            Route::delete('/account', [SettingsController::class, 'destroy'])->middleware('throttle:5,1,account-delete');
         });
     });
 
