@@ -251,9 +251,20 @@ class DiscoveryService
         $picked = (array) Cache::get($cacheKey, []);
 
         $filters = ['exclude_ids' => $picked];
-        if ($user->partnerPreference?->gender_preference) {
-            $gp = $user->partnerPreference->gender_preference;
+        $pref = $user->partnerPreference;
+        if ($pref?->gender_preference) {
+            $gp = $pref->gender_preference;
             $filters['gender'] = $gp instanceof \BackedEnum ? $gp->value : (string) $gp;
+        }
+        // Honor the member's own age/distance preferences in daily picks.
+        if ($pref?->min_age) {
+            $filters['min_age'] = (int) $pref->min_age;
+        }
+        if ($pref?->max_age) {
+            $filters['max_age'] = (int) $pref->max_age;
+        }
+        if ($pref?->max_distance_km && $user->latitude !== null) {
+            $filters['max_distance_km'] = (int) $pref->max_distance_km;
         }
 
         $candidates = $this->engine->candidatesFor($user, $filters, $limit);

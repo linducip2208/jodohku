@@ -10,6 +10,7 @@ use App\Models\Counselor;
 use App\Models\Courtship;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\AiChatAssistantService;
 use App\Services\CompatibilityReportService;
 use App\Services\ConsultationService;
 use App\Services\CourtshipService;
@@ -90,6 +91,16 @@ class BiroJodohController extends Controller
         return $this->html($request, $courtship, 'member.biro-jodoh.courtship-show', [
             'journey' => $other ? $journey->journey($request->user(), $other) : null,
         ]);
+    }
+
+    /** On-demand conversation summary for the taaruf journey (AI with fallback). */
+    public function digest(Request $request, Courtship $courtship, AiChatAssistantService $assistant)
+    {
+        $this->authorize('view', $courtship);
+        $conversation = $courtship->conversation;
+        abort_unless($conversation, 404, 'Belum ada percakapan.');
+
+        return response()->json(['digest' => $assistant->digest($conversation, $request->user())]);
     }
 
     public function journey(Request $request, User $partner, MarriageJourneyService $journey)

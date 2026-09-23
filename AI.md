@@ -15,3 +15,12 @@
 ## Biaya
 
 `AiModel::estimateCost(input,output)`; monitor via `ai_usage_logs.cost`. Seed: `gpt-4o-mini` default (0.00015/0.0006 per 1k).
+
+## Grounding & asisten (Intelligence)
+
+- Matchmaker: prompt hanya berisi kandidat NYATA dari `DiscoveryService` +
+  alasan `MatchExplanation`; instruksi eksplisit jangan mengarang.
+- `profileTips`: checklist deterministik dari gap profil nyata (selalu ada) +
+  parafrasa AI best-effort; `digest`/`catchUp` punya fallback ekstraktif.
+- AI tidak pernah: mengarang atribut/verifikasi/lokasi/skor, membuka data
+  privat, mengklaim kepastian, atau memutuskan jodoh.

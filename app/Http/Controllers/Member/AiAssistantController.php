@@ -93,4 +93,15 @@ class AiAssistantController extends Controller
 
         return response()->json($result);
     }
+
+    public function profileTips(Request $request, AiChatAssistantService $assistant)
+    {
+        try {
+            return response()->json($assistant->profileTips($request->user()));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        } catch (\Throwable) {
+            return response()->json(['message' => 'AI sedang sibuk. Coba lagi sebentar.'], 503);
+        }
+    }
 }

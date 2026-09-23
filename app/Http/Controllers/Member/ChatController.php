@@ -136,6 +136,15 @@ class ChatController extends Controller
         ));
     }
 
+    public function saved(Request $request, ChatService $chat)
+    {
+        $bookmarks = $chat->bookmarks($request->user(), 20);
+
+        return $request->wantsJson()
+            ? response()->json($bookmarks)
+            : view('member.chat.saved', ['bookmarks' => $bookmarks]);
+    }
+
     public function addLabel(Request $request, Conversation $conversation, ChatService $chat)
     {
         $this->authorize('manage', $conversation);

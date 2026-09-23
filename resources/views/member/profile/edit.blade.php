@@ -1,11 +1,11 @@
 @extends('layouts.member')
 @section('title', 'Edit Profil — Jodohku')
 @section('content')
-<h1 class="jk-h1">✏️ Edit Profil</h1>
+<h1 class="jk-h1">Edit Profil</h1>
 <p class="jk-muted">Foto baru masuk moderasi (maks 8MB, JPG/PNG/WebP) lalu tampil publik setelah disetujui.</p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @php $myPhotos = auth()->user()->photos()->ordered()->get(); @endphp
-<div class="jk-section"><div class="jk-h2">📷 Foto saya ({{ $myPhotos->count() }}/9)</div>
+<div class="jk-section"><div class="jk-h2">Foto saya ({{ $myPhotos->count() }}/9)</div>
 <div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">
 @foreach($myPhotos as $ph)
 <div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">
@@ -30,5 +30,13 @@
 <label>Nama tampilan</label><input name="display_name" value="{{ $user->display_name ?? auth()->user()->display_name }}">
 <label>Kota</label><input name="city" value="{{ auth()->user()->city }}">
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan</button></form>
+</div>
+<div class="jk-section" x-data="{ tips:[], score:null, aiNote:null, loading:false }" aria-labelledby="h-tips">
+<div class="jk-h2" id="h-tips">Saran profil</div>
+<p class="jk-muted">Checklist jujur berdasarkan kelengkapan profilmu — tanpa janji manis.</p>
+<button class="jk-pill" @click="loading = true; fetch('/ai/profile-tips', { headers:{ 'Accept':'application/json' } }).then(r => r.json()).then(j => { tips = j.tips || []; score = j.score; aiNote = j.ai_note || null; loading = false; }).catch(() => { loading = false; })" x-show="tips.length === 0 && !loading">Minta saran</button>
+<p class="jk-muted" x-show="loading">Menyiapkan saran…</p>
+<ul x-show="tips.length > 0"><template x-for="t in tips" :key="t"><li x-text="t"></li></template></ul>
+<p class="jk-muted" x-show="aiNote" x-text="aiNote"></p>
 </div>
 @endsection

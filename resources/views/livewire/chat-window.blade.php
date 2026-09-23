@@ -13,6 +13,16 @@
 <form method="POST" action="/chat/{{ $conv->id }}/archive" style="display:inline">@csrf<button class="jk-pill" type="submit" title="Arsipkan">Arsip</button></form>
 </div>
 </div>
+@if(!empty($courtshipProgress))
+<div class="jk-section" style="border-left:4px solid #8b5cf6" aria-label="Progres taaruf">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<strong>Taaruf: {{ $courtshipProgress['label'] }}</strong>
+<span class="jk-muted" style="font-size:12px">Tahap {{ $courtshipProgress['index'] }} dari {{ $courtshipProgress['total'] }}</span>
+<a class="jk-pill" href="/biro-jodoh/taaruf/{{ $courtshipProgress['courtship_id'] }}">Lihat perjalanan</a>
+</div>
+<div class="jk-progress" style="margin-top:8px"><div style="width:{{ (int) ($courtshipProgress['index'] / max(1, $courtshipProgress['total']) * 100) }}%"></div></div>
+</div>
+@endif
 @if(in_array($peerRisk ?? null, ['medium', 'high'], true))
 <div class="jk-alert err" role="alert">Perhatikan keamanan saat berkomunikasi. Jangan kirim uang atau kode OTP kepada orang lain.</div>
 @endif
@@ -44,6 +54,7 @@
 <div x-data="{ galleryOpen:false, gallery: [], galleryCursor: null, galleryMore: false }" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
 <button class="jk-pill" @click="galleryOpen = !galleryOpen; if (galleryOpen && gallery.length === 0) { fetch('/chat/{{ $conv->id }}/gallery?per_page=12', { headers:{ 'Accept':'application/json' } }).then(r => r.json()).then(j => { gallery = j.data || []; galleryCursor = j.next_cursor; galleryMore = j.has_more; }).catch(() => {}) }" aria-expanded="false">Lihat media</button>
 <a class="jk-pill" href="/chat/{{ $conv->id }}/export?format=csv">Ekspor chat</a>
+<a class="jk-pill" href="/chat/saved">Pesan tersimpan</a>
 @if(!empty($courtshipStage))<a class="jk-pill" href="/biro-jodoh/taaruf">Topik taaruf hari ini</a>@endif
 </div>
 <div x-show="galleryOpen" style="display:none" class="jk-section" aria-label="Galeri media">
@@ -112,10 +123,12 @@
 <button wire:click="react({{ $m->id }}, '😮')" style="background:none;border:0;cursor:pointer" aria-label="Kagum">😮</button>
 <button wire:click="translate({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Terjemahkan">Terjemahkan</button>
 <button wire:click="delete({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Hapus pesan">Hapus</button>
+<button wire:click="toggleBookmark({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Simpan pesan">{{ in_array($m->id, $bookmarks ?? []) ? 'Tersimpan ✓' : 'Simpan' }}</button>
 </div>
 @else
 <div style="margin-top:4px;display:flex;gap:6px;font-size:11px">
 <button wire:click="translate({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Terjemahkan">Terjemahkan</button>
+<button wire:click="toggleBookmark({{ $m->id }})" style="background:none;border:0;cursor:pointer;color:inherit" aria-label="Simpan pesan">{{ in_array($m->id, $bookmarks ?? []) ? 'Tersimpan ✓' : 'Simpan' }}</button>
 </div>
 @endif
 </div>

@@ -257,6 +257,31 @@ class ChatController extends Controller
         return response()->json(['message' => 'Removed.']);
     }
 
+    public function bookmark(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        try {
+            $chat->bookmark($message, $request->user());
+        } catch (\RuntimeException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return response()->json(['message' => 'Bookmarked.'], 201);
+    }
+
+    public function unbookmark(Request $request, Message $message, ChatService $chat)
+    {
+        $this->authorize('view', $message->conversation);
+        $chat->unbookmark($message, $request->user());
+
+        return response()->json(['message' => 'Bookmark removed.']);
+    }
+
+    public function bookmarks(Request $request, ChatService $chat)
+    {
+        return response()->json($chat->bookmarks($request->user(), (int) $request->query('per_page', 20)));
+    }
+
     public function typing(Request $request, Conversation $conversation, ChatService $chat)
     {
         $this->authorize('send', $conversation);

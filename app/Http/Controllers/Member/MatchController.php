@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\MatchResource;
 use App\Http\Resources\UserResource;
 use App\Models\Like;
+use App\Models\MatchNote;
 use App\Models\ProfileView;
 use App\Models\User;
 use App\Models\UserMatch;
@@ -54,6 +55,43 @@ class MatchController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Unmatched.'])
             : back()->with('status', 'Unmatched.');
+    }
+
+    /** Resolve the ACTIVE match between me and $user, or 404 (no IDOR). */
+    protected function activeMatchWith(User $me, User $user): UserMatch
+    {
+        [$a, $b] = UserMatch::canonical((int) $me->id, (int) $user->id);
+        $match = UserMatch::where('user_a_id', $a)->where('user_b_id', $b)->where('is_active', true)->first();
+        abort_unless((bool) $match, 404);
+
+        return $match;
+    }
+
+    /** Private note about a match — visible only to its author. */
+    public function showNote(Request $request, User $user)
+    {
+        $match = $this->activeMatchWith($request->user(), $user);
+        $note = MatchNote::where('user_id', $request->user()->id)->where('match_id', $match->id)->first();
+
+        return response()->json(['match_id' => $match->id, 'body' => $note?->body]);
+    }
+
+    public function storeNote(Request $request, User $user)
+    {
+        $request->validate(['body' => ['nullable', 'string', 'max:2000']]);
+        $match = $this->activeMatchWith($request->user(), $user);
+        $body = trim((string) $request->input('body', ''));
+        if ($body === '') {
+            MatchNote::where('user_id', $request->user()->id)->where('match_id', $match->id)->delete();
+
+            return response()->json(['match_id' => $match->id, 'body' => null]);
+        }
+        $note = MatchNote::updateOrCreate(
+            ['user_id' => $request->user()->id, 'match_id' => $match->id],
+            ['body' => $body]
+        );
+
+        return response()->json(['match_id' => $match->id, 'body' => $note->body], 201);
     }
 
     /** Premium-only: members who liked you (mutual-not-yet). Free members get 403 + upgrade hint. */

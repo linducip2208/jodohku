@@ -9,11 +9,13 @@ $isPremium = (bool) $me?->isPremium();
 $quota = null;
 try { $quota = app(\App\Services\LikeService::class)->likesRemainingToday($me); } catch (\Throwable) {}
 $received = collect(); $given = collect(); $supers = collect(); $favs = collect();
+$receivedCount = 0;
 try {
     if ($me) {
         $given = $me->likesGiven()->with(['liked.profile', 'liked.interests'])->latest('id')->take(24)->get();
         $supers = \App\Models\SuperLike::where('sender_id', $me->id)->with(['receiver.profile'])->latest('id')->take(24)->get();
         $favs = \App\Models\Favorite::where('user_id', $me->id)->with(['favorited.profile'])->latest('id')->take(24)->get();
+        $receivedCount = \App\Models\Like::where('liked_id', $me->id)->count();
         if ($isPremium) {
             $received = \App\Models\Like::where('liked_id', $me->id)->with(['liker.profile', 'liker.interests'])->latest('id')->take(24)->get();
         }
@@ -33,7 +35,7 @@ try {
 <div class="jk-section">
 @if(! $isPremium)
 <div class="jk-h2">Lihat siapa yang menyukaimu</div>
-<p class="jk-muted">Fitur ini khusus Premium. Upgrade untuk melihat daftar lengkap.</p>
+<p class="jk-muted">@if($receivedCount > 0) Ada <strong>{{ $receivedCount }} orang</strong> yang menyukaimu. @endif Fitur ini khusus Premium. Upgrade untuk melihat daftar lengkap.</p>
 <a class="jk-btn jk-btn-like" style="text-decoration:none;text-align:center;margin-top:10px" href="/premium">Upgrade ke Premium</a>
 @elseif($received->isEmpty())
 @include('components.empty', ['icon' => 'hati', 'title' => 'Belum ada yang menyukaimu', 'hint' => 'Lengkapi profil dan aktif di Discover.'])

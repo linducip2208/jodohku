@@ -75,6 +75,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/matches/stats', [DiscoveryController::class, 'stats']);
         Route::get('/matches/history', [DiscoveryController::class, 'history']);
         Route::delete('/matches/{user}', [MatchController::class, 'destroy']);
+        Route::get('/matches/{user}/note', [MatchController::class, 'showNote']);
+        Route::put('/matches/{user}/note', [MatchController::class, 'storeNote']);
         Route::get('/who-liked', [MatchController::class, 'whoLiked']);
         Route::get('/visitors', [MatchController::class, 'visitors']);
         Route::post('/likes/{user}', [DiscoveryController::class, 'like']);
@@ -133,6 +135,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/messages/{message}/reactions', [ChatController::class, 'reactions']);
         Route::post('/messages/{message}/reactions', [ChatController::class, 'react']);
         Route::delete('/messages/{message}/reactions', [ChatController::class, 'unreact']);
+        Route::post('/messages/{message}/bookmark', [ChatController::class, 'bookmark']);
+        Route::delete('/messages/{message}/bookmark', [ChatController::class, 'unbookmark']);
+        Route::get('/bookmarks', [ChatController::class, 'bookmarks']);
         Route::post('/conversations', [ChatController::class, 'create']);
         Route::post('/messages/{message}/forward', [ChatController::class, 'forward']);
 
@@ -190,6 +195,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/ai/taaruf-topics/{user}', [AiAssistantController::class, 'taarufTopics'])->middleware('throttle:20,1,ai-topics');
         Route::get('/ai/openers/{user}', [AccountController::class, 'aiOpeners']);
         Route::get('/ai/digest/{conversation}', [AccountController::class, 'aiDigest']);
+        Route::get('/ai/profile-tips', [AiAssistantController::class, 'profileTips'])->middleware('throttle:20,1,ai-topics');
         Route::get('/ads', [SafetyController::class, 'ads']);
         Route::get('/ads/stats', [SafetyController::class, 'adStats']);
         Route::post('/ads/{ad}/impression', [SafetyController::class, 'adImpression']);

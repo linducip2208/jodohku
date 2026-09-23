@@ -4,6 +4,7 @@ use App\Enums\EventStatus;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\VerificationController;
+use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
@@ -277,6 +278,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/chat/attachments/{attachment}', [MessageController::class, 'download'])->name('member.chat.attachment.download');
     Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels'])->name('member.chat.labels');
     Route::get('/chat/{conversation}/gallery', [ChatController::class, 'gallery'])->name('member.chat.gallery');
+    Route::get('/chat/saved', [ChatController::class, 'saved'])->name('member.chat.saved');
+    Route::get('/ai/profile-tips', [AiAssistantController::class, 'profileTips'])->name('member.ai.profile-tips');
     Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel'])->name('member.chat.labels.add');
     Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel'])->name('member.chat.labels.remove');
     Route::post('/chat/{conversation}/mark-all-read', function (Conversation $conversation, ChatService $chat) {
@@ -428,6 +431,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/biro-jodoh/taaruf/{courtship}/mundur', [BiroJodohController::class, 'withdrawCourtship'])->name('member.biro-jodoh.withdraw');
     Route::put('/biro-jodoh/taaruf/{courtship}/wali', [BiroJodohController::class, 'setGuardian'])->name('member.biro-jodoh.guardian');
     Route::post('/biro-jodoh/taaruf/{courtship}/wali/setuju', [BiroJodohController::class, 'approveGuardian'])->name('member.biro-jodoh.guardian.approve');
+    Route::get('/biro-jodoh/taaruf/{courtship}/ringkasan', [BiroJodohController::class, 'digest'])->name('member.biro-jodoh.digest');
     Route::get('/biro-jodoh/konselor', [BiroJodohController::class, 'counselors'])->name('member.biro-jodoh.counselors');
     Route::get('/biro-jodoh/konsultasi', [BiroJodohController::class, 'consultations'])->name('member.biro-jodoh.consultations');
     Route::post('/biro-jodoh/konsultasi', [BiroJodohController::class, 'bookConsultation'])->name('member.biro-jodoh.consultations.book');

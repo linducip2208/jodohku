@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AiUsageLog;
+use App\Models\Consultation;
+use App\Models\Courtship;
 use App\Models\CreditTransaction;
+use App\Models\Like;
 use App\Models\Message;
 use App\Models\OperatorAssignment;
 use App\Models\Payment;
@@ -35,6 +38,10 @@ class DashboardController extends Controller
                 'users_7d' => User::where('created_at', '>', now()->subDays(7))->count(),
                 'online' => User::where('is_online', true)->count(),
                 'matches' => UserMatch::count(),
+                'match_rate' => ($likes = Like::count()) > 0 ? round(UserMatch::count() / max(1, $likes) * 100, 1) : 0,
+                'taaruf_active' => Courtship::where('status', 'active')->count(),
+                'taaruf_completed' => Courtship::where('status', 'completed')->count(),
+                'consultations' => Consultation::count(),
                 'messages' => Message::count(),
                 'reports' => Report::count(),
                 'premium' => User::where('is_premium', true)->count(),

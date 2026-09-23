@@ -21,6 +21,7 @@ use App\Models\ConversationMember;
 use App\Models\ConversationUserSetting;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Models\MessageBookmark;
 use App\Models\MessageDeletion;
 use App\Models\MessageReaction;
 use App\Models\PollVote;
@@ -386,6 +387,34 @@ class ChatService
             ['message_id' => $message->id, 'user_id' => $user->id, 'emoji' => mb_substr($emoji, 0, 20)],
             []
         );
+    }
+
+    /** Private per-member bookmark (reading list), idempotent. */
+    public function bookmark(Message $message, User $user): MessageBookmark
+    {
+        if (! $message->conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+
+        return MessageBookmark::firstOrCreate(
+            ['message_id' => $message->id, 'user_id' => $user->id]
+        );
+    }
+
+    public function unbookmark(Message $message, User $user): bool
+    {
+        if (! $message->conversation->involves((int) $user->id)) {
+            throw new \RuntimeException('Not a member.');
+        }
+
+        return (bool) MessageBookmark::where('message_id', $message->id)->where('user_id', $user->id)->delete();
+    }
+
+    public function bookmarks(User $user, int $perPage = 20)
+    {
+        return MessageBookmark::where('user_id', $user->id)
+            ->with(['message.sender', 'message.conversation'])
+            ->latest('id')->paginate($perPage);
     }
 
     public function unreact(Message $message, User $user, string $emoji): bool

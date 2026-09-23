@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\DiscoveryService;
 use App\Services\LikeService;
+use App\Services\MatchExplanation;
 use App\Services\MatchingEngine;
 use Illuminate\Http\Request;
 
@@ -81,11 +82,14 @@ class DiscoveryController extends Controller
         return MatchResource::collection($items)->response();
     }
 
-    public function explain(Request $request, User $user, MatchingEngine $engine)
+    public function explain(Request $request, User $user, MatchingEngine $engine, MatchExplanation $why)
     {
         $this->authorize('view', $user);
 
-        return response()->json($engine->explain($request->user(), $user));
+        return response()->json(array_merge(
+            $engine->explain($request->user(), $user),
+            ['why' => $why->for($request->user(), $user)]
+        ));
     }
 
     public function scoreCache(Request $request, User $user, MatchingEngine $engine)

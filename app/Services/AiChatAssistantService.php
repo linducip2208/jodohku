@@ -285,4 +285,54 @@ class AiChatAssistantService
             return 'Tidak ada ringkasan yang tersedia saat ini.';
         }
     }
+
+    /**
+     * Profile improvement tips: deterministic checklist from actual gaps
+     * (always available), optionally rephrased by AI when reachable.
+     *
+     * @return array{tips:array<int,string>, score:int}
+     */
+    public function profileTips(User $user): array
+    {
+        $user->loadMissing(['profile', 'interests', 'photos']);
+        $tips = [];
+        $profile = $user->profile;
+        if (empty($profile?->headline)) {
+            $tips[] = 'Tambahkan headline satu kalimat yang jujur tentang dirimu.';
+        }
+        if (mb_strlen(trim((string) $profile?->bio)) < 50) {
+            $tips[] = 'Perpanjang bio minimal 50 karakter: ceritakan nilai dan tujuan hubunganmu.';
+        }
+        if (empty($profile?->occupation)) {
+            $tips[] = 'Isi pekerjaan — profil dengan pekerjaan terisi mendapat lebih banyak like.';
+        }
+        if (($user->interests?->count() ?? 0) < 3) {
+            $tips[] = 'Tambahkan minimal 3 minat agar mesin pencari kecocokan bekerja maksimal.';
+        }
+        $hasPhoto = ! empty($user->avatar_path) || $user->photos->where('status', 'approved')->isNotEmpty();
+        if (! $hasPhoto) {
+            $tips[] = 'Unggah foto yang jelas dan terverifikasi — profil berfoto jauh lebih dipercaya.';
+        }
+        if (empty($profile?->relationship_goal)) {
+            $tips[] = 'Tentukan tujuan hubungan agar match yang datang sudah selaras.';
+        }
+        if (empty($tips)) {
+            $tips[] = 'Profilmu sudah kuat! Jaga tetap aktif dan perbarui foto berkala.';
+        }
+        $score = $profile?->completenessScore() ?? 0;
+
+        try {
+            $res = $this->ai->chat(
+                'Ubah daftar saran berikut menjadi 3-5 kalimat penyemangat dalam Bahasa Indonesia yang natural:\n'.implode("\n", array_map(fn ($t, $i) => ($i + 1).'. '.$t, $tips, array_keys($tips))),
+                ['max_tokens' => 200], $user, 'profile_tips'
+            );
+            $text = trim((string) $res['text']);
+            if ($text !== '') {
+                return ['tips' => $tips, 'score' => $score, 'ai_note' => $text];
+            }
+        } catch (\Throwable) {
+        }
+
+        return ['tips' => $tips, 'score' => $score];
+    }
 }

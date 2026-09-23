@@ -2,10 +2,10 @@
 @section('title', ($profileUser->displayName() ?? 'Profil') . ' — Jodohku')
 @section('content')
 @php
-$explain = null;
+$why = null;
 try {
   $me = auth()->user();
-  if ($me && $me->id !== $profileUser->id) { $explain = app(\App\Services\MatchingEngine::class)->explain($me, $profileUser); }
+  if ($me && $me->id !== $profileUser->id) { $why = app(\App\Services\MatchExplanation::class)->for($me, $profileUser); }
 } catch (\Throwable) {}
 $photos = $profileUser->photos ?? collect();
 $isSelf = auth()->id() === $profileUser->id;
@@ -21,6 +21,11 @@ $profile = $profileUser->profile;
 <div class="jk-card-body">
 <div class="jk-name" style="font-size:22px">{{ $profileUser->displayName() }}{{ $profileUser->age() ? ', ' . $profileUser->age() : '' }} @if($profileUser->is_verified)<span class="jk-badge-verified" title="Terverifikasi" aria-label="Terverifikasi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8 12.5l2.7 2.7L16.5 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>@endif</div>
 <div class="jk-muted">{{ $profileUser->city ?? 'Indonesia' }} · {{ $profileUser->is_online ? 'Online sekarang' : 'Terakhir aktif ' . ($profileUser->last_active_at?->diffForHumans() ?? '—') }}</div>
+<div class="jk-tags" style="margin-top:8px" aria-label="Status verifikasi">
+@if($profileUser->email_verified_at)<span class="jk-pill verified" title="Email terverifikasi">Email ✓</span>@endif
+@if($profileUser->phone_verified_at)<span class="jk-pill verified" title="Nomor HP terverifikasi">HP ✓</span>@endif
+@if($profileUser->is_verified)<span class="jk-pill verified" title="Identitas terverifikasi oleh tim Jodohku">Identitas ✓</span>@endif
+</div>
 @if($profile?->headline)<p style="margin:10px 0 0"><strong>{{ $profile->headline }}</strong></p>@endif
 @if($profile?->occupation)<p class="jk-muted" style="margin:4px 0 0">{{ $profile->occupation }}{{ $profile?->education ? ' · '.$profile->education : '' }}</p>@endif
 @if(! $isSelf)
@@ -54,14 +59,9 @@ $profile = $profileUser->profile;
 @endif
 </section>
 
-@if($explain)
-<section class="jk-section" style="background:#fff7ed;border-color:#fed7aa" aria-labelledby="p-why"><h2 class="jk-h2" id="p-why">Kenapa kalian cocok?</h2>
-<p class="jk-muted">Skor mutual <strong>{{ $explain['mutual'] ?? $explain['score'] ?? '—' }}%</strong> — dihitung dari 8 dimensi MatchingEngine, bukan keputusan AI.</p>
-@if(!empty($explain['common']))<div><strong>Kesamaan:</strong><ul>@foreach((array)$explain['common'] as $c)<li>{{ is_string($c) ? $c : json_encode($c) }}</li>@endforeach</ul></div>@endif
-@if(!empty($explain['differences']))<div><strong>Perlu dibahas:</strong><ul>@foreach((array)$explain['differences'] as $d)<li>{{ is_string($d) ? $d : json_encode($d) }}</li>@endforeach</ul></div>@endif
-@if(!empty($explain['breakdown']))<table class="jk-table"><thead><tr><th>Dimensi</th><th>Skor</th></tr></thead><tbody>@foreach((array)$explain['breakdown'] as $k => $v)<tr><td>{{ $k }}</td><td>{{ is_numeric($v) ? (int)$v : json_encode($v) }}</td></tr>@endforeach</tbody></table>@endif
+@include('components.why-match', ['why' => $why ?? null])
+@if(!empty($why))
 <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="jk-pill" href="/biro-jodoh/laporan">Lihat laporan kompatibilitas</a><a class="jk-pill" href="/biro-jodoh/taaruf">Topik taaruf</a></div>
-</section>
 @endif
 
 @if($photos->count())

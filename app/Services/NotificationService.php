@@ -8,6 +8,7 @@ use App\Notifications\ChatRequestReceived;
 use App\Notifications\ConsultationStatusChanged;
 use App\Notifications\CourtshipStageChanged;
 use App\Notifications\MatchFound;
+use App\Notifications\MatchNudge;
 use App\Notifications\NewMessage;
 use App\Notifications\PaymentNotification;
 use App\Notifications\ReportStatusChanged;
@@ -26,6 +27,9 @@ class NotificationService
             return;
         }
         if ($prefs && $notification instanceof NewMessage && ! $prefs->push_messages) {
+            return;
+        }
+        if ($prefs && $notification instanceof MatchNudge && ! $prefs->push_matches) {
             return;
         }
         if ($prefs && $notification instanceof ChatRequestReceived && ! $prefs->push_messages) {
@@ -58,6 +62,7 @@ class NotificationService
             CourtshipStageChanged::class => 'courtship_id',
             ConsultationStatusChanged::class => 'consultation_id',
             BroadcastMessage::class => 'broadcast_id',
+            MatchNudge::class => 'match_id',
         ];
         $class = get_class($notification);
         if (! isset($keyMap[$class]) || ! method_exists($notification, 'toDatabase')) {

@@ -4,23 +4,27 @@
 @livewire('profile-completeness')
 @php
 use App\Models\BlogPost;
-use App\Models\Event;
 use App\Models\SuccessStory;
-use App\Services\DiscoveryService;
+use App\Services\PersonalizationService;
 $greet = now()->hour < 11 ? 'Selamat pagi' : (now()->hour < 15 ? 'Selamat siang' : (now()->hour < 19 ? 'Selamat sore' : 'Selamat malam'));
 $me = auth()->user();
-$picks = collect(); $mayLike = collect(); $newMembers = collect(); $activeNow = collect();
-$journey = null; $events = collect(); $stories = collect(); $posts = collect();
+$picks = collect(); $picksUsers = collect(); $mayLike = collect(); $newMembers = collect(); $activeNow = collect();
+$journey = null; $events = collect(); $stories = collect(); $posts = collect(); $forums = collect();
 try {
     if ($me) {
-        $svc = app(DiscoveryService::class);
-        $picks = collect($svc->dailyPicks($me, 6));
-        $picksUsers = \App\Models\User::whereIn('id', collect($picks)->pluck('user_id'))->with(['profile', 'interests'])->get()->keyBy('id');
-        $mayLike = collect($svc->discover($me, ['sort' => 'compatibility'], 4))->values();
-        $newMembers = \App\Models\User::active()->real()->latest('id')->limit(6)->with(['profile'])->get();
-        $activeNow = \App\Models\User::active()->real()->where('is_online', true)->where('id', '!=', $me->id)->limit(6)->with(['profile'])->get();
+        $personal = app(PersonalizationService::class);
+        $rec = $personal->getRecommendedMembers($me, 6);
+        $picks = collect($rec['picks']);
+        $picksUsers = $rec['users'];
+        $pickIds = collect($picks)->pluck('user_id')->all();
+        // Feed quality: never repeat daily picks inside "Mungkin kamu suka".
+        $mayLike = collect(app(\App\Services\DiscoveryService::class)->discover($me, ['sort' => 'compatibility'], 8))
+            ->reject(fn ($u) => in_array($u->id, $pickIds))->take(4)->values();
+        $newMembers = $personal->getNewMembers(6);
+        $activeNow = $personal->getActiveNow($me, 6);
         $journey = \App\Models\Courtship::where(fn ($q) => $q->where('initiator_id', $me->id)->orWhere('partner_id', $me->id))->where('status', 'active')->latest('id')->first();
-        $events = Event::whereIn('status', ['published', 'ongoing'])->where('starts_at', '>=', now())->orderBy('starts_at')->limit(3)->get();
+        $events = $personal->getRecommendedEvents($me, 3);
+        $forums = $personal->getRecommendedForums($me, 3);
         $stories = SuccessStory::where('status', 'published')->latest('published_at')->latest('id')->limit(2)->get();
         $posts = BlogPost::published()->latest('published_at')->limit(3)->get();
     }
@@ -45,7 +49,7 @@ try {
 <div class="jk-row-scroll">
 @foreach($picks as $p)
 @php $u = $picksUsers->get($p['user_id'] ?? 0); @endphp
-@if($u) @include('components.profile-card', ['user' => $u, 'score' => $p['compatibility'] ?? null, 'compact' => true]) @endif
+@if($u) @include('components.profile-card', ['user' => $u, 'score' => $p['compatibility_score'] ?? null, 'compact' => true]) @endif
 @endforeach
 </div>
 @endif
@@ -109,6 +113,15 @@ $currentIdx = array_search($journey->stage, $stages);
 <h2 class="jk-h2" id="h-story">Kisah sukses</h2>
 @foreach($stories as $s)
 <div class="jk-story" style="margin-bottom:10px"><div style="flex:1"><strong>{{ $s->partner_name ? 'Kisah '.$s->partner_name : 'Kisah mereka' }}</strong><div class="jk-muted">{{ \Illuminate\Support\Str::limit(strip_tags((string)($s->story ?? '')), 110) }}</div></div><a class="jk-pill" href="/biro-jodoh/kisah">Baca</a></div>
+@endforeach
+</section>
+@endif
+
+@if($forums->isNotEmpty())
+<section class="jk-section" aria-labelledby="h-forums">
+<h2 class="jk-h2" id="h-forums">Diskusi untukmu</h2>
+@foreach($forums as $f)
+<div class="jk-story" style="margin-bottom:10px"><div style="flex:1"><strong>{{ $f->name }}</strong><div class="jk-muted">{{ $f->visible_threads_count ?? $f->threads_count ?? 0 }} diskusi{{ ($f->recommend_score ?? 0) > 0 ? ' · sesuai minatmu' : '' }}</div></div><a class="jk-pill" href="/forums/{{ $f->slug }}">Buka</a></div>
 @endforeach
 </section>
 @endif

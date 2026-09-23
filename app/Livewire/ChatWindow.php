@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\CallStatus;
+use App\Enums\CourtshipStage;
 use App\Enums\CourtshipStatus;
 use App\Enums\ScheduledMessageStatus;
 use App\Models\Call;
@@ -10,6 +11,7 @@ use App\Models\Conversation;
 use App\Models\Courtship;
 use App\Models\FraudRiskScore;
 use App\Models\Message;
+use App\Models\MessageBookmark;
 use App\Models\ScheduledMessage;
 use App\Services\AiService;
 use App\Services\CallService;
@@ -43,6 +45,8 @@ class ChatWindow extends Component
     public ?string $disappearing = null;
 
     public array $translations = [];
+
+    public array $bookmarks = [];
 
     public array $pollResults = [];
 
@@ -111,6 +115,37 @@ class ChatWindow extends Component
         try {
             $chat->react($m, $me, $emoji);
         } catch (\Throwable) {
+        }
+    }
+
+    public function toggleBookmark(int $messageId, ChatService $chat): void
+    {
+        $me = auth()->user();
+        if (! $me) {
+            return;
+        }
+        $m = Message::find($messageId);
+        if (! $m) {
+            return;
+        }
+        try {
+            if (MessageBookmark::where('message_id', $m->id)->where('user_id', $me->id)->exists()) {
+                $chat->unbookmark($m, $me);
+            } else {
+                $chat->bookmark($m, $me);
+            }
+            $this->bookmarks = MessageBookmark::where('user_id', $me->id)
+                ->whereIn('message_id', $this->loadedMessageIds())->pluck('message_id')->all();
+        } catch (\Throwable) {
+        }
+    }
+
+    protected function loadedMessageIds(): array
+    {
+        try {
+            return Message::where('conversation_id', $this->conversationId)->latest('id')->take($this->perPage)->pluck('id')->all();
+        } catch (\Throwable) {
+            return [];
         }
     }
 
@@ -333,6 +368,7 @@ class ChatWindow extends Component
         $canSeeReads = false;
         $giftCatalog = collect();
         $courtshipStage = null;
+        $courtshipProgress = null;
         $peerRisk = null;
         $scheduled = collect();
         $activeCall = null;
@@ -349,18 +385,30 @@ class ChatWindow extends Component
                 $activeCall = Call::where('conversation_id', $conv->id)
                     ->whereIn('status', [CallStatus::Ringing, CallStatus::Ongoing])
                     ->latest('id')->first();
+                $this->bookmarks = MessageBookmark::where('user_id', $me->id)
+                    ->whereIn('message_id', $messages->pluck('id'))->pluck('message_id')->all();
                 if ($other) {
                     $courtship = Courtship::where(fn ($q) => $q
                         ->where(fn ($qq) => $qq->where('initiator_id', $me->id)->where('partner_id', $other->id))
                         ->orWhere(fn ($qq) => $qq->where('initiator_id', $other->id)->where('partner_id', $me->id)))
                         ->where('status', CourtshipStatus::Active)->latest('id')->first();
                     $courtshipStage = $courtship?->stage->label();
+                    if ($courtship) {
+                        $stages = CourtshipStage::cases();
+                        $idx = array_search($courtship->stage, $stages, true);
+                        $courtshipProgress = [
+                            'label' => $courtship->stage->label(),
+                            'index' => $idx === false ? 0 : $idx + 1,
+                            'total' => count($stages),
+                            'courtship_id' => $courtship->id,
+                        ];
+                    }
                     $peerRisk = FraudRiskScore::where('user_id', $other->id)->latest('id')->value('level');
                 }
             } catch (\Throwable) {
             }
         }
 
-        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog, 'courtshipStage' => $courtshipStage, 'peerRisk' => $peerRisk, 'scheduledItems' => $scheduled, 'activeCall' => $activeCall, 'stickerCatalog' => $chat->stickers()]);
+        return view('livewire.chat-window', ['conv' => $conv, 'messages' => $messages, 'other' => $other, 'me' => $me, 'canSeeReads' => $canSeeReads, 'giftCatalog' => $giftCatalog, 'courtshipStage' => $courtshipStage, 'courtshipProgress' => $courtshipProgress ?? null, 'peerRisk' => $peerRisk, 'scheduledItems' => $scheduled, 'activeCall' => $activeCall, 'stickerCatalog' => $chat->stickers(), 'bookmarks' => $this->bookmarks]);
     }
 }

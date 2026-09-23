@@ -35,3 +35,14 @@ aktif, khitbah wajib `guardian_approved_at`).
 
 Konselor = pendampingan umum, bukan nasihat medis/psikologis/hukum. Skor =
 alat refleksi, bukan jaminan.
+
+## Intelligence (chat ↔ taaruf terhubung)
+
+- Chat window menampilkan progres taaruf (tahap x/dari N + link perjalanan)
+  bila ada courtship aktif dengan lawan bicara.
+- `courtship-show`: ringkasan perjalanan (tahapan dilalui, status wali, saran
+  topik berikutnya dari `PersonalizationService`), ringkasan percakapan
+  on-demand (`digest`), CTA kisah sukses saat completed.
+- `SendTaarufReminders` (mingguan): courtship aktif tak tersentuh 14+ hari →
+  notifikasi stage dedup. `SendMatchReminders` (mingguan): match >3 hari tanpa
+  pesan → `MatchNudge` (hormati opt-out, dedup per match).

@@ -458,6 +458,12 @@ class MatchingEngine
         if (! empty($filters['premium'])) {
             $query->where('is_premium', true);
         }
+        if (! empty($filters['max_distance_km']) && $u->latitude !== null && $u->longitude !== null) {
+            $km = max(1, (int) $filters['max_distance_km']);
+            $deg = $km / 111.0;
+            $query->whereBetween('latitude', [(float) $u->latitude - $deg, (float) $u->latitude + $deg])
+                ->whereBetween('longitude', [(float) $u->longitude - $deg, (float) $u->longitude + $deg]);
+        }
         // Age filter
         $minAge = $filters['min_age'] ?? $u->partnerPreference?->min_age;
         $maxAge = $filters['max_age'] ?? $u->partnerPreference?->max_age;
@@ -700,6 +706,14 @@ class MatchingEngine
     }
 
     public function demographicBreakdown(User $user): array
+    {
+        // Global aggregates change slowly; cache briefly to protect admin.
+        return Cache::remember('matching:demographic', 600, function () use ($user) {
+            return $this->demographicBreakdownFresh($user);
+        });
+    }
+
+    protected function demographicBreakdownFresh(User $user): array
     {
         $base = fn () => User::active()->where('id', '!=', $user->id);
 

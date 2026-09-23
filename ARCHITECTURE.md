@@ -41,3 +41,12 @@ Sanctum API + session web; Gate `member/premium/operator/moderator/admin/superad
 ## Rate limiting (Laravel 13)
 
 Signature throttle untuk request terautentikasi berbasis user saja (tanpa path). Karena itu SEMUA limiter inline WAJIB punya prefix unik (`throttle:10,1,reports`) — tanpa prefix, bucket dibagi semua route dan limit terkecil mencekik seluruh API. Regression test: `ThrottleIsolationTest`.
+
+## Intelligence (komposer, bukan engine baru)
+
+- `MatchExplanation`: presenter di atas `MatchingEngine` (dipakai profil, API
+  explain, AI matchmaker). `PersonalizationService`: komposer discovery +
+  community + topik (dipakai Home feed; dedupe picks vs rekomendasi).
+- Private: `MatchNote` (satu per user per match, hanya penulis), bookmark pesan
+  (`message_bookmarks`), ringkasan/digest on-demand, reminder mingguan yang
+  didedup dan hormati preferensi.

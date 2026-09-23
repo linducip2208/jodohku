@@ -21,7 +21,7 @@ class AiMatchmakerService
     {
         $candidates = $this->discovery->discover($user, [], $limit);
         $items = $candidates->getCollection()->map(function (User $c) use ($user) {
-            $why = $this->engine->explain($user, $c);
+            $why = app(MatchExplanation::class)->for($user, $c);
             $profile = $c->profile;
 
             return [
@@ -31,7 +31,7 @@ class AiMatchmakerService
                 'city' => $c->city,
                 'headline' => $profile?->headline,
                 'compatibility' => $c->compatibility_score ?? null,
-                'why' => array_slice($why['common'], 0, 3),
+                'why' => array_slice($why['reasons'], 0, 3),
             ];
         })->all();
 
