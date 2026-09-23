@@ -86,6 +86,9 @@ class CourtshipService
             'guardian_relation' => $data['guardian_relation'] ?? $courtship->guardian_relation,
             'guardian_approved_at' => null,
         ]);
+        $history = $courtship->stage_history ?? [];
+        $history[] = ['event' => 'guardian_set', 'at' => now()->toDateTimeString(), 'by' => $user->id, 'guardian_set_by' => $user->id];
+        $courtship->update(['stage_history' => $history]);
         $this->audit->log('courtship.guardian_set', $user, $courtship);
 
         return $courtship->fresh();
@@ -97,7 +100,21 @@ class CourtshipService
         if (! $courtship->guardian_name) {
             throw new \RuntimeException('Set guardian details first.');
         }
+        // Anti self-approve: approver cannot be a courtship party pretending to be the wali.
+        // Guardian approval must come from the partner side or a verified third party,
+        // never the member who entered the guardian details alone.
+        $partyIds = [(int) $courtship->initiator_id, (int) $courtship->partner_id];
+        $lastSetter = collect($courtship->stage_history ?? [])->last()['guardian_set_by'] ?? null;
+        if (in_array((int) $user->id, $partyIds, true) && $lastSetter !== null && (int) $lastSetter === (int) $user->id) {
+            // Same party who set the guardian cannot approve it alone; require partner.
+            $otherId = (int) $courtship->initiator_id === (int) $user->id
+                ? (int) $courtship->partner_id : (int) $courtship->initiator_id;
+            throw new \RuntimeException('Guardian approval must be confirmed by the other party (ID '.$otherId.').');
+        }
         $courtship->update(['guardian_approved_at' => now()]);
+        $history = $courtship->stage_history ?? [];
+        $history[] = ['event' => 'guardian_approved', 'at' => now()->toDateTimeString(), 'by' => $user->id];
+        $courtship->update(['stage_history' => $history]);
         $this->audit->log('courtship.guardian_approved', $user, $courtship);
 
         return $courtship->fresh();
@@ -116,18 +133,26 @@ class CourtshipService
         }
 
         return DB::transaction(function () use ($courtship, $user, $next) {
-            $history = $courtship->stage_history ?? [];
-            $history[] = ['from' => $courtship->stage->value, 'to' => $next->value, 'at' => now()->toDateTimeString(), 'by' => $user->id];
-            $courtship->update(['stage' => $next, 'stage_history' => $history]);
-            if ($next->isFinal()) {
-                $courtship->update(['status' => CourtshipStatus::Completed, 'completed_at' => now()]);
+            // Row lock: double-click / concurrent advance cannot skip stages.
+            $locked = Courtship::where('id', $courtship->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== CourtshipStatus::Active) {
+                throw new \RuntimeException('Courtship is no longer active.');
             }
-            $this->audit->log('courtship.advanced', $user, $courtship, [], ['stage' => $next->value]);
-            if ($other = $this->otherParty($courtship, $user)) {
-                $this->notifications->send($other, new CourtshipStageChanged($courtship->fresh(), 'advanced'));
+            if ($locked->stage !== $courtship->stage) {
+                throw new \RuntimeException('Courtship stage changed. Please refresh.');
+            }
+            $history = $locked->stage_history ?? [];
+            $history[] = ['from' => $locked->stage->value, 'to' => $next->value, 'at' => now()->toDateTimeString(), 'by' => $user->id];
+            $locked->update(['stage' => $next, 'stage_history' => $history]);
+            if ($next->isFinal()) {
+                $locked->update(['status' => CourtshipStatus::Completed, 'completed_at' => now()]);
+            }
+            $this->audit->log('courtship.advanced', $user, $locked, [], ['stage' => $next->value]);
+            if ($other = $this->otherParty($locked, $user)) {
+                $this->notifications->send($other, new CourtshipStageChanged($locked->fresh(), 'advanced'));
             }
 
-            return $courtship->fresh();
+            return $locked->fresh();
         });
     }
 

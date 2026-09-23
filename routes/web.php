@@ -278,6 +278,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/chat/{conversation}/attachments', [MessageController::class, 'upload'])->name('member.chat.attachments');
     Route::get('/chat/attachments/{attachment}', [MessageController::class, 'download'])->name('member.chat.attachment.download');
     Route::get('/chat/{conversation}/labels', [ChatController::class, 'labels'])->name('member.chat.labels');
+    Route::get('/chat/{conversation}/gallery', [ChatController::class, 'gallery'])->name('member.chat.gallery');
     Route::post('/chat/{conversation}/labels', [ChatController::class, 'addLabel'])->name('member.chat.labels.add');
     Route::delete('/chat/{conversation}/labels/{labelId}', [ChatController::class, 'removeLabel'])->name('member.chat.labels.remove');
     Route::post('/chat/{conversation}/mark-all-read', function (Conversation $conversation, ChatService $chat) {

@@ -16,11 +16,23 @@ class GenerateDailyMatches implements ShouldQueue
     public function handle(MatchingEngine $engine): void
     {
         $minScore = (float) config('matchmaking.thresholds.min_score_for_daily_pick', 55);
-        User::active()->real()->limit($this->batch)->get()->each(function (User $user) use ($engine, $minScore) {
-            $cands = $engine->candidatesFor($user, [], (int) config('matchmaking.thresholds.daily_picks', 10));
-            foreach ($cands as $cand) {
-                if (($cand->compatibility ?? 0) >= $minScore) {
-                    $engine->persistScore($user, $cand);
+        $dailyPicks = (int) config('matchmaking.thresholds.daily_picks', 10);
+        // chunkById: every active real member is visited exactly once —
+        // the old limit(batch) always processed the same first N users.
+        User::active()->real()->orderBy('id')->chunkById(max(50, $this->batch), function ($users) use ($engine, $minScore, $dailyPicks) {
+            foreach ($users as $user) {
+                try {
+                    $cands = $engine->candidatesFor($user, [], $dailyPicks);
+                } catch (\Throwable) {
+                    continue;
+                }
+                foreach ($cands as $cand) {
+                    if (($cand->compatibility ?? 0) >= $minScore) {
+                        try {
+                            $engine->persistScore($user, $cand);
+                        } catch (\Throwable) {
+                        }
+                    }
                 }
             }
         });

@@ -67,7 +67,7 @@ class RepairDiscoveryMatchTest extends TestCase
         $a = User::factory()->create();
         $b = User::factory()->create();
 
-        $this->actingAs($a)->deleteJson("/api/v1/likes/{$b->id}")->assertOk(); // pass
+        $this->actingAs($a)->postJson("/api/v1/passes/{$b->id}")->assertOk(); // pass
         $this->actingAs($a)->postJson('/api/v1/rewind')->assertOk(); // first undo ok
         // Immediate second undo hits cooldown.
         $this->actingAs($a)->postJson('/api/v1/rewind')->assertStatus(429);
@@ -79,8 +79,20 @@ class RepairDiscoveryMatchTest extends TestCase
         $a = User::factory()->create();
         $b = User::factory()->create();
 
-        $this->actingAs($a)->deleteJson("/api/v1/likes/{$b->id}")->assertOk();
+        $this->actingAs($a)->postJson("/api/v1/passes/{$b->id}")->assertOk();
         $this->actingAs($a)->postJson('/api/v1/rewind')->assertOk()->assertJsonPath('undone', 'pass');
+    }
+
+    public function test_unlike_endpoint_removes_like_without_pass_rewind(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        $this->actingAs($a)->postJson("/api/v1/likes/{$b->id}")->assertCreated();
+        $this->actingAs($a)->deleteJson("/api/v1/likes/{$b->id}")->assertOk();
+        $this->assertFalse(Like::where('liker_id', $a->id)->where('liked_id', $b->id)->exists());
+        // Unlike is idempotent.
+        $this->actingAs($a)->deleteJson("/api/v1/likes/{$b->id}")->assertOk();
     }
 
     public function test_unlike_and_pass_deactivate_match(): void

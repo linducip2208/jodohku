@@ -1,6 +1,6 @@
 <div x-data="{ open: false }" wire:poll.10s>
 @if(!$conv)
-@include('components.empty', ['icon' => '💬', 'title' => 'Percakapan tidak ditemukan', 'hint' => 'Kembali ke inbox.'])
+@include('components.empty', ['icon' => 'chat', 'title' => 'Percakapan tidak ditemukan', 'hint' => 'Kembali ke inbox.'])
 @else
 <div class="jk-section" style="display:flex;gap:12px;align-items:center">
 <div class="jk-avatar">@if($other?->avatarUrl())<img src="{{ $other->avatarUrl() }}" alt="Foto {{ $other->displayName() }}">@else{{ strtoupper(substr((string)($other?->displayName() ?? '?'),0,1)) }}@endif</div>
@@ -39,6 +39,29 @@
 <button class="jk-pill" wire:click="cancelScheduled({{ $s->id }})">Batal</button>
 </div>
 @endforeach
+</div>
+@endif
+<div x-data="{ galleryOpen:false, gallery: [], galleryCursor: null, galleryMore: false }" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+<button class="jk-pill" @click="galleryOpen = !galleryOpen; if (galleryOpen && gallery.length === 0) { fetch('/chat/{{ $conv->id }}/gallery?per_page=12', { headers:{ 'Accept':'application/json' } }).then(r => r.json()).then(j => { gallery = j.data || []; galleryCursor = j.next_cursor; galleryMore = j.has_more; }).catch(() => {}) }" aria-expanded="false">Lihat media</button>
+<a class="jk-pill" href="/chat/{{ $conv->id }}/export?format=csv">Ekspor chat</a>
+@if(!empty($courtshipStage))<a class="jk-pill" href="/biro-jodoh/taaruf">Topik taaruf hari ini</a>@endif
+</div>
+<div x-show="galleryOpen" style="display:none" class="jk-section" aria-label="Galeri media">
+<div class="jk-h2">Media percakapan</div>
+<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">
+<template x-for="g in gallery" :key="g.id"><div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1"><template x-if="String(g.mime_type || '').startsWith('image/')"><img :src="'/chat/attachments/' + g.id" alt="Lampiran" loading="lazy"></template><template x-if="!String(g.mime_type || '').startsWith('image/')"><div class="jk-photo-fallback" x-text="g.file_name || 'File'"></div></template></div></div></template>
+</div>
+<p class="jk-muted" x-show="gallery.length === 0">Belum ada media di percakapan ini.</p>
+</div>
+@if($messages->isEmpty())
+<div class="jk-section" aria-label="Mulai percakapan">
+<div class="jk-h2">Mulai percakapan yang bermakna</div>
+<p class="jk-muted">Coba tanyakan:</p>
+<ul>
+<li>“Apa yang biasanya kamu nikmati di akhir pekan?”</li>
+<li>“Apa yang kamu cari dalam pernikahan?”</li>
+<li>“Hal apa yang paling penting bagimu dalam kehidupan keluarga?”</li>
+</ul>
 </div>
 @endif
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px" id="msgList">

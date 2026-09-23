@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Block;
 use App\Models\Like;
 use App\Models\MatchScore;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -21,6 +22,13 @@ class MatchingEngine
 
         try {
             $configured = config('matchmaking.weights', $defaults);
+            // Single source of truth: DB Settings (admin) override ENV config.
+            foreach (array_keys($defaults) as $key) {
+                $dbVal = Setting::get('match.weight.'.$key, null, 'matchmaking');
+                if ($dbVal !== null && $dbVal !== '') {
+                    $configured[$key] = (float) $dbVal;
+                }
+            }
         } catch (\Throwable) {
             $configured = $defaults;
         }
@@ -34,6 +42,16 @@ class MatchingEngine
         }
 
         return $merged;
+    }
+
+    /** Bump when admin changes weights so versioned score caches invalidate. */
+    public function weightsVersion(): int
+    {
+        try {
+            return (int) Setting::get('matchmaking.version', 1, 'matchmaking');
+        } catch (\Throwable) {
+            return 1;
+        }
     }
 
     /** Canonical pair ordering for match_scores/user_matches. */
@@ -61,6 +79,14 @@ class MatchingEngine
     {
         $a->loadMissing(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers']);
         $b->loadMissing(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers']);
+        // Eager approved-photo counts once: preference/behavior scoring must
+        // never issue per-candidate exists() queries (N+1 on discovery pools).
+        // (loadCountMissing is unavailable here, so guard on the attribute.)
+        foreach ([$a, $b] as $u) {
+            if (! array_key_exists('approved_photos_count', $u->getAttributes())) {
+                $u->loadCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')]);
+            }
+        }
 
         $parts = [
             'age' => $this->ageScore($a, $b),
@@ -210,8 +236,7 @@ class MatchingEngine
             $weights[] = 1.5;
         }
         if ($pref->photo_only) {
-            $hasPhoto = $candidate->photos()->exists();
-            $scores[] = $hasPhoto ? 100 : 20;
+            $scores[] = $this->hasApprovedPhoto($candidate) ? 100 : 20;
             $weights[] = 1.0;
         }
 
@@ -338,11 +363,26 @@ class MatchingEngine
         if ($u->is_verified) {
             $score += 5;
         }
-        if ($u->photos()->exists()) {
+        if ($this->hasApprovedPhoto($u)) {
             $score += 5;
         }
 
         return round(min(100, $score), 2);
+    }
+
+    /**
+     * Approved-photo check without N+1: prefers the eager
+     * `approved_photos_count` (see scorePair/discover), falls back to avatar
+     * or a single exists() query. photo_only semantics are approved-only.
+     */
+    public function hasApprovedPhoto(User $u): bool
+    {
+        $count = $u->getAttribute('approved_photos_count');
+        if ($count !== null) {
+            return (int) $count > 0 || ! empty($u->avatar_path);
+        }
+
+        return ! empty($u->avatar_path) || $u->photos()->where('status', 'approved')->exists();
     }
 
     protected function mutualGate(User $a, User $b): float
@@ -425,7 +465,7 @@ class MatchingEngine
             $query->where('date_of_birth', '<=', now()->subYears((int) $minAge)->toDateString());
         }
         if ($maxAge) {
-            $query->where('date_of_birth', '>=', now()->subYears((int) $maxAge + 1)->toDateString());
+            $query->where('date_of_birth', '>', now()->subYears((int) $maxAge + 1)->toDateString());
         }
         // Exclude blocked
         $blockedIds = Block::where('blocker_id', $u->id)->pluck('blocked_id')
@@ -443,6 +483,7 @@ class MatchingEngine
         }
 
         $pool = $query->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
+            ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
             ->limit(max($limit * 5, $limit + 20))->get();
 
         $scored = $pool->map(function (User $cand) use ($u) {
@@ -543,7 +584,8 @@ class MatchingEngine
 
     public function scoreWithCache(User $a, User $b, int $ttl = 300): array
     {
-        $cacheKey = 'match:score:'.min($a->id, $b->id).':'.max($a->id, $b->id);
+        $ttl = max(60, min(3600, $ttl));
+        $cacheKey = 'match:score:v'.$this->weightsVersion().':'.min($a->id, $b->id).':'.max($a->id, $b->id);
         $cached = Cache::get($cacheKey);
         if ($cached) {
             return $cached;
@@ -591,6 +633,70 @@ class MatchingEngine
                 ]
             );
         });
+    }
+
+    /**
+     * Batch scoring with the MatchScore read-path: fresh rows
+     * (computed_at within recompute TTL) are reused, the rest is computed
+     * live and persisted back via a single upsert. Returns id => result.
+     */
+    public function scoreMany(User $user, Collection $candidates, bool $persist = true): array
+    {
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+        $ttlHours = max(1, (int) config('matchmaking.recompute.ttl', 24));
+        $freshSince = now()->subHours($ttlHours);
+        $pairs = [];
+        foreach ($candidates as $cand) {
+            [$c1, $c2] = self::canonical((int) $user->id, (int) $cand->id);
+            $pairs[$cand->id] = [$c1, $c2];
+        }
+        $rows = MatchScore::where(function ($q) use ($pairs) {
+            foreach ($pairs as [$c1, $c2]) {
+                $q->orWhere(fn ($qq) => $qq->where('user_id', $c1)->where('candidate_id', $c2));
+            }
+        })->where('computed_at', '>=', $freshSince)->get()
+            ->keyBy(fn ($r) => $r->user_id.':'.$r->candidate_id);
+
+        $results = [];
+        $toPersist = [];
+        foreach ($candidates as $cand) {
+            [$c1, $c2] = $pairs[$cand->id];
+            $row = $rows->get($c1.':'.$c2);
+            $cached = is_array($row?->breakdown) ? $row->breakdown : null;
+            if ($cached && isset($cached['mutual'], $cached['breakdown'])) {
+                $results[$cand->id] = $cached;
+
+                continue;
+            }
+            $r = $this->scorePair($user, $cand);
+            $results[$cand->id] = $r;
+            $toPersist[] = [
+                'user_id' => $c1,
+                'candidate_id' => $c2,
+                'questionnaire_score' => $r['breakdown']['personality'] ?? 0,
+                'interest_score' => $r['breakdown']['interest'] ?? 0,
+                'preference_score' => $r['breakdown']['preference'] ?? 0,
+                'activity_score' => $r['breakdown']['behavior'] ?? 0,
+                'total_score' => $r['mutual'],
+                'breakdown' => json_encode($r),
+                'computed_at' => now()->toDateTimeString(),
+                'created_at' => now()->toDateTimeString(),
+                'updated_at' => now()->toDateTimeString(),
+            ];
+        }
+        if ($persist && $toPersist) {
+            try {
+                MatchScore::upsert($toPersist, ['user_id', 'candidate_id'], [
+                    'questionnaire_score', 'interest_score', 'preference_score',
+                    'activity_score', 'total_score', 'breakdown', 'computed_at', 'updated_at',
+                ]);
+            } catch (\Throwable) {
+            }
+        }
+
+        return $results;
     }
 
     public function demographicBreakdown(User $user): array

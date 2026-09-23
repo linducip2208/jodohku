@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 class ProfanityService
 {
     /** Leet-speak map for the normalization pass (detection only, never masking). */
-    protected array $leet = ['4' => 'a', '@' => 'a', '0' => 'o', '1' => 'i', '3' => 'e', '5' => 's', '$' => 's', '7' => 't', '!' => 'i', '+' => 't'];
+    protected array $leet = ['4' => 'a', '@' => 'a', '0' => 'o', '1' => 'i', '3' => 'e', '5' => 's', '$' => 's', '7' => 't'];
 
     /** Cyrillic/Greek homoglyphs that visually mimic Latin letters. */
     protected array $homoglyph = [

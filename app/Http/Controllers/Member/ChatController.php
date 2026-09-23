@@ -120,6 +120,22 @@ class ChatController extends Controller
         return response()->json($labels);
     }
 
+    public function gallery(Request $request, Conversation $conversation, ChatService $chat)
+    {
+        $this->authorize('view', $conversation);
+        $request->validate([
+            'type' => ['nullable', 'in:image,video,audio,file,pdf'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'cursor' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        return response()->json($chat->gallery(
+            $conversation, $request->user(),
+            $request->query('type'), (int) $request->query('per_page', 20),
+            $request->query('cursor') ? (int) $request->query('cursor') : null
+        ));
+    }
+
     public function addLabel(Request $request, Conversation $conversation, ChatService $chat)
     {
         $this->authorize('manage', $conversation);

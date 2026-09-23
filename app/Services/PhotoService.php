@@ -93,6 +93,13 @@ class PhotoService
             'reviewed_by' => $reviewer->id, 'reviewed_at' => now(),
         ]);
         $this->audit->log('photo.approved', $reviewer, $photo);
+        // Keep the cached completion column in sync (photo counts toward strength).
+        try {
+            $owner = $photo->user;
+            $completion = $owner->profile?->completenessScore() ?? 0;
+            $owner->update(['profile_completion' => $completion]);
+        } catch (\Throwable) {
+        }
 
         return $photo->fresh();
     }

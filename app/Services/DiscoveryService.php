@@ -6,8 +6,8 @@ use App\Models\Block;
 use App\Models\Boost;
 use App\Models\Like;
 use App\Models\User;
+use App\Pagination\ScoredCursorPaginator;
 use Illuminate\Pagination\Cursor;
-use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Cache;
 
 class DiscoveryService
@@ -17,12 +17,133 @@ class DiscoveryService
     /**
      * Filtered discovery with boost-aware presentation priority.
      * Boost NEVER alters compatibility score — only ordering.
+     *
+     * Pagination contract: the pool is fetched page-by-page and scored in
+     * memory until the page is full (or the pool is exhausted, or the
+     * per-request fetch cap is reached). Unshown scored rows travel in the
+     * next-page cursor (lossless), and the pool cursor always advances past
+     * consumed rows (no duplicates, no phantom next pages).
      */
-    public function discover(User $user, array $filters = [], int $perPage = 20, ?string $cursor = null): CursorPaginator
+    public function discover(User $user, array $filters = [], int $perPage = 20, ?string $cursor = null): ScoredCursorPaginator
     {
+        $perPage = max(1, min(50, $perPage));
         $sort = $filters['sort'] ?? 'compatibility';
         $limit = min(100, max(5, $perPage * 4));
 
+        $baseQuery = fn () => $this->poolQuery($user, $filters, $sort);
+
+        // Decode incoming page cursor: ours carries pool position + leftovers,
+        // anything else is treated as a legacy pool cursor (backward compat).
+        $poolCursor = null;
+        $leftoverIds = [];
+        if ($cursor) {
+            try {
+                $incoming = Cursor::fromEncoded($cursor);
+                try {
+                    $payload = json_decode(base64_decode(strtr((string) $incoming->parameter('jk'), '-_', '+/')), true);
+                    if (is_array($payload)) {
+                        $leftoverIds = array_values(array_filter(array_map('intval', (array) ($payload['left'] ?? []))));
+                        $poolCursor = ! empty($payload['pool']) ? Cursor::fromEncoded($payload['pool']) : null;
+                    }
+                } catch (\Throwable) {
+                    $poolCursor = $incoming;
+                }
+            } catch (\Throwable) {
+                $poolCursor = null;
+            }
+        }
+
+        $scored = collect();
+        // Leftover rows from the previous page come first (already filtered).
+        if ($leftoverIds) {
+            $preloaded = User::whereIn('id', array_slice($leftoverIds, 0, $perPage * 2))
+                ->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
+                ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
+                ->get()->filter(fn (User $cand) => $this->engine->passesHardFilter($user, $cand))->values();
+            if ($preloaded->isNotEmpty()) {
+                foreach ($this->engine->scoreMany($user, $preloaded) as $id => $r) {
+                    $cand = $preloaded->firstWhere('id', $id);
+                    if ($cand) {
+                        $cand->setAttribute('compatibility_score', $r['mutual']);
+                        $cand->setAttribute('match_breakdown', $r['breakdown']);
+                        $scored->push($cand);
+                    }
+                }
+            }
+        }
+
+        $poolNext = null;
+        // Fetch pool pages until the page is full. First iteration always
+        // runs when there is no pool position yet (initial page); later
+        // iterations only when the pool has more rows to offer.
+        for ($page = 0; $page < 3 && $scored->count() < $perPage && ($page === 0 ? ($poolCursor !== null || $leftoverIds === []) : $poolNext !== null); $page++) {
+            $pool = $baseQuery()
+                ->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
+                ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
+                ->cursorPaginate($limit, ['*'], 'cursor', $poolCursor);
+            $poolNext = $pool->nextCursor();
+            $batch = $pool->getCollection()->filter(fn (User $cand) => $this->engine->passesHardFilter($user, $cand))->values();
+            if ($batch->isNotEmpty()) {
+                // MatchScore read-path: fresh rows reused, missing recomputed + persisted.
+                foreach ($this->engine->scoreMany($user, $batch) as $id => $r) {
+                    $cand = $batch->firstWhere('id', $id);
+                    if ($cand) {
+                        $cand->setAttribute('compatibility_score', $r['mutual']);
+                        $cand->setAttribute('match_breakdown', $r['breakdown']);
+                        $scored->push($cand);
+                    }
+                }
+            }
+            if ($poolNext === null) {
+                break;
+            }
+            $poolCursor = $poolNext;
+        }
+
+        // Boost-aware presentation priority, scoped to THIS pool (one query,
+        // not global). Numeric composite key — never array returns.
+        $poolIds = $scored->pluck('id')->all();
+        $liveBoosted = $poolIds ? Boost::live()->whereIn('user_id', $poolIds)->pluck('user_id')->flip()->all() : [];
+        $scored = $scored->sortByDesc(function (User $cand) use ($sort, $liveBoosted, $user) {
+            $boost = isset($liveBoosted[$cand->id]) ? 1e12 : 0;
+            $key = match ($sort) {
+                'newest' => strtotime((string) $cand->created_at) ?: 0,
+                'active' => ($cand->last_active_at ? strtotime((string) $cand->last_active_at) : 0),
+                'distance' => ($user->latitude !== null && $cand->latitude !== null)
+                    ? -$this->distanceKm($user, $cand)
+                    : (float) ($cand->compatibility_score ?? 0),
+                'popularity' => (($cand->is_premium ? 50 : 0) + ($cand->is_verified ? 25 : 0) + (float) ($cand->compatibility_score ?? 0) / 4),
+                default => (float) ($cand->compatibility_score ?? 0) + (strtotime((string) $cand->last_active_at) ?: 0) / 1e10,
+            };
+
+            return $boost + $key;
+        })->values();
+
+        $items = $scored->take($perPage)->values();
+        // Unshown scored rows travel in the next-page cursor (capped tail —
+        // lowest-ranked first to drop), so no candidate is ever skipped.
+        $leftover = $scored->slice($perPage)->take($perPage * 2)->pluck('id')->all();
+        $next = null;
+        if ($leftover || $poolNext !== null) {
+            $payload = base64_encode(json_encode([
+                'pool' => $poolNext?->encode(),
+                'left' => array_values($leftover),
+            ]));
+            $next = new Cursor(['jk' => rtrim(strtr($payload, '+/', '-_'), '=')], true);
+        }
+
+        $incoming = null;
+        try {
+            $incoming = $cursor ? Cursor::fromEncoded($cursor) : null;
+        } catch (\Throwable) {
+        }
+
+        return new ScoredCursorPaginator($items, $perPage, $incoming, ['path' => request()->url(), 'query' => request()->query()], $next);
+    }
+
+    /** Shared pool query (filters + base ordering), reused per pool page. */
+    protected function poolQuery(User $user, array $filters, string $sort)
+    {
         $query = User::query()->active()->where('id', '!=', $user->id);
 
         if (! empty($filters['gender'])) {
@@ -78,7 +199,8 @@ class DiscoveryService
             $query->where('date_of_birth', '<=', now()->subYears((int) $filters['min_age'])->toDateString());
         }
         if (! empty($filters['max_age'])) {
-            $query->where('date_of_birth', '>=', now()->subYears((int) $filters['max_age'] + 1)->toDateString());
+            // Strict lower bound: someone who already turned max_age+1 is out.
+            $query->where('date_of_birth', '>', now()->subYears((int) $filters['max_age'] + 1)->toDateString());
         }
         // distance filter via bounding box when coords available
         if (! empty($filters['max_distance_km']) && $user->latitude !== null) {
@@ -103,7 +225,8 @@ class DiscoveryService
                 ->orWhereIn('users.id', Like::where('liked_id', $user->id)->select('liker_id'));
         });
 
-        // Base ordering by sort mode (pre-score); final compatibility sort applied in memory
+        // Base ordering by sort mode (pre-score); final sort applied in memory.
+        // Unique id tiebreaker keeps pool cursors stable (no skipped rows).
         match ($sort) {
             'distance' => $query->orderBy('last_active_at', 'desc'),
             'active' => $query->orderByDesc('last_active_at'),
@@ -111,34 +234,9 @@ class DiscoveryService
             'popularity' => $query->orderByDesc('is_premium')->orderByDesc('is_verified'),
             default => $query->orderByDesc('last_active_at'),
         };
+        $query->orderBy('users.id');
 
-        $pool = $query->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
-            ->cursorPaginate($limit, ['*'], 'cursor', $cursor ? Cursor::fromEncoded($cursor) : null);
-
-        // Score in memory
-        $scored = $pool->getCollection()->map(function (User $cand) use ($user) {
-            if (! $this->engine->passesHardFilter($user, $cand)) {
-                return null;
-            }
-            $r = $this->engine->scorePair($user, $cand);
-            $cand->setAttribute('compatibility_score', $r['mutual']);
-            $cand->setAttribute('match_breakdown', $r['breakdown']);
-
-            return $cand;
-        })->filter()->values();
-
-        // Boost-aware presentation priority (does not change score)
-        $liveBoostUserIds = Boost::live()->pluck('user_id')->flip()->all();
-        $scored = $scored->sortByDesc(function (User $cand) use ($sort, $liveBoostUserIds) {
-            $boost = isset($liveBoostUserIds[$cand->id]) ? 1 : 0;
-
-            // Boost adds presentation priority via tuple: boosted first, then sort key
-            return [$boost, $sort === 'newest'
-                ? strtotime((string) $cand->created_at)
-                : (float) ($cand->compatibility_score ?? 0)];
-        })->values()->take($perPage);
-
-        return new CursorPaginator($scored, $perPage, $pool->nextCursor(), ['path' => request()->url(), 'query' => request()->query()]);
+        return $query;
     }
 
     /**

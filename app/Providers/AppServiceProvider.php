@@ -5,17 +5,21 @@ namespace App\Providers;
 use App\AI\AiProviderManager;
 use App\Enums\UserRole;
 use App\Events\MutualMatchCreated;
-use App\Events\ProfileViewed;
 use App\Listeners\FireVirtualTrigger;
 use App\Listeners\LogAudit;
-use App\Listeners\RecalcMatchesOnProfileUpdate;
 use App\Listeners\SendMatchNotification;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\PartnerPreference;
 use App\Models\Payment;
+use App\Models\Profile;
+use App\Models\ProfilePhoto;
+use App\Models\QuestionnaireAnswer;
 use App\Models\Report;
 use App\Models\User;
+use App\Models\UserInterest;
 use App\Models\VirtualConversation;
+use App\Observers\MatchRecalcObserver;
 use App\Payments\PaymentGatewayManager;
 use App\Policies\ConversationPolicy;
 use App\Policies\MessagePolicy;
@@ -66,6 +70,10 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(FireVirtualTrigger::class);
         Event::subscribe(LogAudit::class);
         Event::listen(MutualMatchCreated::class, SendMatchNotification::class);
-        Event::listen(ProfileViewed::class, RecalcMatchesOnProfileUpdate::class);
+
+        // Match recalculation on data change (not on profile views).
+        foreach ([Profile::class, PartnerPreference::class, ProfilePhoto::class, UserInterest::class, QuestionnaireAnswer::class, User::class] as $model) {
+            $model::observe(MatchRecalcObserver::class);
+        }
     }
 }

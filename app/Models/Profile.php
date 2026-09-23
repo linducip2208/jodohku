@@ -34,11 +34,45 @@ class Profile extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Single source of truth for profile strength (0-100), shared by the
+     * member UI, the completion prompts, and MatchingEngine behaviorScore.
+     *
+     * 7 base fields (9 pts each = 63) + approved photo/avatar (15) +
+     * interests (7 for >=1, +5 for >=3) + substantial bio >=50 chars (10).
+     */
     public function completenessScore(): int
     {
         $fields = ['headline', 'bio', 'occupation', 'education', 'religion', 'height_cm', 'relationship_goal'];
         $filled = collect($fields)->filter(fn ($f) => ! empty($this->{$f}))->count();
+        $score = $filled * 9;
 
-        return (int) round($filled / count($fields) * 100);
+        $hasPhoto = ! empty($this->user?->avatar_path);
+        if (! $hasPhoto && $this->user) {
+            try {
+                $hasPhoto = $this->user->photos()->where('status', 'approved')->exists();
+            } catch (\Throwable) {
+            }
+        }
+        if ($hasPhoto) {
+            $score += 15;
+        }
+
+        try {
+            $interestCount = $this->user ? $this->user->interests()->count() : 0;
+        } catch (\Throwable) {
+            $interestCount = 0;
+        }
+        if ($interestCount >= 3) {
+            $score += 12;
+        } elseif ($interestCount >= 1) {
+            $score += 7;
+        }
+
+        if (mb_strlen(trim((string) $this->bio)) >= 50) {
+            $score += 10;
+        }
+
+        return min(100, (int) round($score));
     }
 }

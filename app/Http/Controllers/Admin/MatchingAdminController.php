@@ -89,14 +89,21 @@ class MatchingAdminController extends Controller
     {
         if ($request->isMethod('post') || $request->isMethod('put')) {
             $request->validate(['weights' => ['required', 'array']]);
+            $allowed = ['age', 'location', 'preference', 'personality', 'interest', 'lifestyle', 'goal', 'behavior'];
             foreach ((array) $request->input('weights') as $key => $value) {
-                Setting::updateOrCreate(['key' => 'match.weight.'.$key], ['value' => (string) $value, 'group' => 'matchmaking']);
+                if (! in_array($key, $allowed, true)) {
+                    continue;
+                }
+                Setting::updateOrCreate(['key' => 'match.weight.'.$key], ['value' => (string) max(0, min(100, (float) $value)), 'group' => 'matchmaking']);
             }
+            // Bump version so versioned score caches invalidate cluster-wide.
+            $version = (int) Setting::get('matchmaking.version', 1, 'matchmaking') + 1;
+            Setting::updateOrCreate(['key' => 'matchmaking.version'], ['value' => (string) $version, 'group' => 'matchmaking']);
 
-            return response()->json(['weights' => $request->input('weights')]);
+            return response()->json(['weights' => app(MatchingEngine::class)->weights(), 'version' => $version]);
         }
 
-        return response()->json(config('matchmaking.weights'));
+        return response()->json(['weights' => app(MatchingEngine::class)->weights(), 'version' => app(MatchingEngine::class)->weightsVersion()]);
     }
 
     public function demographic(Request $request, MatchingEngine $engine)

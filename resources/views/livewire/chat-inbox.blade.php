@@ -19,7 +19,7 @@
 </div>
 </a>
 @empty
-@include('components.empty', ['icon' => '💬', 'title' => 'Belum ada percakapan', 'hint' => 'Like profil di Discover untuk mulai chat.'])
+@include('components.empty', ['icon' => 'chat', 'title' => 'Belum ada percakapan', 'hint' => 'Like profil di Discover untuk mulai chat.'])
 @endforelse
 </div>
 </div>

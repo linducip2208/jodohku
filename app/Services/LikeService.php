@@ -11,6 +11,7 @@ use App\Models\Rewind;
 use App\Models\SuperLike;
 use App\Models\User;
 use App\Models\UserMatch;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class LikeService
@@ -106,10 +107,15 @@ class LikeService
     {
         try {
             [$u1, $u2] = UserMatch::canonical((int) $a->id, (int) $b->id);
-            \Illuminate\Support\Facades\Cache::forget("match:score:{$u1}:{$u2}");
-            \Illuminate\Support\Facades\Cache::forget("match:score:{$u2}:{$u1}");
+            $version = app(MatchingEngine::class)->weightsVersion();
+            foreach ([
+                "match:score:{$u1}:{$u2}", "match:score:{$u2}:{$u1}",
+                "match:score:v{$version}:{$u1}:{$u2}",
+            ] as $key) {
+                Cache::forget($key);
+            }
             foreach ([$a->id, $b->id] as $uid) {
-                \Illuminate\Support\Facades\Cache::forget('discovery:picks:'.today()->toDateString().':'.$uid);
+                Cache::forget('discovery:picks:'.today()->toDateString().':'.$uid);
             }
         } catch (\Throwable) {
         }

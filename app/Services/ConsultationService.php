@@ -41,13 +41,21 @@ class ConsultationService
         }
 
         return DB::transaction(function () use ($user, $counselor, $data, $at, $duration, $sharedReportId) {
-            $clash = Consultation::where('counselor_id', $counselor->id)
+            $newEnd = $at->copy()->addMinutes($duration);
+            // Portable overlap check (works on SQLite/MySQL/PgSQL — the old
+            // DATETIME('+...' || ...) raw only ran on SQLite). Narrow in SQL,
+            // decide exactly in PHP, rows locked to serialize concurrent books.
+            $neighbors = Consultation::where('counselor_id', $counselor->id)
                 ->whereNotIn('status', [ConsultationStatus::Cancelled->value, ConsultationStatus::Completed->value])
-                ->where('scheduled_at', '<', $at->copy()->addMinutes($duration))
-                ->whereRaw('DATETIME(scheduled_at, \'+\' || duration_minutes || \' minutes\') > ?', [$at->toDateTimeString()])
-                ->exists();
-            if ($clash) {
-                throw new \RuntimeException('Counselor is already booked at that time.');
+                ->where('scheduled_at', '<', $newEnd)
+                ->where('scheduled_at', '>', $at->copy()->subMinutes(180))
+                ->lockForUpdate()->get();
+            foreach ($neighbors as $existing) {
+                $existEnd = Carbon::parse($existing->scheduled_at)->addMinutes((int) ($existing->duration_minutes ?: 30));
+                $existStart = Carbon::parse($existing->scheduled_at);
+                if ($existStart->lt($newEnd) && $existEnd->gt($at)) {
+                    throw new \RuntimeException('Counselor is already booked at that time.');
+                }
             }
             $consultation = Consultation::create([
                 'counselor_id' => $counselor->id,

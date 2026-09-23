@@ -55,7 +55,9 @@ class BiroJodohTest extends TestCase
         $this->actingAs($y)->putJson("/api/v1/courtships/{$id}/guardian", [
             'guardian_name' => 'H. Ahmad', 'guardian_phone' => '081234567890', 'guardian_relation' => 'Ayah',
         ])->assertOk();
-        $this->actingAs($y)->postJson("/api/v1/courtships/{$id}/guardian/approve")->assertOk()
+        // Guardian approval must come from the other party, not the setter alone.
+        $this->actingAs($y)->postJson("/api/v1/courtships/{$id}/guardian/approve")->assertStatus(422);
+        $this->actingAs($x)->postJson("/api/v1/courtships/{$id}/guardian/approve")->assertOk()
             ->assertJsonPath('guardian_approved_at', fn ($v) => $v !== null);
 
         $this->actingAs($x)->postJson("/api/v1/courtships/{$id}/advance")->assertOk()->assertJsonPath('stage', 'khitbah');

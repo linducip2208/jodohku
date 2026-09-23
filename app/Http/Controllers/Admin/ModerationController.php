@@ -8,6 +8,8 @@ use App\Models\ModerationQueue;
 use App\Models\ProfanityWord;
 use App\Models\Report;
 use App\Services\AuditService;
+use App\Services\ProfanityService;
+use App\Services\ScamDetectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -115,7 +117,7 @@ class ModerationController extends Controller
     }
 
     /** Dry-run: test a sentence against the dictionary before saving. */
-    public function testWord(Request $request, \App\Services\ProfanityService $profanity, \App\Services\ScamDetectionService $scam)
+    public function testWord(Request $request, ProfanityService $profanity, ScamDetectionService $scam)
     {
         $request->validate(['text' => ['required', 'string', 'max:2000']]);
         $text = (string) $request->input('text');

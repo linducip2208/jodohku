@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Block;
+use App\Models\ChatBlock;
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -21,14 +23,14 @@ Broadcast::channel('conversations.{id}', function ($user, $id) {
     }
     try {
         $peerId = (int) ($conversation->otherUser((int) $user->id)?->id ?? 0);
-        if ($peerId && \App\Models\Block::existsBetween((int) $user->id, $peerId)) {
+        if ($peerId && Block::existsBetween((int) $user->id, $peerId)) {
             return false;
         }
-        if ($peerId && \App\Models\ChatBlock::where(fn ($q) => $q->where('blocker_id', $user->id)->where('blocked_id', $peerId))
+        if ($peerId && ChatBlock::where(fn ($q) => $q->where('blocker_id', $user->id)->where('blocked_id', $peerId))
             ->orWhere(fn ($q) => $q->where('blocker_id', $peerId)->where('blocked_id', $user->id))->exists()) {
             return false;
         }
-    } catch (\Throwable) {
+    } catch (Throwable) {
     }
 
     return true;

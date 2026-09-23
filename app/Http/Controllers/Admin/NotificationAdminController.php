@@ -39,6 +39,9 @@ class NotificationAdminController extends Controller
             'body' => ['required', 'string', 'max:1000'],
             'audience' => ['nullable', 'string', 'in:all,premium,free,verified'],
         ]);
+        $broadcastId = (string) Str::ulid();
+        $title = (string) $request->input('title');
+        $body = (string) $request->input('body');
         $query = User::active();
         match ($request->input('audience', 'all')) {
             'premium' => $query->premium(),
@@ -47,14 +50,15 @@ class NotificationAdminController extends Controller
             default => null,
         };
         $count = 0;
-        $query->chunkById(500, function ($users) use ($notifications, &$count) {
+        // Queued via ShouldQueue: chunk keeps memory low, mail honors opt-out in via().
+        $query->chunkById(500, function ($users) use ($notifications, &$count, $title, $body, $broadcastId) {
             foreach ($users as $user) {
-                $notifications->send($user, new SubscriptionActive($user->activeSubscription()));
+                $notifications->send($user, new BroadcastMessage($title, $body, $broadcastId));
                 $count++;
             }
         });
-        $audit->log('admin.notification.broadcast', $request->user(), null, [], ['audience' => $request->input('audience', 'all'), 'count' => $count]);
+        $audit->log('admin.notification.broadcast', $request->user(), null, [], ['audience' => $request->input('audience', 'all'), 'count' => $count, 'broadcast_id' => $broadcastId]);
 
-        return response()->json(['sent' => $count]);
+        return response()->json(['sent' => $count, 'broadcast_id' => $broadcastId]);
     }
 }

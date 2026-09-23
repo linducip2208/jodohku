@@ -43,13 +43,13 @@ class AiService
         $minKey = 'ai:rate:min:'.$user->id.':'.now()->format('YmdHi');
         $dayKey = 'ai:rate:day:'.$user->id.':'.now()->format('Ymd');
         // Atomic increments with expiry set only on first hit (no reset race).
-        $minCount = (int) \Illuminate\Support\Facades\Cache::increment($minKey);
+        $minCount = (int) Cache::increment($minKey);
         if ($minCount === 1) {
-            \Illuminate\Support\Facades\Cache::put($minKey, 1, 70);
+            Cache::put($minKey, 1, 70);
         }
-        $dayCount = (int) \Illuminate\Support\Facades\Cache::increment($dayKey);
+        $dayCount = (int) Cache::increment($dayKey);
         if ($dayCount === 1) {
-            \Illuminate\Support\Facades\Cache::put($dayKey, 1, 86400 + 300);
+            Cache::put($dayKey, 1, 86400 + 300);
         }
         if ($minCount > $perMin) {
             throw new \RuntimeException('AI rate limit exceeded. Try again in a minute.');

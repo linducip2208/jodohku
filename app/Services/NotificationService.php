@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Notifications\BroadcastMessage;
 use App\Notifications\ChatRequestReceived;
+use App\Notifications\ConsultationStatusChanged;
+use App\Notifications\CourtshipStageChanged;
 use App\Notifications\MatchFound;
 use App\Notifications\NewMessage;
 use App\Notifications\PaymentNotification;
@@ -52,9 +55,9 @@ class NotificationService
             SubscriptionActive::class => 'subscription_id',
             VerificationDecided::class => 'request_id',
             ReportStatusChanged::class => 'report_id',
-            \App\Notifications\CourtshipStageChanged::class => 'courtship_id',
-            \App\Notifications\ConsultationStatusChanged::class => 'consultation_id',
-            \App\Notifications\BroadcastMessage::class => 'broadcast_id',
+            CourtshipStageChanged::class => 'courtship_id',
+            ConsultationStatusChanged::class => 'consultation_id',
+            BroadcastMessage::class => 'broadcast_id',
         ];
         $class = get_class($notification);
         if (! isset($keyMap[$class]) || ! method_exists($notification, 'toDatabase')) {
