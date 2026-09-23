@@ -30,13 +30,15 @@ class FrontendDemoTest extends TestCase
         $real->profile()->updateOrCreate([], ['headline' => 'Real']);
         $real->photos()->create(['path' => 'real/y.jpg', 'status' => 'approved', 'is_private' => false]);
         $hidden = $this->demoUser(['display_name' => 'HiddenDemo']);
-        $hidden->photos()->where('path', 'demo/x.jpg')->update(['is_private' => true]);
+        $hidden->photos()->where('path', 'demo/x.jpg')->update(['path' => 'demo/hidden-only.jpg', 'is_private' => true]);
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('DemoShowcase', $html);
         $this->assertStringContainsString('Lihat Demo Member', $html);
         $this->assertStringNotContainsString('RealPerson', $html);
-        $this->assertStringNotContainsString('HiddenDemo', $html);
+        // Member whose only photo is private still shows (initial fallback),
+        // but the private photo file itself must never be referenced.
+        $this->assertStringNotContainsString('demo/hidden-only.jpg', $html);
         // No emails or private paths leak into public HTML.
         $this->assertStringNotContainsString($demo->email, $html);
         $this->assertStringNotContainsString($real->email, $html);

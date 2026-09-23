@@ -2,7 +2,6 @@
 @section('title', 'Jodohku — Temukan Jodohmu | Dating Indonesia')
 @section('content')
 @include('landing.partials.hero')
-@include('landing.partials.demo')
 @include('landing.partials.search')
 @include('landing.partials.demo-members')
 @include('landing.partials.how')

@@ -1,9 +1,10 @@
 @php
-use App\\Models\\User;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 $demoMembers = collect();
 try {
-    $demoMembers = User::query()
+    $demoMembers = Cache::remember('landing:demo-members', 3600, fn () => User::query()
         ->where('is_demo', true)
         ->where('status', 'active')
         ->whereHas('profile')
@@ -18,8 +19,8 @@ try {
         ->orderByDesc('is_premium')
         ->orderByDesc('last_active_at')
         ->limit(12)
-        ->get();
-} catch (\\Throwable) {
+        ->get());
+} catch (\Throwable) {
     $demoMembers = collect();
 }
 @endphp
