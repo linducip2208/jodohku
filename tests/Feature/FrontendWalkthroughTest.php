@@ -6,6 +6,7 @@ use App\Models\BlogPost;
 use App\Models\Courtship;
 use App\Models\Event;
 use App\Models\Forum;
+use App\Models\ForumThread;
 use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\ChatService;
@@ -52,6 +53,20 @@ class FrontendWalkthroughTest extends TestCase
                 "{$uri} returned {$res->getStatusCode()}"
             );
         }
+    }
+
+    public function test_forum_thread_and_reply_via_web(): void
+    {
+        $me = User::factory()->create();
+        $forum = Forum::create(['name' => 'Umum Web', 'slug' => 'umum-web', 'is_active' => true]);
+
+        $this->actingAs($me)->post("/forums/{$forum->slug}/threads", ['title' => 'Topik web', 'body' => 'Isi topik dari web.'])
+            ->assertRedirect();
+        $thread = ForumThread::where('title', 'Topik web')->firstOrFail();
+        $this->actingAs($me)->get("/forums/thread/{$thread->id}")->assertOk()->assertSee('Topik web');
+
+        $this->actingAs($me)->post("/forums/thread/{$thread->id}/reply", ['body' => 'Balasan web'])->assertRedirect();
+        $this->actingAs($me)->get("/forums/thread/{$thread->id}")->assertOk()->assertSee('Balasan web');
     }
 
     public function test_detail_pages_resolve(): void

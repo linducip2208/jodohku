@@ -87,7 +87,7 @@ try {
 <button class="jk-navlink {{ request()->is('matches*') || request()->is('likes*') || request()->is('biro-jodoh*') || request()->is('forums*') || request()->is('blog*') || request()->is('events*') || request()->is('notifications*') || request()->is('settings*') || request()->is('profile*') || request()->is('komunitas*') ? 'active' : '' }}" @click="$store.more.open = true" aria-label="Menu lainnya" aria-haspopup="dialog" style="background:none;border:0;cursor:pointer;font-family:inherit"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Lainnya</button>
 </nav>
 <div class="jk-modal-bg" x-show="$store.more.open" x-data @click.self="$store.more.open = false" style="display:none" role="dialog" aria-label="Menu lainnya">
-<div class="jk-modal">
+<div class="jk-modal" x-effect="if ($store.more.open) { $nextTick(() => $el.querySelector('a, button')?.focus()) }">
 <div class="jk-h2">Jelajahi</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
 <a class="jk-btn jk-btn-pass" style="text-decoration:none;text-align:center" href="/likes">Likes</a>
@@ -104,7 +104,7 @@ try {
 @livewireScripts
 <div x-data="{ show:@json(session('status') ? true : false) }" x-show="show" x-init="setTimeout(() => show = false, 4000)" class="jk-toast" style="display:none" x-transition>{{ session('status') }}</div>
 <div class="jk-modal-bg" x-show="confirm.open" style="display:none" @click.self="confirm.open = false">
-<div class="jk-modal">
+<div class="jk-modal" role="alertdialog" aria-label="Konfirmasi" x-effect="if (confirm.open) { $nextTick(() => $el.querySelector('button')?.focus()) }">
 <div class="jk-h2" x-text="confirm.title || 'Yakin?'"></div>
 <p class="jk-muted" x-text="confirm.text || 'Tindakan ini tidak bisa dibatalkan.'"></p>
 <div style="display:flex;gap:8px;margin-top:14px">

@@ -47,7 +47,9 @@ class ForumController extends Controller
             'last_reply_at' => now(),
         ]);
 
-        return response()->json($thread, 201);
+        return $request->wantsJson()
+            ? response()->json($thread, 201)
+            : back()->with('status', 'Topik terkirim.');
     }
 
     public function show(Request $request, int $thread)
@@ -69,10 +71,14 @@ class ForumController extends Controller
         try {
             $reply = $t->addReply($request->user(), $data['body']);
         } catch (\InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['reply' => $e->getMessage()]);
         }
 
-        return response()->json($reply, 201);
+        return $request->wantsJson()
+            ? response()->json($reply, 201)
+            : back()->with('status', 'Balasan terkirim.');
     }
 
     public function updateThread(Request $request, int $thread)
