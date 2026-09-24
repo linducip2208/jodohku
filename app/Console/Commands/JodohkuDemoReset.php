@@ -70,6 +70,10 @@ class JodohkuDemoReset extends Command
             DB::table('blog_posts')->where('slug', 'like', '%-demo-%')->delete();
             DB::table('groups')->where('slug', 'like', '%-demo-%')->delete();
             DB::table('events')->where('slug', 'like', '%-demo-%')->delete();
+            // Social graph leftovers owned by demo users (FK cascades miss
+            // morph/aggregate rows): mentions + analytics referencing them.
+            DB::table('mentions')->whereIn('mentioned_user_id', $ids)->orWhereIn('mentioned_by', $ids)->delete();
+            DB::table('analytics_events')->whereIn('user_id', $ids)->delete();
             // Users last: hard delete via query builder (bypasses SoftDeletes)
             // so FK cascades hard-clear profiles, photos, prefs, likes,
             // matches, scores, subs, payments, wallets, gifts, boosts,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Group;
 use App\Models\User;
 use App\Services\PseoService;
 use App\Services\SeoService;
@@ -213,6 +214,9 @@ class PublicSeoController extends Controller
         if ($this->publicProfilesQuery()->exists()) {
             $out[] = ['loc' => $base.'/sitemap-profiles.xml', 'updated' => $now];
         }
+        if (Group::where('visibility', 'public')->exists()) {
+            $out[] = ['loc' => $base.'/sitemap-groups.xml', 'updated' => $now];
+        }
 
         return $out;
     }
@@ -222,7 +226,7 @@ class PublicSeoController extends Controller
         if (! $this->seo->site('sitemap_enabled', true)) {
             abort(404);
         }
-        abort_if(! in_array($section, ['pages', 'locations', 'pseo', 'profiles'], true), 404);
+        abort_if(! in_array($section, ['pages', 'locations', 'pseo', 'profiles', 'groups'], true), 404);
         $base = rtrim((string) config('app.url', url('/')), '/');
         // P1: section bodies were rebuilt per request; cache 1h like the index.
         $urls = Cache::remember('seo:sitemap:'.$section, 3600, fn () => match ($section) {
@@ -230,6 +234,7 @@ class PublicSeoController extends Controller
             'locations' => $this->sitemapLocations($base),
             'pseo' => $this->sitemapTopics($base),
             'profiles' => $this->sitemapProfiles($base),
+            'groups' => $this->sitemapGroups($base),
         });
 
         return response()->view('seo.sitemap', ['urls' => $urls])
@@ -282,6 +287,18 @@ class PublicSeoController extends Controller
         ])->all();
     }
 
+    /** Public groups only — private/hidden never indexed. */
+    protected function sitemapGroups(string $base): array
+    {
+        $rows = Group::where('visibility', 'public')->orderByDesc('updated_at')->limit(1000)->get(['slug', 'updated_at']);
+
+        return $rows->map(fn ($g) => [
+            'loc' => $base.'/g/'.$g->slug,
+            'updated' => $g->updated_at?->toAtomString() ?? now()->toAtomString(),
+            'freq' => 'weekly',
+        ])->all();
+    }
+
     protected function publicProfilesQuery()
     {
         return User::active()->whereNotNull('username')
@@ -301,6 +318,7 @@ class PublicSeoController extends Controller
             'Allow: /taaruf',
             'Allow: /panduan/*',
             'Allow: /u/*',
+            'Allow: /g/*',
             'Allow: /guidelines',
             'Allow: /privacy',
             'Allow: /terms',
@@ -315,6 +333,12 @@ class PublicSeoController extends Controller
             'Disallow: /premium',
             'Disallow: /credits',
             'Disallow: /verification',
+            'Disallow: /groups',
+            'Disallow: /stories',
+            'Disallow: /cari',
+            'Disallow: /suggested',
+            'Disallow: /pengikut',
+            'Disallow: /mengikuti',
             'Disallow: /biro-jodoh/taaruf',
             'Disallow: /biro-jodoh/konsultasi',
             'Disallow: /biro-jodoh/laporan',

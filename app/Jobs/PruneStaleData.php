@@ -35,6 +35,10 @@ class PruneStaleData implements ShouldQueue
         $this->chunkDelete('ai_usage_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(365)));
         $this->chunkDelete('profile_views', fn ($q) => $q->where('viewed_at', '<', now()->subDays(180)));
         $this->chunkDelete('match_scores', fn ($q) => $q->where('computed_at', '<', now()->subDays(90)));
+        // Stories live 24h; keep a 7d grace window (late viewers, disputes),
+        // then cascade views/reactions via FKs. Analytics roll up elsewhere.
+        $this->chunkDelete('stories', fn ($q) => $q->where('expires_at', '<', now()->subDays(7)));
+        $this->chunkDelete('analytics_events', fn ($q) => $q->where('created_at', '<', now()->subDays(180)));
 
         // Database queue driver only: stuck rows (unix timestamps) older
         // than 7 days are poison/orphaned — successful jobs self-delete.

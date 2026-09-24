@@ -30,15 +30,10 @@ try {
         $forums = $personal->getRecommendedForums($me, 3);
         $stories = SuccessStory::where('status', 'published')->latest('published_at')->latest('id')->limit(2)->get();
         $posts = BlogPost::published()->latest('published_at')->limit(3)->get();
-        // Unified social feed: public, visible, non-blocked community posts.
-        $blockedIds = \App\Models\Block::where('blocker_id', $me->id)->pluck('blocked_id')
-            ->merge(\App\Models\Block::where('blocked_id', $me->id)->pluck('blocker_id'))->all();
-        $feed = \App\Models\Post::where('is_hidden', false)
-            ->when($blockedIds, fn ($q) => $q->whereNotIn('user_id', $blockedIds))
-            ->with(['user:id,display_name,name,avatar_path,is_verified,is_online', 'comments' => fn ($q) => $q->latest('id')->limit(2)->with('user:id,display_name,name')])
-            ->withCount(['comments', 'likes'])->latest('id')->paginate(8);
-        $feedLiked = \App\Models\PostLike::where('user_id', $me->id)->whereIn('post_id', $feed->getCollection()->pluck('id'))->pluck('post_id')->all();
-        // Stories strip from real entities (no ephemeral story system).
+        // $feed/$feedLiked/$storyTray/$suggested come from HomeController
+        // (FeedService/StoryService/FollowService) — never queried here.
+        $feed ??= null; $feedLiked ??= []; $storyTray ??= collect(); $suggested ??= collect();
+        // Fallback people strip when nobody posted stories yet.
         $storyStrip = $activeNow->take(4)->map(fn ($u) => ['user' => $u, 'label' => 'Online'])
             ->merge($newMembers->take(4)->map(fn ($u) => ['user' => $u, 'label' => 'Baru']))
             ->unique(fn ($s) => $s['user']->id)->take(8)->values();
@@ -51,7 +46,17 @@ try {
 <h1 class="jk-h1" style="font-size:20px">{{ $me?->displayName() ?? 'kamu' }}</h1>
 </div>
 
-@if($storyStrip->isNotEmpty())
+@if($storyTray->isNotEmpty())
+<div class="jk-row-scroll" role="list" aria-label="Story" style="grid-auto-columns:minmax(72px,72px)">
+@foreach($storyTray as $st)
+@php $su = $st->user; @endphp
+<a role="listitem" href="/stories/{{ $st->id }}" style="text-decoration:none;text-align:center" aria-label="Story {{ $su?->displayName() ?? 'member' }}">
+<div class="jk-avatar" style="margin:0 auto;border:2px solid {{ $st->viewedBy($me ?? auth()->user()) ? '#d4d4d8' : '#f43f5e' }}">@if($su?->avatarUrl())<img src="{{ $su->avatarUrl() }}" alt="" loading="lazy" onerror="this.remove()">@else{{ strtoupper(substr((string)($su?->displayName() ?? '?'),0,1)) }}@endif</div>
+<div class="jk-muted" style="font-size:10px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ \Illuminate\Support\Str::limit($su?->displayName() ?? '?', 10) }}</div>
+</a>
+@endforeach
+</div>
+@elseif(isset($storyStrip) && $storyStrip->isNotEmpty())
 <div class="jk-row-scroll" role="list" aria-label="Sorotan" style="grid-auto-columns:minmax(72px,72px)">
 @foreach($storyStrip as $s)
 <a role="listitem" href="/profile/{{ $s['user']->id }}" style="text-decoration:none;text-align:center">
@@ -103,6 +108,18 @@ try {
 </div>
 @endif
 </section>
+
+@if($suggested->isNotEmpty())
+<section class="jk-section" aria-labelledby="h-suggested">
+<h2 class="jk-h2" id="h-suggested">Orang yang mungkin kamu kenal</h2>
+<div class="jk-row-scroll">
+@foreach($suggested as $s)
+@if($s['user']) @include('components.profile-card', ['user' => $s['user'], 'compact' => true]) @endif
+@endforeach
+</div>
+<div style="margin-top:8px"><a class="jk-pill" href="/suggested">Lihat semua</a></div>
+</section>
+@endif
 
 @if($journey)
 @php

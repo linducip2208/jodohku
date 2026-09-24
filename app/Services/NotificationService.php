@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\SocialNotificationBroadcast;
 use App\Models\User;
 use App\Notifications\BroadcastMessage;
 use App\Notifications\ChatRequestReceived;
@@ -42,10 +43,35 @@ class NotificationService
         if ($prefs && str_contains(get_class($notification), 'SuperLike') && ! $prefs->push_super_likes) {
             return;
         }
+        // Social graph gates.
+        if ($prefs && $notification instanceof SocialFollow && ! $prefs->push_follows) {
+            return;
+        }
+        if ($prefs && $notification instanceof PostCommented && ! $prefs->push_comments) {
+            return;
+        }
+        if ($prefs && $notification instanceof Mentioned && ! $prefs->push_mentions) {
+            return;
+        }
+        if ($prefs && $notification instanceof PostReacted && ! ($prefs->push_likes || $prefs->push_comments)) {
+            return;
+        }
         if ($this->isDuplicateUnread($user, $notification)) {
             return;
         }
         $user->notify($notification);
+        // Realtime nudge for social types (database row stays the source of
+        // truth). Best-effort: broadcast failures never fail the send.
+        if ($notification instanceof SocialFollow || $notification instanceof PostReacted
+            || $notification instanceof PostCommented || $notification instanceof Mentioned
+            || $notification instanceof StoryReacted) {
+            try {
+                $data = $notification->toDatabase($user);
+                SocialNotificationBroadcast::dispatch(
+                    (int) $user->id, class_basename($notification), (string) ($data['title'] ?? 'Notifikasi baru'));
+            } catch (\Throwable) {
+            }
+        }
     }
 
     /** Same entity + same type already waiting unread → don't stack. */
@@ -63,6 +89,11 @@ class NotificationService
             ConsultationStatusChanged::class => 'consultation_id',
             BroadcastMessage::class => 'broadcast_id',
             MatchNudge::class => 'match_id',
+            SocialFollow::class => 'follower_id',
+            PostReacted::class => 'post_id',
+            PostCommented::class => 'comment_id',
+            Mentioned::class => 'mentionable_id',
+            StoryReacted::class => 'story_id',
         ];
         $class = get_class($notification);
         if (! isset($keyMap[$class]) || ! method_exists($notification, 'toDatabase')) {

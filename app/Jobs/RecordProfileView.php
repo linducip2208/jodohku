@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ProfileView;
 use App\Models\User;
+use App\Services\AnalyticsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -55,5 +56,9 @@ class RecordProfileView implements ShouldQueue
             'viewer_id' => $this->viewerId,
             'viewed_at' => now(),
         ]);
+        try {
+            app(AnalyticsService::class)->capture($viewer, 'profile_view', $owner);
+        } catch (\Throwable) {
+        }
     }
 }

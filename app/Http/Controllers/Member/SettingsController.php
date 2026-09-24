@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Member;
 
+use App\Enums\PrivacyVisibility;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -51,12 +52,18 @@ class SettingsController extends Controller
     {
         $user = $request->user();
         $privacy = ProfilePrivacy::firstOrCreate(['user_id' => $user->id]);
+        $vis = fn ($key, $default = 'public') => in_array($request->input($key), PrivacyVisibility::values(), true)
+            ? $request->input($key) : $default;
         $privacy->update([
             'show_online_status' => ! $request->boolean('hide_online'),
             'online_visibility' => $request->boolean('hide_online') ? 'private' : 'public',
             'is_incognito' => $request->boolean('incognito'),
             'show_distance' => ! $request->boolean('hide_distance'),
             'is_public_index' => $request->boolean('public_index'),
+            'followers_visibility' => $vis('followers_visibility'),
+            'following_visibility' => $vis('following_visibility'),
+            'posts_visibility' => $vis('posts_visibility'),
+            'stories_visibility' => $vis('stories_visibility', 'members_only'),
         ]);
 
         return $request->wantsJson()
@@ -73,6 +80,9 @@ class SettingsController extends Controller
             'email_messages' => $request->boolean('message'),
             'push_messages' => $request->boolean('message'),
             'push_likes' => $request->boolean('like'),
+            'push_follows' => $request->boolean('follow'),
+            'push_comments' => $request->boolean('comment'),
+            'push_mentions' => $request->boolean('mention'),
         ]);
 
         return $request->wantsJson()

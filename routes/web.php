@@ -10,13 +10,18 @@ use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\CommunityController;
 use App\Http\Controllers\Member\EventController;
+use App\Http\Controllers\Member\FollowController;
 use App\Http\Controllers\Member\ForumController;
+use App\Http\Controllers\Member\GroupController;
+use App\Http\Controllers\Member\HomeController;
 use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\MessageController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\QuestionnaireController;
 use App\Http\Controllers\Member\SafetyController;
+use App\Http\Controllers\Member\SearchController;
 use App\Http\Controllers\Member\SettingsController;
+use App\Http\Controllers\Member\StoryController;
 use App\Http\Controllers\PublicSeoController;
 use App\Models\Block;
 use App\Models\ContactMessage;
@@ -91,12 +96,17 @@ Route::get('/', function () {
                 ->where(fn ($qq) => $notCounselor($qq))
                 ->whereDoesntHave('profilePrivacy', fn ($qq) => $qq->where('is_incognito', true)))
             ->with(['user:id,display_name,name,avatar_path,is_verified'])->withCount(['comments', 'likes'])
-            ->latest('id')->limit(6)->get();
+            // Landing preview is 1 hero post + max 3 compact cards (never a full feed).
+            ->latest('id')->limit(4)->get();
     } catch (Throwable) {
     }
 
     return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans', 'onlineNow', 'feedPosts'));
 })->name('landing');
+
+// Public community pages (indexable): public groups only — GroupController
+// 404s anything non-public for guests (no existence leaks).
+Route::get('/g/{group:slug}', [GroupController::class, 'show'])->name('public.groups.show');
 
 /* ---------- Health (public, no secrets/internals) ---------- */
 Route::get('/health', function () {
@@ -279,7 +289,7 @@ Route::middleware('guest')->group(function () {
 
 /* ---------- Member ---------- */
 Route::middleware(['auth', 'active.account'])->group(function () {
-    Route::get('/home', fn () => view('member.home'))->name('member.home');
+    Route::get('/home', [HomeController::class, 'index'])->name('member.home');
     Route::get('/discover', fn () => view('member.discover'))->name('member.discover');
     Route::get('/profile/edit', function () {
         return view('member.profile.edit', ['user' => Auth::user()->load(['profile', 'photos', 'interests'])]);
@@ -528,7 +538,61 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/komunitas/{post}/like', [CommunityController::class, 'toggleLike'])->name('member.community.like');
     Route::post('/komunitas/{post}/komentar', [CommunityController::class, 'comment'])->name('member.community.comment')->middleware('throttle:30,1,community-comment');
     Route::delete('/komunitas/{post}', [CommunityController::class, 'destroy'])->name('member.community.destroy');
-    Route::post('/komunitas/postingan/{post}/laporkan', [CommunityController::class, 'report'])->name('member.community.report')->middleware('throttle:10,1,community-report');
+    Route::post('/komunitas/postingan/{post}/laporkan', [CommunityController::class,
+        'report'])->name('member.community.report')->middleware('throttle:10,1,community-report');
+    Route::post('/komunitas/{post}/reaksi', [CommunityController::class,
+        'react'])->name('member.community.react')->middleware('throttle:60,1,community-react');
+    Route::post('/komunitas/{post}/simpan', [CommunityController::class,
+        'bookmark'])->name('member.community.bookmark')->middleware('throttle:60,1,community-bookmark');
+    Route::get('/komunitas/tersimpan', [CommunityController::class, 'bookmarks'])->name('member.community.bookmarks');
+    Route::post('/komunitas/{post}/bagikan', [CommunityController::class,
+        'share'])->name('member.community.share')->middleware('throttle:20,1,community-share');
+    Route::put('/komunitas/{post}', [CommunityController::class, 'postUpdate'])->name('member.community.update');
+    Route::post('/komunitas/{post}/boost', [CommunityController::class,
+        'boostPost'])->name('member.community.boost')->middleware('throttle:5,1,community-boost');
+    Route::put('/komunitas/komentar/{comment}', [CommunityController::class, 'commentUpdate'])->name('member.community.comment.update');
+    Route::delete('/komunitas/komentar/{comment}', [CommunityController::class, 'commentDestroy'])->name('member.community.comment.destroy');
+    Route::post('/komunitas/komentar/{comment}/laporkan', [CommunityController::class,
+        'reportComment'])->name('member.community.comment.report')->middleware('throttle:10,1,community-report');
+    Route::post('/komunitas/komentar/{comment}/reaksi', [CommunityController::class,
+        'commentReact'])->name('member.community.comment.react')->middleware('throttle:60,1,community-react');
+
+    // Social graph: follow / mute / suggested.
+    Route::get('/pengikut/{user}', [FollowController::class, 'followers'])->name('member.followers');
+    Route::get('/mengikuti/{user}', [FollowController::class, 'following'])->name('member.following');
+    Route::get('/suggested', [FollowController::class, 'suggested'])->name('member.suggested');
+    Route::post('/ikuti/{user}', [FollowController::class,
+        'store'])->name('member.follow')->middleware('throttle:30,1,social-follow');
+    Route::delete('/ikuti/{user}', [FollowController::class, 'destroy'])->name('member.unfollow');
+    Route::post('/bisukan/{user}', [FollowController::class,
+        'mute'])->name('member.mute')->middleware('throttle:30,1,social-mute');
+    Route::delete('/bisukan/{user}', [FollowController::class, 'unmute'])->name('member.unmute');
+
+    // Stories (24h, scope-based expiry).
+    Route::get('/stories', [StoryController::class, 'index'])->name('member.stories');
+    Route::post('/stories', [StoryController::class,
+        'store'])->name('member.stories.store')->middleware('throttle:10,1,story-create');
+    Route::get('/stories/{story}', [StoryController::class, 'show'])->name('member.stories.show');
+    Route::post('/stories/{story}/reaksi', [StoryController::class,
+        'react'])->name('member.stories.react')->middleware('throttle:60,1,story-react');
+    Route::delete('/stories/{story}', [StoryController::class, 'destroy'])->name('member.stories.destroy');
+    Route::post('/stories/{story}/laporkan', [StoryController::class,
+        'report'])->name('member.stories.report')->middleware('throttle:10,1,story-report');
+
+    // Communities (Groups).
+    Route::get('/groups', [GroupController::class, 'index'])->name('member.groups');
+    Route::post('/groups', [GroupController::class,
+        'store'])->name('member.groups.store')->middleware('throttle:5,1,group-create');
+    Route::get('/groups/{group:slug}', [GroupController::class, 'show'])->name('member.groups.show');
+    Route::post('/groups/{group}/join', [GroupController::class,
+        'join'])->name('member.groups.join')->middleware('throttle:20,1,group-join');
+    Route::delete('/groups/{group}/leave', [GroupController::class, 'leave'])->name('member.groups.leave');
+    Route::put('/groups/{group}', [GroupController::class, 'update'])->name('member.groups.update');
+    Route::post('/groups/{group}/members', [GroupController::class,
+        'manageMember'])->name('member.groups.members')->middleware('throttle:30,1,group-manage');
+
+    // Global search.
+    Route::get('/cari', [SearchController::class, 'index'])->name('member.search');
     Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
     Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
     Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');

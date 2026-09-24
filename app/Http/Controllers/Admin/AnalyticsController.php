@@ -3,13 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnalyticsEvent;
+use App\Models\Comment;
+use App\Models\Follow;
+use App\Models\Group;
+use App\Models\GroupMember;
+use App\Models\Hashtag;
 use App\Models\Like;
 use App\Models\Message;
 use App\Models\ModerationQueue;
 use App\Models\Payment;
 use App\Models\PaymentItem;
+use App\Models\Post;
+use App\Models\PostReaction;
 use App\Models\ProfileView;
 use App\Models\Report;
+use App\Models\Story;
 use App\Models\User;
 use App\Models\UserMatch;
 use Illuminate\Database\Query\Expression;
@@ -18,6 +27,24 @@ use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
+    /** Social platform headline stats (follows, posts, stories, groups). */
+    public function social(Request $request)
+    {
+        $data = Cache::remember('admin.analytics.social', 300, fn () => [
+            'follows' => Follow::count(),
+            'posts' => Post::count(),
+            'post_reactions' => PostReaction::count(),
+            'comments' => Comment::count(),
+            'stories_active' => Story::active()->count(),
+            'groups' => Group::count(),
+            'group_members' => GroupMember::count(),
+            'hashtags' => Hashtag::count(),
+            'analytics_events_7d' => AnalyticsEvent::where('created_at', '>', now()->subDays(7))->count(),
+        ]);
+
+        return response()->json($data);
+    }
+
     public function overview(Request $request)
     {
         $days = (int) $request->input('days', 30);

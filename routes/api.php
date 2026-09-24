@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DiscoveryController;
 use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\SocialController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BiroJodohController;
@@ -66,6 +67,20 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/questionnaire/answers', [PreferenceController::class, 'answer']);
 
         Route::get('/discover', [DiscoveryController::class, 'discover']);
+        // Social graph + feed + stories + search (SocialController).
+        Route::post('/social/follow/{user}', [SocialController::class, 'follow'])->middleware('throttle:30,1,social-follow');
+        Route::delete('/social/follow/{user}', [SocialController::class, 'unfollow']);
+        Route::get('/social/followers/{user}', [SocialController::class, 'followers']);
+        Route::get('/social/following/{user}', [SocialController::class, 'following']);
+        Route::get('/social/suggested', [SocialController::class, 'suggested']);
+        Route::get('/social/feed', [SocialController::class, 'feed']);
+        Route::post('/social/posts/{post}/react', [SocialController::class, 'reactPost'])->middleware('throttle:60,1,social-react');
+        Route::post('/social/comments/{comment}/react', [SocialController::class, 'reactComment'])->middleware('throttle:60,1,social-react');
+        Route::get('/social/stories', [SocialController::class, 'stories']);
+        Route::get('/social/stories/{story}', [SocialController::class, 'showStory']);
+        Route::get('/social/search', [SocialController::class, 'search']);
+        Route::get('/social/groups', [SocialController::class, 'groups']);
+        Route::get('/social/recommendations', [SocialController::class, 'recommendations']);
         Route::get('/discover/picks', [DiscoveryController::class, 'picks']);
         Route::post('/discover/picks/reset', [DiscoveryController::class, 'resetPicks']);
         Route::get('/matches', [DiscoveryController::class, 'matches']);

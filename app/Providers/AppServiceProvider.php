@@ -7,28 +7,38 @@ use App\Enums\UserRole;
 use App\Events\MutualMatchCreated;
 use App\Events\ProfileViewed;
 use App\Events\UserRegistered;
+use App\Listeners\AnalyticsListener;
 use App\Listeners\FireVirtualTrigger;
 use App\Listeners\LogAudit;
 use App\Listeners\RecordProfileViewListener;
 use App\Listeners\SendMatchNotification;
 use App\Listeners\WarmNewUserMatches;
+use App\Models\Comment;
 use App\Models\Conversation;
+use App\Models\Group;
 use App\Models\Message;
 use App\Models\PartnerPreference;
 use App\Models\Payment;
+use App\Models\Post;
 use App\Models\Profile;
 use App\Models\ProfilePhoto;
 use App\Models\QuestionnaireAnswer;
 use App\Models\Report;
+use App\Models\Story;
 use App\Models\User;
 use App\Models\UserInterest;
 use App\Models\VirtualConversation;
 use App\Observers\MatchRecalcObserver;
+use App\Observers\PostObserver;
 use App\Payments\PaymentGatewayManager;
+use App\Policies\CommentPolicy;
 use App\Policies\ConversationPolicy;
+use App\Policies\GroupPolicy;
 use App\Policies\MessagePolicy;
 use App\Policies\PaymentPolicy;
+use App\Policies\PostPolicy;
 use App\Policies\ReportPolicy;
+use App\Policies\StoryPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VirtualConversationPolicy;
 use App\Services\FaqService;
@@ -48,6 +58,10 @@ class AppServiceProvider extends ServiceProvider
         Payment::class => PaymentPolicy::class,
         Report::class => ReportPolicy::class,
         VirtualConversation::class => VirtualConversationPolicy::class,
+        Post::class => PostPolicy::class,
+        Comment::class => CommentPolicy::class,
+        Story::class => StoryPolicy::class,
+        Group::class => GroupPolicy::class,
     ];
 
     public function register(): void
@@ -76,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         // Events (Laravel 13 convention: Event::listen in AppServiceProvider)
         Event::subscribe(FireVirtualTrigger::class);
         Event::subscribe(LogAudit::class);
+        Event::subscribe(AnalyticsListener::class);
         Event::listen(MutualMatchCreated::class, SendMatchNotification::class);
         // Scale P1: throttled profile-view writer + register-time warming.
         Event::listen(ProfileViewed::class, RecordProfileViewListener::class);
@@ -100,5 +115,6 @@ class AppServiceProvider extends ServiceProvider
         foreach ([Profile::class, PartnerPreference::class, ProfilePhoto::class, UserInterest::class, QuestionnaireAnswer::class, User::class] as $model) {
             $model::observe(MatchRecalcObserver::class);
         }
+        Post::observe(PostObserver::class);
     }
 }

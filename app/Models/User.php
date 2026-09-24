@@ -233,6 +233,53 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Block::class, 'blocked_id');
     }
 
+    // ---------- Social graph ----------
+
+    public function followsGiven(): HasMany
+    {
+        return $this->hasMany(Follow::class, 'follower_id');
+    }
+
+    public function followsReceived(): HasMany
+    {
+        return $this->hasMany(Follow::class, 'followed_id');
+    }
+
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'follower_id', 'followed_id')->withTimestamps();
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'followed_id', 'follower_id')->withTimestamps();
+    }
+
+    public function mutesGiven(): HasMany
+    {
+        return $this->hasMany(Mute::class, 'muter_id');
+    }
+
+    public function stories(): HasMany
+    {
+        return $this->hasMany(Story::class);
+    }
+
+    public function postBookmarks(): HasMany
+    {
+        return $this->hasMany(PostBookmark::class);
+    }
+
+    public function isFollowing(User $user): bool
+    {
+        return Follow::existsBetween((int) $this->id, (int) $user->id);
+    }
+
+    public function isMutualFollow(User $user): bool
+    {
+        return Follow::mutual((int) $this->id, (int) $user->id);
+    }
+
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);

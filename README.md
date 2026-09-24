@@ -17,6 +17,14 @@ Platform matchmaking + chat aman + verifikasi + virtual member transparan, diban
 - **Demo komersial**: `php artisan jodohku:demo --users=5000` (deterministik, bulk, foto generated aman) — lihat `DEMO.md`.
 - **Admin/operator**: RBAC zona (`staff/moderator/operator/admin/superadmin` + policies, sidebar `@can`, secret gateway hanya superadmin), audit log tanpa-sekret, gateway secrets terenkripsi (`Crypt`).
 - **E2E teruji**: `EndToEndJourneyTest` (register → match → chat idempoten → webhook premium/kredit → block/report → moderasi + audit), `RbacTest`, `ThrottleIsolationTest`.
+- **Social graph**: follow/unfollow/mute + suggested people (`FollowService`), pengikut/mengikuti dengan privasi granular.
+- **Social feed**: `FeedService` (candidates → filter → skor → rank → paginate), trending, boost postingan kredit 24 jam, bookmark/share/reaksi 6 tipe/hashtag/mention.
+- **Stories 24 jam**: teks/foto/video, viewers (list Premium), reaksi, expiry via scope + prune (`StoryService`).
+- **Communities**: Groups (roles owner/admin/moderator/member, kategori, aturan, postingan grup) + halaman publik `/g/{slug}` + sitemap.
+- **Global search**: orang/postingan/grup/event/hashtag, privacy/block-aware (`SearchService`, web `/cari` + API).
+- **Rekomendasi socialdating**: `SocialDatingRecommendationService` (skor sosial terpisah dari kompatibilitas, penjelasan aman).
+- **Analytics privat**: `analytics_events` via queue, tanpa IP/body/lokasi (`AnalyticsService`).
+- **Notifikasi social**: follow/react/comment/mention/story + realtime `users.{id}` + preferensi granular.
 
 ## Stack
 

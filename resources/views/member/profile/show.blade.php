@@ -33,6 +33,21 @@ $profile = $profileUser->profile;
 <button class="jk-btn jk-btn-like" style="flex:1;min-width:140px" :disabled="sending" @click="sending = true; fetch('/chat/create', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept':'application/json' }, body: JSON.stringify({ user_id: {{ (int) $profileUser->id }} }) }).then(r => r.json()).then(j => { if (j.conversation_id) window.location.href = '/chat/' + j.conversation_id; else { window.jkToast('Gagal membuat percakapan', false); sending = false; } }).catch(() => { window.jkToast('Gagal membuat percakapan', false); sending = false; })">Kirim pesan</button>
 <a class="jk-btn jk-btn-pass" style="text-decoration:none;text-align:center;flex:1;min-width:140px" href="/biro-jodoh/laporan">Kompatibilitas</a>
 </div>
+@php
+$meUser = auth()->user();
+$followingThem = $meUser ? $meUser->isFollowing($profileUser) : false;
+$followersCount = $profileUser->followers()->count();
+$followingCount = $profileUser->following()->count();
+@endphp
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+@if($followingThem)
+<form method="POST" action="/ikuti/{{ $profileUser->id }}" style="display:inline">@csrf @method('DELETE')<button class="jk-btn jk-btn-pass" style="flex:none;padding:8px 16px" type="submit">✓ Mengikuti</button></form>
+@else
+<form method="POST" action="/ikuti/{{ $profileUser->id }}" style="display:inline">@csrf<button class="jk-btn jk-btn-like" style="flex:none;padding:8px 16px" type="submit">+ Ikuti</button></form>
+@endif
+<form method="POST" action="/bisukan/{{ $profileUser->id }}" style="display:inline">@csrf<button class="jk-pill" type="submit" title="Sembunyikan kontennya dari feed">Bisukan</button></form>
+</div>
+<div class="jk-muted" style="font-size:13px;margin-top:8px"><a href="/pengikut/{{ $profileUser->id }}" style="color:inherit"><strong>{{ $followersCount }}</strong> pengikut</a> · <a href="/mengikuti/{{ $profileUser->id }}" style="color:inherit"><strong>{{ $followingCount }}</strong> mengikuti</a></div>
 @livewire('like-buttons', ['userId' => $profileUser->id], key('profile-like-' . $profileUser->id))
 @else
 <div style="margin-top:12px"><a class="jk-btn jk-btn-pass" style="text-decoration:none;text-align:center" href="/profile/edit">Edit profil</a></div>

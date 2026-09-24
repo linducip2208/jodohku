@@ -181,6 +181,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::post('/notifications/broadcast', [NotificationAdminController::class, 'broadcast'])->name('notifications.broadcast');
 
         Route::get('/analytics', [AnalyticsController::class, 'overview'])->name('analytics');
+        Route::get('/analytics/social', [AnalyticsController::class, 'social'])->name('analytics.social');
         Route::get('/analytics/funnel', [AnalyticsController::class, 'funnel'])->name('analytics.funnel');
         Route::get('/analytics/kpi', [AnalyticsController::class, 'kpi'])->name('analytics.kpi');
         Route::get('/analytics/gateways', [AnalyticsController::class, 'gateways'])->name('analytics.gateways');

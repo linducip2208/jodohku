@@ -149,6 +149,8 @@ class JodohkuDemo extends Command
         if (! $this->option('no-community')) {
             $this->reseed('community');
             $this->seedCommunity($ids, $plan);
+            $this->reseed('social');
+            $this->seedSocialGraph($ids, $plan);
         }
         $this->reseed('safety');
         $this->seedSafety($ids);
@@ -1097,6 +1099,171 @@ class JodohkuDemo extends Command
         }
         $this->bulk('blog_posts', $blogs);
         $this->stats['events'] = count($events);
+    }
+
+    // ---------- social graph ----------
+
+    protected function seedSocialGraph(array $ids, array $plan): void
+    {
+        $now = now()->toDateTimeString();
+        $n = count($ids);
+        if ($n < 3) {
+            return;
+        }
+        // Follows: ~2 per user, deduped pairs, never self.
+        $pairs = [];
+        $target = min($n * 2, 20000);
+        $guard = 0;
+        while (count($pairs) < $target && $guard++ < $target * 10) {
+            $a = $ids[mt_rand(0, $n - 1)];
+            $b = $ids[mt_rand(0, $n - 1)];
+            if ($a !== $b) {
+                $pairs[$a.':'.$b] = ['follower_id' => $a, 'followed_id' => $b, 'created_at' => $this->ts(90), 'updated_at' => $now];
+            }
+        }
+        $this->bulk('follows', array_values($pairs));
+        $this->stats['follows'] = count($pairs);
+        // Mutes: small sample.
+        $mutes = [];
+        for ($i = 0; $i < min(200, $n); $i++) {
+            $a = $ids[mt_rand(0, $n - 1)];
+            $b = $ids[mt_rand(0, $n - 1)];
+            if ($a !== $b) {
+                $mutes[$a.':'.$b] = ['muter_id' => $a, 'muted_id' => $b, 'created_at' => $now, 'updated_at' => $now];
+            }
+        }
+        $this->bulk('mutes', array_values($mutes));
+
+        $postIds = DB::table('posts')->orderByDesc('id')->limit(3000)->pluck('id')->all();
+        $types = ['like', 'love', 'haha', 'wow', 'support', 'interesting'];
+        $reactions = [];
+        $seen = [];
+        foreach ($postIds as $pid) {
+            $k = mt_rand(0, 4);
+            for ($i = 0; $i < $k; $i++) {
+                $u = $ids[mt_rand(0, $n - 1)];
+                $t = $types[mt_rand(0, count($types) - 1)];
+                $key = $pid.':'.$u.':'.$t;
+                if (! isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $reactions[] = ['post_id' => $pid, 'user_id' => $u, 'type' => $t, 'created_at' => $this->ts(60), 'updated_at' => $now];
+                }
+            }
+            if (count($reactions) > 8000) {
+                break;
+            }
+        }
+        $this->bulk('post_reactions', $reactions);
+        $this->stats['post_reactions'] = count($reactions);
+        // Bookmarks + shares.
+        $bm = [];
+        for ($i = 0; $i < min(1500, $n * 2); $i++) {
+            $bm[$ids[mt_rand(0, $n - 1)].':'.($postIds[mt_rand(0, count($postIds) - 1)] ?? 0)] = 1;
+        }
+        $bmRows = [];
+        foreach (array_keys($bm) as $key) {
+            [$u, $p] = explode(':', $key);
+            if ((int) $p > 0) {
+                $bmRows[] = ['post_id' => (int) $p, 'user_id' => (int) $u, 'created_at' => $now, 'updated_at' => $now];
+            }
+        }
+        $this->bulk('post_bookmarks', $bmRows);
+        $shares = [];
+        for ($i = 0; $i < min(400, $n); $i++) {
+            $shares[] = ['post_id' => $postIds[mt_rand(0, count($postIds) - 1)], 'user_id' => $ids[mt_rand(0, $n - 1)], 'body' => null, 'created_at' => $this->ts(60), 'updated_at' => $now];
+        }
+        $this->bulk('post_shares', $shares);
+        foreach (array_chunk(array_unique(array_column($shares, 'post_id')), 200) as $chunk) {
+            foreach ($chunk as $pid) {
+                DB::table('posts')->where('id', $pid)->update(['shares_count' => DB::table('post_shares')->where('post_id', $pid)->count()]);
+            }
+        }
+        // Comment reactions sample.
+        $commentIds = DB::table('comments')->orderByDesc('id')->limit(2000)->pluck('id')->all();
+        $cr = [];
+        $seen = [];
+        foreach (array_slice($commentIds, 0, 800) as $cid) {
+            $u = $ids[mt_rand(0, $n - 1)];
+            $key = $cid.':'.$u;
+            if (! isset($seen[$key])) {
+                $seen[$key] = true;
+                $cr[] = ['comment_id' => $cid, 'user_id' => $u, 'type' => 'like', 'created_at' => $now, 'updated_at' => $now];
+            }
+        }
+        $this->bulk('comment_reactions', $cr);
+        // Hashtags: tag a slice of posts deterministically (bulk-safe, no observers).
+        $tagNames = ['taaruf', 'nikah', 'hijrah', 'kuliner', 'jakarta', 'keluarga'];
+        $tagIds = [];
+        foreach ($tagNames as $t) {
+            $tagIds[$t] = DB::table('hashtags')->insertGetId(['slug' => $t, 'name' => '#'.$t, 'posts_count' => 0, 'created_at' => $now, 'updated_at' => $now]);
+        }
+        $ph = [];
+        foreach (array_slice($postIds, 0, 300) as $pid) {
+            $t = $tagNames[mt_rand(0, count($tagNames) - 1)];
+            $ph[$pid.':'.$t] = ['post_id' => $pid, 'hashtag_id' => $tagIds[$t], 'created_at' => $now, 'updated_at' => $now];
+        }
+        $this->bulk('post_hashtag', array_values($ph));
+        foreach ($tagIds as $tid) {
+            DB::table('hashtags')->where('id', $tid)->update(['posts_count' => DB::table('post_hashtag')->where('hashtag_id', $tid)->count()]);
+        }
+        $this->stats['hashtags'] = count($tagIds);
+        // Mentions: append @username to a slice of posts + rows.
+        $usernames = DB::table('users')->whereIn('id', array_slice($ids, 0, 200))->pluck('username', 'id')->all();
+        $mi = 0;
+        foreach (array_slice($postIds, 300, 100) as $pid) {
+            $uid = array_rand($usernames);
+            $uname = $usernames[$uid];
+            if (! $uname || str_contains((string) $uname, "'")) {
+                continue;
+            }
+            DB::table('posts')->where('id', $pid)->update(['body' => DB::raw("CONCAT(body, ' @".$uname."')")]);
+            DB::table('mentions')->insert([
+                'mentionable_type' => 'App\\Models\\Post', 'mentionable_id' => $pid,
+                'mentioned_user_id' => $uid, 'mentioned_by' => DB::table('posts')->where('id', $pid)->value('user_id'),
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $mi++;
+        }
+        $this->stats['mentions'] = $mi;
+        // Stories (text-only, no files) + views + reactions.
+        $stories = [];
+        for ($i = 0; $i < min(300, (int) ($n / 10)); $i++) {
+            $stories[] = [
+                'user_id' => $ids[mt_rand(0, $n - 1)], 'type' => 'text',
+                'media_path' => null, 'body' => $this->pick(['Alhamdulillah hari ini!', 'Siap taaruf, bismillah.', 'Kopi darat yuk!', 'Belajar sabar setiap hari.', 'Weekend produktif.']),
+                'visibility' => 'public', 'expires_at' => now()->addHours(mt_rand(1, 23))->toDateTimeString(),
+                'views_count' => 0, 'reactions_count' => 0, 'created_at' => $this->ts(2), 'updated_at' => $now,
+            ];
+        }
+        $this->bulk('stories', $stories);
+        $storyIds = DB::table('stories')->orderByDesc('id')->limit(count($stories))->pluck('id')->all();
+        $sv = [];
+        $seen = [];
+        foreach ($storyIds as $sid) {
+            for ($i = 0, $k = mt_rand(0, 8); $i < $k; $i++) {
+                $u = $ids[mt_rand(0, $n - 1)];
+                $key = $sid.':'.$u;
+                if (! isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $sv[] = ['story_id' => $sid, 'user_id' => $u, 'created_at' => $now, 'updated_at' => $now];
+                }
+            }
+        }
+        $this->bulk('story_views', $sv);
+        foreach (array_chunk($storyIds, 200) as $chunk) {
+            foreach ($chunk as $sid) {
+                DB::table('stories')->where('id', $sid)->update(['views_count' => DB::table('story_views')->where('story_id', $sid)->count()]);
+            }
+        }
+        $this->stats['stories'] = count($stories);
+        // Group posts_count + event RSVP variety.
+        foreach (DB::table('groups')->where('slug', 'like', '%-demo-%')->pluck('id')->all() as $gid) {
+            DB::table('groups')->where('id', $gid)->update(['posts_count' => DB::table('posts')->where('group_id', $gid)->count()]);
+        }
+        $emIds = DB::table('event_members')->orderBy('id')->limit(500)->pluck('id')->all();
+        foreach (array_chunk($emIds, 100) as $ci => $chunk) {
+            DB::table('event_members')->whereIn('id', $chunk)->update(['status' => ['confirmed', 'maybe', 'declined'][$ci % 3]]);
+        }
     }
 
     // ---------- safety ----------

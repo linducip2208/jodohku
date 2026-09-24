@@ -14,17 +14,30 @@
 </div>
 <div class="jk-section jk-form"><div class="jk-h2">Privasi &amp; Pencarian</div>
 <form method="POST" action="/settings/privacy">@csrf
+@php $pp = auth()->user()?->profilePrivacy; $sel = fn ($v) => (string) ($pp?->$v?->value ?? $pp?->$v ?? 'public'); @endphp
 <label><input type="checkbox" name="hide_online" value="1"> Sembunyikan status online</label>
 <label><input type="checkbox" name="incognito" value="1"> Mode incognito (hanya terlihat oleh yang kamu like)</label>
 <label><input type="checkbox" name="hide_distance" value="1"> Sembunyikan jarak</label>
 <label><input type="checkbox" name="public_index" value="1"> Profil publik dapat di-index mesin pencari (/u/username)</label>
+<label>Siapa bisa lihat pengikutmu
+<select name="followers_visibility">@foreach(['public' => 'Semua', 'members_only' => 'Member', 'matches_only' => 'Match saja', 'private' => 'Hanya saya'] as $v => $l)<option value="{{ $v }}" @selected($sel('followers_visibility') === $v)>{{ $l }}</option>@endforeach</select></label>
+<label>Siapa bisa lihat yang kamu ikuti
+<select name="following_visibility">@foreach(['public' => 'Semua', 'members_only' => 'Member', 'matches_only' => 'Match saja', 'private' => 'Hanya saya'] as $v => $l)<option value="{{ $v }}" @selected($sel('following_visibility') === $v)>{{ $l }}</option>@endforeach</select></label>
+<label>Siapa bisa lihat postinganmu
+<select name="posts_visibility">@foreach(['public' => 'Semua', 'members_only' => 'Member', 'matches_only' => 'Match saja', 'private' => 'Hanya saya'] as $v => $l)<option value="{{ $v }}" @selected($sel('posts_visibility') === $v)>{{ $l }}</option>@endforeach</select></label>
+<label>Siapa bisa lihat story-mu
+<select name="stories_visibility">@foreach(['public' => 'Semua', 'members_only' => 'Member', 'matches_only' => 'Match saja', 'private' => 'Hanya saya'] as $v => $l)<option value="{{ $v }}" @selected($sel('stories_visibility') === $v)>{{ $l }}</option>@endforeach</select></label>
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan Privasi</button></form>
 </div>
 <div class="jk-section jk-form"><div class="jk-h2">Notifikasi</div>
+@php $np = auth()->user()?->notificationPreference; @endphp
 <form method="POST" action="/settings/notifications">@csrf
-<label><input type="checkbox" name="match" value="1" checked> Match baru</label>
-<label><input type="checkbox" name="message" value="1" checked> Pesan baru</label>
-<label><input type="checkbox" name="like" value="1" checked> Like baru</label>
+<label><input type="checkbox" name="match" value="1" @checked(($np?->push_matches ?? true))> Match baru</label>
+<label><input type="checkbox" name="message" value="1" @checked(($np?->push_messages ?? true))> Pesan baru</label>
+<label><input type="checkbox" name="like" value="1" @checked(($np?->push_likes ?? true))> Like baru</label>
+<label><input type="checkbox" name="follow" value="1" @checked(($np?->push_follows ?? true))> Pengikut baru</label>
+<label><input type="checkbox" name="comment" value="1" @checked(($np?->push_comments ?? true))> Komentar &amp; reaksi</label>
+<label><input type="checkbox" name="mention" value="1" @checked(($np?->push_mentions ?? true))> Mention</label>
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan Notifikasi</button></form>
 </div>
 <div class="jk-section"><div class="jk-h2">Langganan</div>

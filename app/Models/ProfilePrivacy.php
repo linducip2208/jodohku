@@ -16,6 +16,8 @@ class ProfilePrivacy extends Model
     protected $fillable = [
         'user_id', 'photos_visibility', 'videos_visibility', 'bio_visibility',
         'location_visibility', 'online_visibility', 'age_visibility',
+        'followers_visibility', 'following_visibility', 'posts_visibility',
+        'stories_visibility',
         'show_distance', 'show_online_status', 'allow_profile_views',
         'is_incognito', 'is_public_index',
     ];
@@ -29,6 +31,10 @@ class ProfilePrivacy extends Model
             'location_visibility' => PrivacyVisibility::class,
             'online_visibility' => PrivacyVisibility::class,
             'age_visibility' => PrivacyVisibility::class,
+            'followers_visibility' => PrivacyVisibility::class,
+            'following_visibility' => PrivacyVisibility::class,
+            'posts_visibility' => PrivacyVisibility::class,
+            'stories_visibility' => PrivacyVisibility::class,
             'show_distance' => 'boolean',
             'show_online_status' => 'boolean',
             'allow_profile_views' => 'boolean',

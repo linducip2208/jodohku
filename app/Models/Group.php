@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PrivacyVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,12 +16,13 @@ class Group extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'owner_id', 'name', 'slug', 'description', 'cover_path', 'visibility', 'members_count',
+        'owner_id', 'name', 'slug', 'description', 'cover_path', 'visibility',
+        'category', 'interests', 'rules', 'members_count', 'posts_count',
     ];
 
     protected function casts(): array
     {
-        return ['visibility' => PrivacyVisibility::class];
+        return ['visibility' => PrivacyVisibility::class, 'interests' => 'array'];
     }
 
     protected static function booted(): void
@@ -48,5 +50,28 @@ class Group extends Model
     public function hasMember(int $userId): bool
     {
         return $this->members()->where('user_id', $userId)->exists();
+    }
+
+    public function isManager(int $userId): bool
+    {
+        return $this->owner_id === $userId
+            || $this->members()->where('user_id', $userId)->whereIn('role', ['admin', 'moderator'])->exists();
+    }
+
+    /**
+     * @param  Builder<Group>  $query
+     */
+    public function scopeVisibleTo(Builder $query, ?User $viewer): Builder
+    {
+        return $query->where(function ($q) use ($viewer) {
+            $q->where('visibility', PrivacyVisibility::Public);
+            if ($viewer) {
+                $q->orWhere('visibility', PrivacyVisibility::MembersOnly);
+                $q->orWhereIn('id', GroupMember::where('user_id', $viewer->id)->select('group_id'));
+                if ($viewer->isStaff()) {
+                    $q->orWhereIn('visibility', [PrivacyVisibility::Private, PrivacyVisibility::Hidden]);
+                }
+            }
+        });
     }
 }

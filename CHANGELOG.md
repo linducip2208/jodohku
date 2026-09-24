@@ -3,6 +3,42 @@
 Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 (`APP_VERSION`).
 
+## [Unreleased] — social dating platform
+
+### Added
+- Social graph: follow/unfollow/mute + suggested people (`FollowService`,
+  tabel `follows`/`mutes`), daftar pengikut/mengikuti dengan privasi granular.
+- Reaksi 6 tipe ekstensibel tanpa migrasi (`post/comment/story_reactions`,
+  `ReactionService` + bulk `prime()` anti-N+1).
+- Komentar balasan + edit/hapus + reaksi + laporkan; bookmark/simpanan;
+  share dengan kutipan + counter; boost postingan kredit 24 jam.
+- Hashtag (`HashtagService`, trending cache) + mention `@username`
+  (`MentionService` + notifikasi) via `PostObserver`.
+- Stories 24 jam (teks/foto/video, viewers, reaksi, expiry scope tanpa
+  cron, prune +7 hari, optimasi media queue `ProcessMediaUpload`).
+- Home feed `FeedService` (candidates→filter→skor→rank→paginate) +
+  trending; Discover tabs (Orang/Postingan/Komunitas/Event/Trending).
+- `SocialDatingRecommendationService` (skor sosial terpisah, alasan aman).
+- `SearchService` + halaman `/cari` + API (orang/post/grup/event/tagar).
+- Communities: halaman grup, join/leave, posting grup, kelola peran,
+  halaman publik `/g/{slug}` + sitemap + robots.
+- Event RSVP going/maybe/declined + redirect ramah web.
+- Notifikasi social (follow/react/comment/mention/story) + preferensi
+  granular + realtime `users.{id}` + bell Livewire realtime.
+- Analytics privat via queue (`analytics_events`, tanpa IP/body/lokasi).
+- Admin `/admin/analytics/social`; privasi profil granular
+  (followers/following/posts/stories); pengaturan notifikasi baru.
+- API `/api/v1/social/*` (follow, feed, stories, react, search, groups,
+  recommendations). Seeder demo graph lengkap + reset cleanup.
+- Dokumen: `SOCIAL_DATING_PLATFORM`, `SOCIAL_ARCHITECTURE`,
+  `FEED_ARCHITECTURE`, `RECOMMENDATION_ARCHITECTURE`, `MEDIA_PIPELINE`,
+  `SCALE_PLAN`; `MODERATION.md` + README diperbarui.
+
+### Fixed
+- Premium gate JSON mentah (`/visitors`, `/who-liked`) → redirect
+  `/premium` + pesan upgrade untuk navigasi web.
+- RSVP event JSON mentah → redirect ramah web.
+
 ## [Unreleased] — social-first visual regression fix
 
 ### Fixed
@@ -18,6 +54,22 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
   navigasi web — dialihkan ke `/premium` dengan pesan upgrade.
 - Feed: foto postingan (`media_paths`) kini dirender di `social-post`.
 - Hero mobile: strip 3 kolom sempit → horizontal snap-scroll.
+
+## [Unreleased] — compact landing community preview
+
+### Fixed
+- Pratinjau komunitas vertikal 6 postingan → maks 3 kartu kompak
+  (grid 3 kolom desktop, carousel snap-scroll mobile, tanpa clipping).
+- Query preview `limit(6)` → `limit(4)`: 1 post hero + 3 kartu, hero
+  tidak tampil ganda di preview (dedup via `skip(1)`).
+- Kartu hanya avatar/nama/verified/waktu/body 100 char/likes/komentar —
+  tanpa form, komentar, atau kontrol moderasi; CTA keluar ke `/register`.
+- Header "Lihat semua →": member → `/komunitas`, tamu → `/register`
+  (`/komunitas` butuh auth; tanpa route baru).
+
+### Added
+- `CommunityPreviewTest`: maks 3 kartu, tanpa form, truncasi + dedup hero,
+  tautan tamu/member.
 
 ### Added
 - `OnlineMemberRegressionTest`: eksklusi konselor, dedup strip/grid,

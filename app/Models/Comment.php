@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Comment extends Model
@@ -32,5 +33,15 @@ class Comment extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(Comment::class, 'parent_id');
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(CommentReaction::class);
+    }
+
+    public function mentions(): MorphMany
+    {
+        return $this->morphMany(Mention::class, 'mentionable');
     }
 }

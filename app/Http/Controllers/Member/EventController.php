@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -64,8 +65,14 @@ class EventController extends Controller
             ['user_id' => $request->user()->id],
             ['status' => $status]
         );
+        try {
+            app(AnalyticsService::class)->capture($request->user(), 'event_rsvp', $event, ['value' => $status]);
+        } catch (\Throwable) {
+        }
 
-        return response()->json(['message' => "RSVP: {$status}", 'member_id' => $member->id]);
+        return $request->wantsJson()
+            ? response()->json(['message' => "RSVP: {$status}", 'member_id' => $member->id])
+            : back()->with('status', 'RSVP tersimpan: '.$status.'.');
     }
 
     public function attendees(Request $request, Event $event)
