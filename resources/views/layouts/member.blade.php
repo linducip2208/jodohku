@@ -124,6 +124,19 @@ document.addEventListener('keydown', (e) => {
         if (d && d.confirm?.open) { d.confirm.open = false; }
     } catch (_) {}
 });
+// Focus trap for open dialogs (more sheet + confirm modal).
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const openDialog = document.querySelector('.jk-modal-bg:not([style*="display: none"]) .jk-modal');
+    if (!openDialog) return;
+    const items = Array.from(openDialog.querySelectorAll('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+        .filter((el) => el.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 window.addEventListener('echo:message-received', e => { if (window.Livewire) { window.Livewire.dispatch('echo-message', e.detail); } });
 window.jkConfirm = function (title, text, action) {
     const root = document.querySelector('.jk-body');

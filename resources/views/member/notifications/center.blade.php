@@ -32,7 +32,20 @@ try {
 </div>
 <div class="jk-chat-list" role="list">
 @forelse($notes->take(30) as $n)
-<div class="jk-chat-item" role="listitem" style="{{ $n->read_at ? 'opacity:.75' : '' }}"><div class="jk-avatar sm" aria-hidden="true">{{ strtoupper(substr((string)($n->data['title'] ?? class_basename($n->type)), 0, 1)) }}</div><div style="flex:1"><strong>{{ $n->data['title'] ?? str_replace(['MatchFound', 'NewMessage', 'ChatRequestReceived', 'CourtshipStageChanged', 'ConsultationStatusChanged', 'BroadcastMessage'], ['Kecocokan baru', 'Pesan baru', 'Permintaan chat', 'Update taaruf', 'Update konsultasi', 'Pengumuman'], class_basename($n->type)) }}</strong><div class="jk-muted">{{ $n->data['body'] ?? $n->data['title'] ?? '' }}</div><div class="jk-muted" style="font-size:11px">{{ $n->created_at?->diffForHumans() }}{{ $n->read_at ? ' · dibaca' : ' · baru' }}</div></div></div>
+@php
+$nType = class_basename($n->type);
+$nData = is_array($n->data) ? $n->data : [];
+$nHref = match (true) {
+    isset($nData['conversation_id']) => '/chat/'.$nData['conversation_id'],
+    isset($nData['courtship_id']) => '/biro-jodoh/taaruf/'.$nData['courtship_id'],
+    isset($nData['consultation_id']) => '/biro-jodoh/konsultasi',
+    isset($nData['payment_id']) => '/payments',
+    isset($nData['other_user_id']) => '/profile/'.$nData['other_user_id'],
+    isset($nData['request_id']) => '/chat',
+    default => null,
+};
+@endphp
+<{{ $nHref ? 'a href="'.$nHref.'"' : 'div' }} class="jk-chat-item" role="listitem" @if($nHref) style="{{ $n->read_at ? 'opacity:.75' : '' }};text-decoration:none;color:inherit" @else style="{{ $n->read_at ? 'opacity:.75' : '' }}" @endif><div class="jk-avatar sm" aria-hidden="true">{{ strtoupper(substr((string)($n->data['title'] ?? class_basename($n->type)), 0, 1)) }}</div><div style="flex:1"><strong>{{ $n->data['title'] ?? str_replace(['MatchFound', 'NewMessage', 'ChatRequestReceived', 'CourtshipStageChanged', 'ConsultationStatusChanged', 'BroadcastMessage'], ['Kecocokan baru', 'Pesan baru', 'Permintaan chat', 'Update taaruf', 'Update konsultasi', 'Pengumuman'], class_basename($n->type)) }}</strong><div class="jk-muted">{{ $n->data['body'] ?? $n->data['title'] ?? '' }}</div><div class="jk-muted" style="font-size:11px">{{ $n->created_at?->diffForHumans() }}{{ $n->read_at ? ' · dibaca' : ' · baru' }}</div></div></{{ $nHref ? 'a' : 'div' }}>
 @empty @include('components.empty', ['icon' => 'lonceng', 'title' => 'Belum ada notifikasi', 'hint' => 'Kecocokan, like, dan pesan akan muncul di sini.']) @endforelse
 </div>
 @if(auth()->check())

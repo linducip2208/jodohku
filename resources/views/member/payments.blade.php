@@ -10,4 +10,5 @@
 <tr><td colspan="3">@include('components.empty', ['icon' => 'riwayat', 'title' => 'Belum ada pembayaran', 'hint' => 'Upgrade Premium atau beli kredit.'])</td></tr>
 @endforelse
 </tbody></table></div>
+@if(method_exists($payments, 'links'))<div style="margin-top:12px">{{ $payments->links() }}</div>@endif
 @endsection

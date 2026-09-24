@@ -39,7 +39,7 @@ class FrontendWalkthroughTest extends TestCase
         $pages = [
             '/home', '/discover', '/profile/'.$other->id, '/profile/'.$me->id,
             '/profile/edit', '/likes', '/matches', '/visitors', '/favorites',
-            '/chat', '/notifications', '/settings', '/safety', '/premium',
+            '/chat', '/notifications', '/settings', '/safety', '/premium', '/payments',
             '/credits', '/gifts', '/boosts', '/events', '/blog', '/forums',
             '/komunitas', '/biro-jodoh/taaruf', '/biro-jodoh/konselor',
             '/biro-jodoh/konsultasi', '/biro-jodoh/laporan', '/biro-jodoh/kisah',

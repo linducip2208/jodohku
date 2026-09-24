@@ -364,6 +364,11 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     });
 
     Route::get('/premium', fn () => view('member.premium.plans'))->name('member.premium');
+    Route::get('/payments', function () {
+        $payments = Auth::user()->payments()->latest('id')->paginate(20);
+
+        return view('member.payments', ['payments' => $payments]);
+    })->name('member.payments');
     Route::post('/premium/checkout', function (Request $r, PaymentService $pay) {
         $plan = $r->input('plan', 'premium_monthly');
         try {
