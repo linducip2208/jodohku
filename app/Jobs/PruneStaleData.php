@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  */
 class PruneStaleData implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     public $tries = 3;
 
@@ -55,7 +56,7 @@ class PruneStaleData implements ShouldQueue
         }
     }
 
-    /** @param callable(\Illuminate\Database\Query\Builder):void $scope */
+    /** @param callable(Builder):void $scope */
     protected function chunkDelete(string $table, callable $scope): void
     {
         try {

@@ -6,6 +6,7 @@ use App\Models\Boost;
 use App\Models\User;
 use App\Pagination\ScoredCursorPaginator;
 use Illuminate\Pagination\Cursor;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class DiscoveryService
@@ -184,7 +185,7 @@ class DiscoveryService
      * stepwise, never narrows; excludes already-seen ids; scores via the
      * same MatchScore read-path. Returns scored users (may be empty).
      */
-    protected function backfillByRadius(User $user, array $filters, string $sort, int $need, array $seenIds): \Illuminate\Support\Collection
+    protected function backfillByRadius(User $user, array $filters, string $sort, int $need, array $seenIds): Collection
     {
         $baseKm = max(1, (int) $filters['max_distance_km']);
         $capKm = max($baseKm * 3, (int) config('matchmaking.hard_filters.max_distance_default_km', 200), 50);

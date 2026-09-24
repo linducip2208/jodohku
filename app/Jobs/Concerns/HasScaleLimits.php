@@ -2,6 +2,8 @@
 
 namespace App\Jobs\Concerns;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Scale defaults for every queued job (SCALE-AUDIT P0).
  *
@@ -23,7 +25,7 @@ trait HasScaleLimits
     public function failed(\Throwable $exception): void
     {
         try {
-            \Illuminate\Support\Facades\Log::warning('Job failed: '.static::class, [
+            Log::warning('Job failed: '.static::class, [
                 'error' => substr($exception->getMessage(), 0, 500),
             ]);
         } catch (\Throwable) {

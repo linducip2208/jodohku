@@ -6,6 +6,7 @@ use App\Models\AiModel;
 use App\Models\AiProvider;
 use App\Models\AiUsageLog;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class AiCostService
 {
@@ -22,7 +23,7 @@ class AiCostService
         $key = 'ai:spend:'.now()->format('Ym');
 
         try {
-            return (float) \Illuminate\Support\Facades\Cache::remember($key, $ttl, fn () => (float) AiUsageLog::where('created_at', '>=', now()->startOfMonth())->sum('cost'));
+            return (float) Cache::remember($key, $ttl, fn () => (float) AiUsageLog::where('created_at', '>=', now()->startOfMonth())->sum('cost'));
         } catch (\Throwable) {
             return 0.0;
         }
@@ -38,6 +39,7 @@ class AiCostService
 
         return $this->monthlySpend() >= $cap;
     }
+
     public function log(?User $user, string $providerCode, string $modelCode, string $purpose, int $inputTokens, int $outputTokens, ?int $conversationId = null, ?int $messageId = null, ?int $latencyMs = null, bool $success = true, ?string $error = null): AiUsageLog
     {
         $provider = AiProvider::where('code', $providerCode)->first();

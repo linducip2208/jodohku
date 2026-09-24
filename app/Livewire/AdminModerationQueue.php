@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\ModerationQueue;
 use App\Services\AuditService;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class AdminModerationQueue extends Component
@@ -64,7 +65,7 @@ class AdminModerationQueue extends Component
         }
         $done = 0;
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($ids, $action, $audit, &$done) {
+            DB::transaction(function () use ($ids, $action, $audit, &$done) {
                 foreach (ModerationQueue::whereIn('id', $ids)->get() as $item) {
                     $item->update(['status' => $action, 'reviewed_at' => now(), 'reviewer_id' => auth()->id()]);
                     $audit->log('moderation.'.$action, auth()->user(), $item);

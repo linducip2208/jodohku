@@ -14,10 +14,14 @@ use App\Models\ProfileView;
 use App\Models\User;
 use App\Services\AiService;
 use App\Services\DiscoveryService;
+use App\Services\MatchingEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
+use Laravel\Scout\EngineManager;
+use Laravel\Scout\Engines\NullEngine;
 use Tests\TestCase;
 
 class ScaleHardeningTest extends TestCase
@@ -91,13 +95,13 @@ class ScaleHardeningTest extends TestCase
     public function test_prune_stale_data_deletes_old_keeps_fresh(): void
     {
         $user = User::factory()->create();
-        $oldId = (string) \Illuminate\Support\Str::uuid();
+        $oldId = (string) Str::uuid();
         DB::table('notifications')->insert([
             'id' => $oldId, 'type' => 'x', 'notifiable_type' => User::class,
             'notifiable_id' => $user->id, 'data' => '{}',
             'read_at' => now()->subDays(100), 'created_at' => now()->subDays(100), 'updated_at' => now()->subDays(100),
         ]);
-        $freshId = (string) \Illuminate\Support\Str::uuid();
+        $freshId = (string) Str::uuid();
         DB::table('notifications')->insert([
             'id' => $freshId, 'type' => 'x', 'notifiable_type' => User::class,
             'notifiable_id' => $user->id, 'data' => '{}',
@@ -106,7 +110,7 @@ class ScaleHardeningTest extends TestCase
         AuditLog::create(['actor_id' => $user->id, 'action' => 'fresh']);
         DB::table('audit_logs')->insert(['actor_id' => $user->id, 'action' => 'old', 'created_at' => now()->subDays(200), 'updated_at' => now()->subDays(200)]);
         $other = User::factory()->create();
-        [$c1, $c2] = \App\Services\MatchingEngine::canonical($user->id, $other->id);
+        [$c1, $c2] = MatchingEngine::canonical($user->id, $other->id);
         // Observer warming may already have scored this pair (sync queue in
         // tests) — upsert the stale row instead of assuming a clean table.
         MatchScore::updateOrCreate(['user_id' => $c1, 'candidate_id' => $c2], ['total_score' => 10, 'computed_at' => now()->subDays(100)]);
@@ -193,8 +197,8 @@ class ScaleHardeningTest extends TestCase
     {
         // SCOUT_DRIVER=null env string converts to PHP null; Scout maps that
         // to NullEngine (verified in EngineManager::getDefaultDriver).
-        $engine = app(\Laravel\Scout\EngineManager::class)->engine();
-        $this->assertInstanceOf(\Laravel\Scout\Engines\NullEngine::class, $engine);
+        $engine = app(EngineManager::class)->engine();
+        $this->assertInstanceOf(NullEngine::class, $engine);
 
         $user = User::factory()->create();
         $doc = $user->toSearchableArray();
