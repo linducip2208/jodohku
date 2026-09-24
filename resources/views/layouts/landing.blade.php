@@ -6,7 +6,7 @@
 <x-seo :schemas="$seoSchemas ?? []" />
 <link rel="icon" href="/favicon.ico">
 @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-@vite(['resources/css/app.css', 'resources/js/app.js'])
+@vite(['resources/css/app.css', 'resources/css/member.css', 'resources/js/app.js'])
 @endif
 <style>
 body{font-family:'Instrument Sans',system-ui,sans-serif;margin:0;color:#18181b;background:#fff}
@@ -30,6 +30,7 @@ body{font-family:'Instrument Sans',system-ui,sans-serif;margin:0;color:#18181b;b
 .ld-faq details{border:1px solid #e4e4e7;border-radius:14px;padding:14px 16px;margin-bottom:10px;background:#fff}
 .ld-footer{background:#09090b;color:#a1a1aa;padding:48px 0;font-size:14px}.ld-footer a{color:#d4d4d8;text-decoration:none}
 .ld-phones{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:899px){.ld-phones{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(200px,72%);overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory}.ld-phones>*{scroll-snap-align:start}}
 .ld-phone{border-radius:22px;aspect-ratio:9/16;background:linear-gradient(135deg,#f43f5e,#8b5cf6);padding:3px}
 .ld-phone>div{background:#fff;border-radius:19px;height:100%;padding:14px;font-size:12px}
 .ld-price{font-size:34px;font-weight:800}

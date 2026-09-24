@@ -30,6 +30,15 @@ $mine = auth()->id() && $author && (int) $author->id === (int) auth()->id();
 @endif
 </div>
 <p style="margin:10px 0 0">{{ $post->body }}</p>
+@php $media = collect((array) ($post->media_paths ?? []))->filter(fn ($m) => is_string($m) && $m !== '')->take(2)->values(); @endphp
+@if($media->isNotEmpty())
+<div style="display:grid;gap:6px;margin-top:10px;grid-template-columns:repeat({{ $media->count() > 1 ? 2 : 1 }},minmax(0,1fr))">
+@foreach($media as $m)
+@php $src = \Illuminate\Support\Str::startsWith($m, ['http://', 'https://']) ? $m : asset('storage/'.ltrim($m, '/')); @endphp
+<img src="{{ $src }}" alt="Foto postingan {{ $name }}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block" onerror="this.remove()">
+@endforeach
+</div>
+@endif
 <div style="display:flex;gap:4px;align-items:center;margin-top:10px">
 <form method="POST" action="/komunitas/{{ $post->id }}/like" style="display:inline">@csrf<button class="jk-pill" type="submit" aria-label="Suka">{{ $liked ? '♥' : '♡' }} {{ $post->likes_count }}</button></form>
 <span class="jk-muted" style="font-size:12px">{{ $post->comments_count }} komentar</span>

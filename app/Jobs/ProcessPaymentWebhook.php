@@ -8,7 +8,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class ProcessPaymentWebhook implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     /** Money must never be lost: more attempts, long backoff for gateway drift. */
     public $tries = 5;

@@ -5,7 +5,7 @@
 @include('landing.partials.online-now')
 @include('landing.partials.feed-preview')
 @include('landing.partials.search')
-@include('landing.partials.demo-members')
+@include('landing.partials.demo-members', ['excludeIds' => ($onlineNow ?? collect())->pluck('id')->all()])
 @include('landing.partials.how')
 @include('landing.partials.features')
 @include('landing.partials.stories')

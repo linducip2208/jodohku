@@ -119,9 +119,6 @@ $pct = (int) (($currentIdx + 1) / max(1, count($stages)) * 100);
 </section>
 @endif
 
-<section class="jk-section" aria-labelledby="h-maylike">
-<h2 class="jk-h2" id="h-maylike">Orang untukmu</h2>
-
 @if($events->isNotEmpty())
 <section class="jk-section" aria-labelledby="h-events">
 <h2 class="jk-h2" id="h-events">Acara terdekat</h2>

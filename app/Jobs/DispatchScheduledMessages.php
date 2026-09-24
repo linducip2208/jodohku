@@ -8,7 +8,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class DispatchScheduledMessages implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     public $tries = 3;
 

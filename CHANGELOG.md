@@ -3,6 +3,26 @@
 Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 (`APP_VERSION`).
 
+## [Unreleased] — social-first visual regression fix
+
+### Fixed
+- Landing tanpa style: `member.css` tidak dimuat di layout landing sehingga
+  komponen `jk-*` (avatar strip, skeleton) tampil polos — sekarang dimuat.
+- Konselor tampil sebagai prospek dating: `User::counselor()` + pengecualian
+  di pool retrieval kanonisik, `PersonalizationService`, dan semua query
+  showcase landing (dedup antar-seksi via `user_id`).
+- Pratinjau feed publik: penulis incognito dikecualikan.
+- Hero memakai nama hardcode (Ayu/Rizky) — diganti data demo nyata.
+- Duplikat section "Orang untukmu" + id ganda di `/home`.
+- Premium gate (`/visitors`, `/who-liked`) mengembalikan JSON mentah saat
+  navigasi web — dialihkan ke `/premium` dengan pesan upgrade.
+- Feed: foto postingan (`media_paths`) kini dirender di `social-post`.
+- Hero mobile: strip 3 kolom sempit → horizontal snap-scroll.
+
+### Added
+- `OnlineMemberRegressionTest`: eksklusi konselor, dedup strip/grid,
+  CTA-scope tamu, privasi pratinjau, pool retrieval, premium redirect.
+
 ## [Unreleased] — scale hardening P0–P3
 
 ### Added

@@ -99,6 +99,11 @@ class MatchController extends Controller
     {
         $user = $request->user();
         if (! $user->isPremium()) {
+            // Web navigation gets a friendly upgrade redirect, not a raw JSON blob.
+            if (! $request->wantsJson()) {
+                return redirect('/premium')->with('status', 'Who Liked You adalah fitur Premium — upgrade untuk melihat siapa yang menyukaimu.');
+            }
+
             return response()->json(['message' => 'Who Liked You is a Premium feature.', 'upgrade' => true], 403);
         }
         $likes = Like::with('liker.profile')
@@ -116,6 +121,11 @@ class MatchController extends Controller
     {
         $user = $request->user();
         if (! $user->isPremium()) {
+            // Web navigation gets a friendly upgrade redirect, not a raw JSON blob.
+            if (! $request->wantsJson()) {
+                return redirect('/premium')->with('status', 'Pengunjung profil adalah fitur Premium — upgrade untuk melihat siapa yang mengunjungimu.');
+            }
+
             return response()->json(['message' => 'Visitors is a Premium feature.', 'upgrade' => true], 403);
         }
         $views = ProfileView::with('viewer.profile')

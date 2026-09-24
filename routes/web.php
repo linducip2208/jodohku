@@ -61,8 +61,19 @@ Route::get('/', function () {
             'matches' => UserMatch::where('is_active', true)->count(),
         ]);
         // Public demo showcase ONLY: demo-marked, active, real profile,
-        // approved public photos. Never real members, never private photos.
+        // approved public photos. Never real members, never private photos,
+        // never counselors/staff (dating context only — counselors live in
+        // the consultation context, see BiroJodohController).
+        $notCounselor = fn ($q) => $q->whereDoesntHave('counselor');
+        // Online strip first: demo grid below skips these ids so no face
+        // appears twice on one landing view (dedup by user_id, never names).
+        $onlineNow = User::active()->where('is_demo', true)->where('is_online', true)->whereHas('profile')
+            ->where(fn ($q) => $notCounselor($q))
+            ->with(['profile'])->orderByDesc('last_active_at')->limit(10)->get();
+        $onlineIds = $onlineNow->pluck('id')->all();
         $demoMembers = User::active()->where('is_demo', true)->whereHas('profile')
+            ->where(fn ($q) => $notCounselor($q))
+            ->when($onlineIds, fn ($q) => $q->whereNotIn('users.id', $onlineIds))
             ->with(['profile', 'interests' => fn ($q) => $q->limit(4),
                 'photos' => fn ($q) => $q->where('status', 'approved')->where('is_private', false)->ordered()])
             ->inRandomOrder()->limit(24)->get()
@@ -74,9 +85,11 @@ Route::get('/', function () {
         // NOTE: never cache Eloquent models (repo rule — serializing drivers
         // can unserialize to __PHP_Incomplete_Class); these are 2-3 cheap
         // indexed queries. Only plain scalars stay cached (see stats above).
-        $onlineNow = User::active()->where('is_demo', true)->where('is_online', true)->whereHas('profile')
-            ->with(['profile'])->orderByDesc('last_active_at')->limit(10)->get();
+        // No duplicate faces across sections: demo grid skips online-strip ids.
         $feedPosts = Post::where('is_hidden', false)
+            ->whereHas('user', fn ($q) => $q->active()
+                ->where(fn ($qq) => $notCounselor($qq))
+                ->whereDoesntHave('profilePrivacy', fn ($qq) => $qq->where('is_incognito', true)))
             ->with(['user:id,display_name,name,avatar_path,is_verified'])->withCount(['comments', 'likes'])
             ->latest('id')->limit(6)->get();
     } catch (Throwable) {

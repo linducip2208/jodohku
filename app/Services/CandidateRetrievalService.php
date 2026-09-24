@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
  * historically maintained two near-identical filter stacks; both now
  * delegate here. Semantics preserved exactly:
  *
- * - Base: active users, never self.
+ * - Base: active users, never self, never counselors (consultation
+ *   context only — see BiroJodohController).
  * - Hard filters pushed into indexed queries (gender/city/age/verified/
  *   online/premium/photo/keyword/goal/height/marital/religion/distance).
  * - Privacy: blocked (both directions) always excluded; incognito hidden
@@ -41,6 +42,11 @@ class CandidateRetrievalService
         $defaults = (bool) ($options['preferenceDefaults'] ?? false);
 
         $query = User::query()->active()->where('id', '!=', $user->id);
+
+        // Counselors are never dating candidates: they live in the
+        // consultation context (BiroJodohController), not discovery.
+        // Centralized here so discover + dailyPicks + matchmaking agree.
+        $query->whereDoesntHave('counselor');
 
         $this->applyAttributeFilters($query, $user, $filters, $defaults);
         $this->applyAgeFilters($query, $user, $filters, $defaults);

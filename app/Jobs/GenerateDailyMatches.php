@@ -9,7 +9,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class GenerateDailyMatches implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     /** Heavy nightly batch: few long attempts, not many quick ones. */
     public $tries = 2;

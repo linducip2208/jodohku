@@ -9,6 +9,8 @@ try {
         ->where('is_demo', true)
         ->where('status', 'active')
         ->whereHas('profile')
+        ->whereDoesntHave('counselor')
+        ->when(! empty($excludeIds ?? []), fn ($q) => $q->whereNotIn('users.id', (array) $excludeIds))
         ->with([
             'profile',
             'photos' => fn ($q) => $q->ordered()

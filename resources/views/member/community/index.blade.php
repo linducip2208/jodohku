@@ -2,7 +2,12 @@
 @section('title', 'Komunitas — Jodohku')
 @section('content')
 <h1 class="jk-h1">Komunitas</h1>
-<p class="jk-muted">Cerita dan diskusi member — dimoderasi. <a href="/forums">Forum diskusi</a> · <a href="/events">Events</a></p>
+<p class="jk-muted">Cerita dan diskusi member — dimoderasi.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px" aria-label="Jelajahi komunitas">
+<a class="jk-pill" href="/forums">💬 Forum diskusi</a>
+<a class="jk-pill" href="/events">📅 Events</a>
+<a class="jk-pill" href="/blog">📖 Blog taaruf</a>
+</div>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 <div class="jk-section jk-form" id="composer">
 <form method="POST" action="/komunitas">@csrf

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class RecalculateMatches implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     public $tries = 2;
 

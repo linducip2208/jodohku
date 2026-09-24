@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ExpireCredits implements ShouldQueue
 {
-    use Queueable, Concerns\HasScaleLimits;
+    use Concerns\HasScaleLimits, Queueable;
 
     public $tries = 3;
 
