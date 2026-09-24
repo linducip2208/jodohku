@@ -4,7 +4,7 @@
 <h1 class="jk-h1">Komunitas</h1>
 <p class="jk-muted">Cerita dan diskusi member — dimoderasi. <a href="/forums">Forum diskusi</a> · <a href="/events">Events</a></p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
-<div class="jk-section jk-form">
+<div class="jk-section jk-form" id="composer">
 <form method="POST" action="/komunitas">@csrf
 <label for="post-body">Bagikan sesuatu…</label>
 <textarea id="post-body" name="body" rows="3" maxlength="1000" required placeholder="Cerita taaruf, tips, atau pertanyaan untuk komunitas…"></textarea>

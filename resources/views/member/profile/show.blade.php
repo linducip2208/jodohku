@@ -48,6 +48,14 @@ if (! $bioVisible) {
     $bioVisible = $bv === 'public' || auth()->check() && $bv === 'members_only' || (auth()->user()?->isStaff() ?? false);
 }
 @endphp
+<div x-data="{ ptab: 'about' }">
+<div class="jk-tabs" role="tablist" aria-label="Bagian profil" style="margin-top:12px">
+@foreach(['posts' => 'Postingan', 'photos' => 'Foto', 'about' => 'Tentang', 'match' => 'Cocok'] as $k => $label)
+<button class="jk-tab" :class="{ 'active': ptab === '{{ $k }}' }" role="tab" :aria-selected="ptab === '{{ $k }}'" @click="ptab = '{{ $k }}'">{{ $label }}</button>
+@endforeach
+</div>
+
+<div x-show="ptab === 'about'" role="tabpanel">
 @if($profile?->bio && $bioVisible)
 <section class="jk-section" aria-labelledby="p-about"><h2 class="jk-h2" id="p-about">Tentang</h2><p style="margin:0">{{ $profile->bio }}</p></section>
 @endif
@@ -66,18 +74,26 @@ if (! $bioVisible) {
 <div class="jk-tags">@foreach($profileUser->interests->take(10) as $in)<span class="jk-tag">{{ $in->name }}</span>@endforeach</div>
 @endif
 </section>
+</div>
 
+<div x-show="ptab === 'match'" role="tabpanel" x-cloak>
 @include('components.why-match', ['why' => $why ?? null])
 @if(!empty($why))
 <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="jk-pill" href="/biro-jodoh/laporan">Lihat laporan kompatibilitas</a><a class="jk-pill" href="/biro-jodoh/taaruf">Topik taaruf</a></div>
 @endif
+</div>
 
+<div x-show="ptab === 'photos'" role="tabpanel" x-cloak>
 @if($photos->count())
 <section class="jk-section" aria-labelledby="p-photos"><h2 class="jk-h2" id="p-photos">Foto ({{ $photos->count() }})</h2>
 <div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">@foreach($photos as $ph)<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">@if(!empty($ph->path))<img src="{{ asset('storage/'.$ph->path) }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy" onerror="this.remove()">@elseif(!empty($ph->url))<img src="{{ $ph->url }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy" onerror="this.remove()">@else<div class="jk-photo-fallback">Foto</div>@endif</div></div>@endforeach</div>
 </section>
+@else
+@include('components.empty', ['icon' => 'foto', 'title' => 'Belum ada foto', 'hint' => $isSelf ? 'Unggah foto pertamamu di Edit Profil.' : 'Member ini belum mengunggah foto.'])
 @endif
+</div>
 
+<div x-show="ptab === 'posts'" role="tabpanel" x-cloak>
 @php
 $profilePosts = collect();
 try {
@@ -93,7 +109,11 @@ try {
 @endforeach
 <a class="jk-pill" href="/komunitas">Lihat komunitas</a>
 </section>
+@else
+@include('components.empty', ['icon' => 'chat', 'title' => 'Belum ada postingan', 'hint' => $isSelf ? 'Bagikan postingan pertamamu di Komunitas.' : 'Member ini belum memposting.'])
 @endif
+</div>
+</div>
 
 @if(! $isSelf)
 <section class="jk-section" aria-labelledby="p-safe"><h2 class="jk-h2" id="p-safe">Keamanan</h2>

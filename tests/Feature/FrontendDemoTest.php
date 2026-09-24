@@ -7,6 +7,7 @@ use App\Models\Courtship;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\ChatService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -50,6 +51,42 @@ class FrontendDemoTest extends TestCase
         $this->assertStringNotContainsString('Rp49rb', $html);
         $this->assertStringNotContainsString('2,4 jt+', $html);
         $this->assertStringNotContainsString('380rb', $html);
+    }
+
+    public function test_landing_product_feed_and_online_strip(): void
+    {
+        $online = User::factory()->create(['display_name' => 'OnlineDemo', 'is_demo' => true, 'is_online' => true]);
+        $online->profile()->updateOrCreate([], ['headline' => 'Online']);
+        $author = User::factory()->create(['display_name' => 'FeedAuthor', 'is_demo' => true]);
+        Post::create(['user_id' => $author->id, 'body' => 'Postingan publik unikfeed123']);
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('Online sekarang', $html);
+        $this->assertStringContainsString('OnlineDemo', $html);
+        $this->assertStringContainsString('Ramai di komunitas', $html);
+        $this->assertStringContainsString('unikfeed123', $html);
+        $this->assertStringNotContainsString($author->email, $html);
+    }
+
+    public function test_profile_has_social_tabs(): void
+    {
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+        $html = $this->actingAs($me)->get('/profile/'.$other->id)->assertOk()->getContent();
+        foreach (['Postingan', 'Foto', 'Tentang', 'Cocok'] as $tab) {
+            $this->assertStringContainsString($tab, $html);
+        }
+    }
+
+    public function test_chat_show_renders_two_pane(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $chat = app(ChatService::class);
+        $conv = $chat->findOrCreateDirect($a->fresh(), $b->fresh());
+        $html = $this->actingAs($a)->get('/chat/'.$conv->id)->assertOk()->getContent();
+        $this->assertStringContainsString('jk-chat-layout', $html);
+        $this->assertStringContainsString('Daftar percakapan', $html);
     }
 
     public function test_community_feed_privacy_and_moderation(): void

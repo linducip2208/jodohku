@@ -23,6 +23,7 @@ use App\Models\ContactMessage;
 use App\Models\Conversation;
 use App\Models\Event;
 use App\Models\MembershipPlan;
+use App\Models\Post;
 use App\Models\Report;
 use App\Models\SuccessStory;
 use App\Models\User;
@@ -51,6 +52,8 @@ Route::get('/', function () {
     $demoMembers = collect();
     $stories = collect();
     $plans = collect();
+    $onlineNow = collect();
+    $feedPosts = collect();
     try {
         $stats = Cache::remember('landing:stats', 3600, fn () => [
             'members' => User::active()->count(),
@@ -67,10 +70,19 @@ Route::get('/', function () {
             ->take(12)->values();
         $stories = SuccessStory::where('status', 'published')->latest('published_at')->latest('id')->limit(3)->get();
         $plans = MembershipPlan::where('is_active', true)->orderBy('sort_order')->get();
+        // Product-first landing: real online demo people + public feed preview.
+        // NOTE: never cache Eloquent models (repo rule — serializing drivers
+        // can unserialize to __PHP_Incomplete_Class); these are 2-3 cheap
+        // indexed queries. Only plain scalars stay cached (see stats above).
+        $onlineNow = User::active()->where('is_demo', true)->where('is_online', true)->whereHas('profile')
+            ->with(['profile'])->orderByDesc('last_active_at')->limit(10)->get();
+        $feedPosts = Post::where('is_hidden', false)
+            ->with(['user:id,display_name,name,avatar_path,is_verified'])->withCount(['comments', 'likes'])
+            ->latest('id')->limit(6)->get();
     } catch (Throwable) {
     }
 
-    return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans'));
+    return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans', 'onlineNow', 'feedPosts'));
 })->name('landing');
 
 /* ---------- Health (public, no secrets/internals) ---------- */

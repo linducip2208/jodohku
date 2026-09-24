@@ -125,6 +125,14 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .jk-pill,.jk-tab,.jk-navlink,.jk-side-link{transition:background-color .15s ease,color .15s ease}
 .jk-card{transition:box-shadow .15s ease}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* ---- messenger two-pane (desktop list + conversation) ---- */
+.jk-chat-layout{display:grid;grid-template-columns:1fr;gap:14px}
+.jk-chat-back{margin-bottom:8px}
+@media(min-width:1024px){
+.jk-chat-layout{grid-template-columns:300px minmax(0,1fr);align-items:start}
+.jk-chat-list-pane{position:sticky;top:76px;max-height:calc(100vh - 160px);overflow-y:auto}
+.jk-chat-back{display:none}
+}
 /* ---- dark mode: manual toggle (html[data-theme]) wins, OS preference is fallback ---- */
 html[data-theme="dark"]{--jk-ink:#fafafa;--jk-mute:#a1a1aa;--jk-line:#27272a;--jk-bg:#09090b;--jk-card:#18181b}
 html[data-theme="dark"] body.jk-body{background:var(--jk-bg);color:var(--jk-ink)}

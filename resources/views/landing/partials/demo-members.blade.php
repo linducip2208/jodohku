@@ -1,10 +1,11 @@
 @php
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 
 $demoMembers = collect();
 try {
-    $demoMembers = Cache::remember('landing:demo-members', 3600, fn () => User::query()
+    // Live query (never cache Eloquent models — repo rule: serializing
+    // cache drivers can unserialize to __PHP_Incomplete_Class).
+    $demoMembers = User::query()
         ->where('is_demo', true)
         ->where('status', 'active')
         ->whereHas('profile')
@@ -19,7 +20,7 @@ try {
         ->orderByDesc('is_premium')
         ->orderByDesc('last_active_at')
         ->limit(12)
-        ->get());
+        ->get();
 } catch (\Throwable) {
     $demoMembers = collect();
 }

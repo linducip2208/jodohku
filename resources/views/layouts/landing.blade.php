@@ -39,7 +39,7 @@ body{font-family:'Instrument Sans',system-ui,sans-serif;margin:0;color:#18181b;b
 <header class="ld-nav"><div class="ld-wrap ld-nav-inner">
 <a class="ld-logo" href="/">Jodoh<span>ku</span></a>
 <nav class="ld-links">
-<a href="#cara">Cara Kerja</a><a href="#fitur">Fitur</a><a href="#cerita">Cerita Sukses</a><a href="#membership">Membership</a><a href="#faq">FAQ</a>
+<a href="/">Home</a><a href="/biro-jodoh">Discover</a><a href="/taaruf">Taaruf</a><a href="/panduan/cara-taaruf">Panduan</a>
 </nav>
 <div>
 @if(auth()->check())
@@ -54,7 +54,7 @@ body{font-family:'Instrument Sans',system-ui,sans-serif;margin:0;color:#18181b;b
 <footer class="ld-footer"><div class="ld-wrap">
 <div class="ld-grid4">
 <div><div style="color:#fff;font-weight:800;font-size:18px;margin-bottom:10px">Jodohku</div><p>Temukan pasangan serasi dengan matching cerdas, chat realtime, dan komunitas aman Indonesia.</p></div>
-<div><div style="color:#fff;font-weight:700;margin-bottom:10px">Produk</div><div><a href="/discover">Discover</a></div><div><a href="/premium">Premium</a></div><div><a href="/events">Events</a></div><div><a href="/gifts">Gifts</a></div></div>
+<div><div style="color:#fff;font-weight:700;margin-bottom:10px">Produk</div><div><a href="/biro-jodoh">Biro Jodoh</a></div><div><a href="/taaruf">Smart Taaruf</a></div><div><a href="/panduan/cara-taaruf">Panduan</a></div><div><a href="#membership">Membership</a></div></div>
 <div><div style="color:#fff;font-weight:700;margin-bottom:10px">Bantuan</div><div><a href="#faq">FAQ</a></div><div><a href="/safety">Pusat Keamanan</a></div><div><a href="/verification">Verifikasi</a></div><div><a href="/contact">Kontak</a></div></div>
 <div><div style="color:#fff;font-weight:700;margin-bottom:10px">Legal</div><div><a href="/terms">Syarat &amp; Ketentuan</a></div><div><a href="/privacy">Privasi</a></div><div><a href="/guidelines">Panduan Komunitas</a></div></div>
 </div>
