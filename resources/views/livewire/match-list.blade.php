@@ -1,4 +1,8 @@
 <div>
+<div wire:loading aria-live="polite" aria-label="Memuat matches">
+<div class="jk-grid">@for($i = 0; $i < 4; $i++)<div><div class="jk-skeleton" style="height:180px;margin-bottom:8px"></div><div class="jk-skeleton" style="height:14px;width:60%"></div></div>@endfor</div>
+</div>
+<div wire:loading.remove>
 @if($matches->isEmpty())
 @include('components.empty', ['icon' => 'hati', 'title' => 'Belum ada match', 'hint' => 'Saling like untuk match. Coba Discover!'])
 @else
@@ -20,4 +24,5 @@
 @endforeach
 </div>
 @endif
+</div>
 </div>

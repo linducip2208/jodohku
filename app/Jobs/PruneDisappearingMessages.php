@@ -8,7 +8,11 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class PruneDisappearingMessages implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 600;
 
     public function handle(ChatService $chat): void
     {

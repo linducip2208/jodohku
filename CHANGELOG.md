@@ -3,6 +3,38 @@
 Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 (`APP_VERSION`).
 
+## [Unreleased] — scale hardening P0–P3
+
+### Added
+- Discovery: `CandidateRetrievalService` (satu pool kanonisik untuk
+  `DiscoveryService` + `MatchingEngine`), indeks skala
+  (`notifications` morph+time, `matches` per-side active, `users` geo/flags,
+  `audit_logs` time), backfill radius 2x/3x untuk kota tipis.
+- Queue: `HasScaleLimits` di 20 jobs (`tries/timeout/backoff`; payment 5x,
+  batch harian 2x/30 mnt), `failed()` logging + runbook di `DEPLOY.md`.
+- AI: monthly spend cap (`AI_MONTHLY_CAP_USD`) + kill switch
+  (`AI_KILL_SWITCH`) enforced sebelum provider call.
+- Retention: `PruneStaleData` harian (notif read 90d/semua 365d, audit 180d,
+  failed 30d, AI log 365d, profile views 180d, match_scores stale 90d,
+  jobs stuck 7d) + `CleanupOldSessions` tetap 03:00.
+- Profile views: `ProfileViewed` → `RecordProfileView` async, max 1/hari/
+  pasangan, hormati `allow_profile_views`, tanpa tulis sinkron.
+- Warming: `UserRegistered` → `RecalculateMatches` async (cold start).
+- Cache: analytics admin 60–300s per endpoint, sitemap sections 1h
+  (`seo:sitemap:{section}`), PSEO counts 1h tetap + `Cache-Control: public`.
+- Redis produksi: `QUEUE/CACHE/SESSION` via env + verifikasi di `DEPLOY.md`.
+- P3: skeleton loading (`jk-skeleton` + `wire:loading`) di discover, matches,
+  chat inbox, visitors; bulk moderasi admin (`bulk-decide` ≤100 item +
+  checkbox di antrean, kolom `reviewer_id` baru).
+
+### Fixed
+- Queue worker poisoning (retry selamanya) via batas eksplisit; timeout
+  pekerjaan berat tidak lagi menahan worker.
+- Analytics admin tanpa cache (COUNT mentah per load) → cache ber-TTL.
+- Dead read path `profile_views` (event tanpa writer) → writer throttled.
+- Thin-pool kota kecil (hasil kosong) → backfill radius.
+- `reviewer_id` moderasi tidak tersimpan (kolom belum ada) → migrasi aditif.
+
 ## [1.4.0] — 2026-09-23
 
 ### Added

@@ -5,8 +5,12 @@ namespace App\Providers;
 use App\AI\AiProviderManager;
 use App\Enums\UserRole;
 use App\Events\MutualMatchCreated;
+use App\Events\ProfileViewed;
+use App\Events\UserRegistered;
 use App\Listeners\FireVirtualTrigger;
 use App\Listeners\LogAudit;
+use App\Listeners\RecordProfileViewListener;
+use App\Listeners\WarmNewUserMatches;
 use App\Listeners\SendMatchNotification;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -73,6 +77,9 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(FireVirtualTrigger::class);
         Event::subscribe(LogAudit::class);
         Event::listen(MutualMatchCreated::class, SendMatchNotification::class);
+        // Scale P1: throttled profile-view writer + register-time warming.
+        Event::listen(ProfileViewed::class, RecordProfileViewListener::class);
+        Event::listen(UserRegistered::class, WarmNewUserMatches::class);
 
         // Homepage GEO schemas (WebSite + Organization + visible FAQPage).
         View::composer('welcome', function ($view) {

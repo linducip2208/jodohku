@@ -34,6 +34,23 @@ return [
         'per_user_per_day' => env('AI_RATE_PER_DAY', 200),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Global spend cap + kill switch (SCALE-AUDIT P0)
+    |--------------------------------------------------------------------------
+    | Per-user quotas stop abuse by one member; they do NOT stop a global
+    | cost blowout (bug loop, virtual-member storm). The monthly cap is
+    | enforced in AiService before any provider call; the kill switch
+    | disables all AI instantly via env without a deploy.
+    */
+    'spending' => [
+        'monthly_cap_usd' => (float) env('AI_MONTHLY_CAP_USD', 50),
+        'kill_switch' => env('AI_KILL_SWITCH', false),
+        // Spend cache TTL (seconds): caps are enforced on cached totals so
+        // every chat() doesn't run a SUM over ai_usage_logs.
+        'cache_ttl' => (int) env('AI_SPEND_CACHE_TTL', 300),
+    ],
+
     'guardrails' => [
         'refuse_secrets' => true,
         'grounded_only' => true,

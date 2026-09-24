@@ -9,6 +9,35 @@ use App\Models\User;
 
 class AiCostService
 {
+    /** Global kill switch: env AI_KILL_SWITCH=true disables all AI instantly. */
+    public function isKilled(): bool
+    {
+        return filter_var(config('ai.spending.kill_switch', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** Total USD spent since the start of the current month (cached 5 min). */
+    public function monthlySpend(): float
+    {
+        $ttl = max(60, (int) config('ai.spending.cache_ttl', 300));
+        $key = 'ai:spend:'.now()->format('Ym');
+
+        try {
+            return (float) \Illuminate\Support\Facades\Cache::remember($key, $ttl, fn () => (float) AiUsageLog::where('created_at', '>=', now()->startOfMonth())->sum('cost'));
+        } catch (\Throwable) {
+            return 0.0;
+        }
+    }
+
+    /** True when a positive monthly cap is configured and already reached. */
+    public function isOverMonthlyCap(): bool
+    {
+        $cap = (float) config('ai.spending.monthly_cap_usd', 0);
+        if ($cap <= 0) {
+            return false;
+        }
+
+        return $this->monthlySpend() >= $cap;
+    }
     public function log(?User $user, string $providerCode, string $modelCode, string $purpose, int $inputTokens, int $outputTokens, ?int $conversationId = null, ?int $messageId = null, ?int $latencyMs = null, bool $success = true, ?string $error = null): AiUsageLog
     {
         $provider = AiProvider::where('code', $providerCode)->first();

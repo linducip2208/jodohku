@@ -2,9 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Block;
 use App\Models\Boost;
-use App\Models\Like;
 use App\Models\User;
 use App\Pagination\ScoredCursorPaginator;
 use Illuminate\Pagination\Cursor;
@@ -12,7 +10,10 @@ use Illuminate\Support\Facades\Cache;
 
 class DiscoveryService
 {
-    public function __construct(protected MatchingEngine $engine) {}
+    public function __construct(
+        protected MatchingEngine $engine,
+        protected CandidateRetrievalService $retrieval,
+    ) {}
 
     /**
      * Filtered discovery with boost-aware presentation priority.
@@ -121,6 +122,34 @@ class DiscoveryService
         })->values();
 
         $items = $scored->take($perPage)->values();
+        // P2 liquidity backfill (first page only): small cities collapse when
+        // the distance bbox is too tight. If the page is short, retry with
+        // 2x/3x radius (capped) excluding already-seen ids — same scoring,
+        // same boost-only ranking, no cursor tricks (cursor stays null-safe
+        // because backfill only runs when no pool position exists yet).
+        if ($cursor === null && $items->count() < $perPage && ! empty($filters['max_distance_km']) && $user->latitude !== null && $user->longitude !== null) {
+            $extra = $this->backfillByRadius($user, $filters, $sort, $perPage - $items->count(), $scored->pluck('id')->all());
+            if ($extra->isNotEmpty()) {
+                $combined = $scored->merge($extra);
+                $poolIds = $combined->pluck('id')->all();
+                $liveBoosted = $poolIds ? Boost::live()->whereIn('user_id', $poolIds)->pluck('user_id')->flip()->all() : $liveBoosted;
+                $scored = $combined->sortByDesc(function (User $cand) use ($sort, $liveBoosted, $user) {
+                    $boost = isset($liveBoosted[$cand->id]) ? 1e12 : 0;
+                    $key = match ($sort) {
+                        'newest' => strtotime((string) $cand->created_at) ?: 0,
+                        'active' => ($cand->last_active_at ? strtotime((string) $cand->last_active_at) : 0),
+                        'distance' => ($user->latitude !== null && $cand->latitude !== null)
+                            ? -$this->distanceKm($user, $cand)
+                            : (float) ($cand->compatibility_score ?? 0),
+                        'popularity' => (($cand->is_premium ? 50 : 0) + ($cand->is_verified ? 25 : 0) + (float) ($cand->compatibility_score ?? 0) / 4),
+                        default => (float) ($cand->compatibility_score ?? 0) + (strtotime((string) $cand->last_active_at) ?: 0) / 1e10,
+                    };
+
+                    return $boost + $key;
+                })->values();
+                $items = $scored->take($perPage)->values();
+            }
+        }
         // Unshown scored rows travel in the next-page cursor (capped tail —
         // lowest-ranked first to drop), so no candidate is ever skipped.
         $leftover = $scored->slice($perPage)->take($perPage * 2)->pluck('id')->all();
@@ -145,99 +174,63 @@ class DiscoveryService
     /** Shared pool query (filters + base ordering), reused per pool page. */
     protected function poolQuery(User $user, array $filters, string $sort)
     {
-        $query = User::query()->active()->where('id', '!=', $user->id);
+        // Delegates to the canonical retrieval service (same semantics:
+        // liked profiles stay hidden until rewound, no preference defaults).
+        return $this->retrieval->pool($user, $filters, $sort, ['excludeLiked' => true]);
+    }
 
-        if (! empty($filters['gender'])) {
-            $query->where('gender', $filters['gender']);
-        }
-        if (! empty($filters['city'])) {
-            $query->where('city', $filters['city']);
-        }
-        if (! empty($filters['education'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('education', 'like', '%'.$filters['education'].'%'));
-        }
-        if (! empty($filters['religion'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('religion', $filters['religion']));
-        }
-        if (! empty($filters['marital_status'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('marital_status', $filters['marital_status']));
-        }
-        if (! empty($filters['relationship_goal'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('relationship_goal', $filters['relationship_goal']));
-        }
-        if (! empty($filters['height_min'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '>=', (int) $filters['height_min']));
-        }
-        if (! empty($filters['height_max'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '<=', (int) $filters['height_max']));
-        }
-        if (! empty($filters['has_photo']) && in_array($filters['has_photo'], ['1', 'true', true], true)) {
-            $query->whereHas('photos', fn ($q) => $q->where('status', 'approved'));
-        }
-        if (! empty($filters['keyword'])) {
-            $kw = (string) $filters['keyword'];
-            $query->where(function ($q) use ($kw) {
-                $q->where('name', 'like', "%{$kw}%")
-                    ->orWhere('display_name', 'like', "%{$kw}%")
-                    ->orWhere('username', 'like', "%{$kw}%")
-                    ->orWhere('city', 'like', "%{$kw}%")
-                    ->orWhereHas('profile', fn ($p) => $p->where('headline', 'like', "%{$kw}%")
-                        ->orWhere('bio', 'like', "%{$kw}%")
-                        ->orWhere('occupation', 'like', "%{$kw}%")
-                        ->orWhere('education', 'like', "%{$kw}%"));
-            });
-        }
-        if (! empty($filters['verified'])) {
-            $query->where('is_verified', true);
-        }
-        if (! empty($filters['online'])) {
-            $query->where('is_online', true);
-        }
-        if (! empty($filters['premium'])) {
-            $query->where('is_premium', true);
-        }
-        if (! empty($filters['min_age'])) {
-            $query->where('date_of_birth', '<=', now()->subYears((int) $filters['min_age'])->toDateString());
-        }
-        if (! empty($filters['max_age'])) {
-            // Strict lower bound: someone who already turned max_age+1 is out.
-            $query->where('date_of_birth', '>', now()->subYears((int) $filters['max_age'] + 1)->toDateString());
-        }
-        // distance filter via bounding box when coords available
-        if (! empty($filters['max_distance_km']) && $user->latitude !== null) {
-            $km = (int) $filters['max_distance_km'];
-            $deg = $km / 111.0;
-            $query->whereBetween('latitude', [(float) $user->latitude - $deg, (float) $user->latitude + $deg])
-                ->whereBetween('longitude', [(float) $user->longitude - $deg, (float) $user->longitude + $deg]);
+    /**
+     * Relaxed-radius top-up for thin pools (P2/C7). Widens max_distance_km
+     * stepwise, never narrows; excludes already-seen ids; scores via the
+     * same MatchScore read-path. Returns scored users (may be empty).
+     */
+    protected function backfillByRadius(User $user, array $filters, string $sort, int $need, array $seenIds): \Illuminate\Support\Collection
+    {
+        $baseKm = max(1, (int) $filters['max_distance_km']);
+        $capKm = max($baseKm * 3, (int) config('matchmaking.hard_filters.max_distance_default_km', 200), 50);
+        $blockedIds = $this->engine->blockedIdsFor($user);
+        $found = collect();
+        $excluded = $seenIds;
+
+        foreach ([2, 3] as $mult) {
+            if ($found->count() >= $need) {
+                break;
+            }
+            $km = min($baseKm * $mult, $capKm);
+            if ($km <= $baseKm) {
+                continue;
+            }
+            $wide = array_merge($filters, ['max_distance_km' => $km, 'exclude_ids' => $excluded]);
+            try {
+                $batch = $this->retrieval->pool($user, $wide, $sort, ['excludeLiked' => true])
+                    ->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
+                    ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
+                    ->limit(max(20, ($need - $found->count()) * 4))
+                    ->get()
+                    ->filter(fn (User $cand) => $this->engine->passesHardFilterFast($user, $cand, $blockedIds))
+                    ->values();
+            } catch (\Throwable) {
+                break;
+            }
+            if ($batch->isEmpty()) {
+                continue;
+            }
+            try {
+                foreach ($this->engine->scoreMany($user, $batch) as $id => $r) {
+                    $cand = $batch->firstWhere('id', $id);
+                    if ($cand) {
+                        $cand->setAttribute('compatibility_score', $r['mutual']);
+                        $cand->setAttribute('match_breakdown', $r['breakdown']);
+                        $found->push($cand);
+                        $excluded[] = $cand->id;
+                    }
+                }
+            } catch (\Throwable) {
+                break;
+            }
         }
 
-        $blockedIds = Block::where('blocker_id', $user->id)->pluck('blocked_id')
-            ->merge(Block::where('blocked_id', $user->id)->pluck('blocker_id'))->all();
-        // Exclude already liked (unless rewound)
-        $likedIds = Like::where('liker_id', $user->id)->pluck('liked_id')->all();
-        $excluded = array_unique(array_merge($blockedIds, $likedIds));
-        if ($excluded) {
-            $query->whereNotIn('users.id', $excluded);
-        }
-
-        // Incognito: hidden from discovery unless they already liked the viewer.
-        $query->where(function ($q) use ($user) {
-            $q->whereDoesntHave('profilePrivacy', fn ($p) => $p->where('is_incognito', true))
-                ->orWhereIn('users.id', Like::where('liked_id', $user->id)->select('liker_id'));
-        });
-
-        // Base ordering by sort mode (pre-score); final sort applied in memory.
-        // Unique id tiebreaker keeps pool cursors stable (no skipped rows).
-        match ($sort) {
-            'distance' => $query->orderBy('last_active_at', 'desc'),
-            'active' => $query->orderByDesc('last_active_at'),
-            'newest' => $query->orderByDesc('users.created_at'),
-            'popularity' => $query->orderByDesc('is_premium')->orderByDesc('is_verified'),
-            default => $query->orderByDesc('last_active_at'),
-        };
-        $query->orderBy('users.id');
-
-        return $query;
+        return $found->take($need)->values();
     }
 
     /**

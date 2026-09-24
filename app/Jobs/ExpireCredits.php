@@ -11,7 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class ExpireCredits implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 300;
 
     public function __construct(public int $batch = 200) {}
 

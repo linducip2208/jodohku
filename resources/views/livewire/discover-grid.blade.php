@@ -20,6 +20,11 @@
 <button class="jk-btn jk-btn-pass" wire:click="resetFilters" style="flex:none">Reset</button>
 </div>
 </details>
+<div wire:loading aria-live="polite" aria-label="Memuat kandidat">
+<div class="jk-grid">@for($i = 0; $i < 6; $i++)<div><div class="jk-skeleton" style="height:220px;margin-bottom:8px"></div><div class="jk-skeleton" style="height:14px;width:70%;margin-bottom:6px"></div><div class="jk-skeleton" style="height:12px;width:45%"></div></div>@endfor</div>
+<p class="jk-muted" style="margin-top:8px"><span class="jk-spinner"></span> Memuat kandidat…</p>
+</div>
+<div wire:loading.remove>
 @if($candidates->isEmpty())
 @include('components.empty', ['icon' => 'cari', 'title' => auth()->check() ? 'Belum ada kandidat — longgarkan filter' : 'Masuk untuk melihat kandidat', 'hint' => auth()->check() ? 'Coba naikkan jarak / rentang usia.' : 'Daftar gratis, 2 menit.'])
 @else
@@ -32,4 +37,5 @@
 <div style="text-align:center;margin-top:14px"><button class="jk-btn jk-btn-pass" style="max-width:280px" wire:click="loadMore">Muat lebih banyak</button></div>
 @endif
 @endif
+</div>
 </div>

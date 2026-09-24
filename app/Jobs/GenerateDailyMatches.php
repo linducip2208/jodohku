@@ -9,7 +9,17 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class GenerateDailyMatches implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    /** Heavy nightly batch: few long attempts, not many quick ones. */
+    public $tries = 2;
+
+    public $timeout = 1800;
+
+    public function backoff(): array
+    {
+        return [600, 1800];
+    }
 
     public function __construct(public int $batch = 100) {}
 

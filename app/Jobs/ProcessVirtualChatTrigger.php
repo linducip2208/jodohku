@@ -9,7 +9,11 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class ProcessVirtualChatTrigger implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 120;
 
     public function __construct(public string $eventName, public int $userId, public array $context = []) {}
 

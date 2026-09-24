@@ -10,7 +10,11 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class SendChatNotification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 60;
 
     public function __construct(public int $messageId) {}
 

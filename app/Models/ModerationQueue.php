@@ -16,7 +16,7 @@ class ModerationQueue extends Model
 
     protected $fillable = [
         'queueable_type', 'queueable_id', 'reported_by', 'reason',
-        'priority', 'status', 'assigned_to', 'reviewed_at',
+        'priority', 'status', 'assigned_to', 'reviewed_at', 'reviewer_id',
     ];
 
     protected function casts(): array

@@ -16,7 +16,11 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class SendTaarufReminders implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 300;
 
     public function handle(NotificationService $notifications): void
     {

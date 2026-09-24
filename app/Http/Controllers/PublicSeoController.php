@@ -222,15 +222,15 @@ class PublicSeoController extends Controller
         if (! $this->seo->site('sitemap_enabled', true)) {
             abort(404);
         }
+        abort_if(! in_array($section, ['pages', 'locations', 'pseo', 'profiles'], true), 404);
         $base = rtrim((string) config('app.url', url('/')), '/');
-        $urls = match ($section) {
+        // P1: section bodies were rebuilt per request; cache 1h like the index.
+        $urls = Cache::remember('seo:sitemap:'.$section, 3600, fn () => match ($section) {
             'pages' => $this->sitemapPages($base),
             'locations' => $this->sitemapLocations($base),
             'pseo' => $this->sitemapTopics($base),
             'profiles' => $this->sitemapProfiles($base),
-            default => null,
-        };
-        abort_if($urls === null, 404);
+        });
 
         return response()->view('seo.sitemap', ['urls' => $urls])
             ->header('Content-Type', 'application/xml');

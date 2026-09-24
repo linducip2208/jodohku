@@ -44,6 +44,33 @@ class ModerationController extends Controller
         return response()->json(['message' => 'Decision recorded.']);
     }
 
+    /**
+     * Bulk decide (P3): approve/reject up to 100 queue items in one request.
+     * Same semantics as the Livewire single-item actions (status +
+     * reviewed_at/reviewer_id + audit row each), wrapped in one transaction
+     * so a partial bulk never leaves the queue half-decided.
+     */
+    public function bulkDecide(Request $request, AuditService $audit)
+    {
+        $data = $request->validate([
+            'queue_ids' => ['required', 'array', 'min:1', 'max:100', 'exists:moderation_queue,id'],
+            'action' => ['required', 'string', 'in:approved,rejected'],
+        ]);
+        $status = $data['action'];
+        $items = ModerationQueue::whereIn('id', $data['queue_ids'])->get();
+        $processed = 0;
+
+        DB::transaction(function () use ($request, $audit, $status, $items, &$processed) {
+            foreach ($items as $item) {
+                $item->update(['status' => $status, 'reviewed_at' => now(), 'reviewer_id' => $request->user()->id]);
+                $audit->log('moderation.'.$status, $request->user(), $item);
+                $processed++;
+            }
+        });
+
+        return response()->json(['action' => $status, 'processed' => $processed]);
+    }
+
     public function resolveReport(Request $request, Report $report, AuditService $audit)
     {
         $request->validate(['notes' => ['nullable', 'string', 'max:2000']]);

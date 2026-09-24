@@ -28,6 +28,7 @@ class AiService
 
     protected function checkRate(?User $user): void
     {
+        $this->checkSpendCap();
         if (! $user) {
             return;
         }
@@ -56,6 +57,17 @@ class AiService
         }
         if ($dayCount > $perDay) {
             throw new \RuntimeException('Daily AI quota reached. Try again tomorrow or upgrade to Premium.');
+        }
+    }
+
+    /** Global spend cap + kill switch (P0): checked before any provider call. */
+    protected function checkSpendCap(): void
+    {
+        if ($this->costs->isKilled()) {
+            throw new \RuntimeException('AI temporarily disabled. Please try again later.');
+        }
+        if ($this->costs->isOverMonthlyCap()) {
+            throw new \RuntimeException('AI monthly budget reached. Please try again next month.');
         }
     }
 

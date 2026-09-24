@@ -11,7 +11,11 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class ProcessAiReply implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 120;
 
     public function __construct(public int $conversationId, public int $virtualProfileId) {}
 

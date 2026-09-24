@@ -8,7 +8,11 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class ExpireVerifications implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 3;
+
+    public $timeout = 300;
 
     public function handle(VerificationService $verifications): void
     {

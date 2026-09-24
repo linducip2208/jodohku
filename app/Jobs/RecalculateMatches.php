@@ -9,7 +9,16 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class RecalculateMatches implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Concerns\HasScaleLimits;
+
+    public $tries = 2;
+
+    public $timeout = 600;
+
+    public function backoff(): array
+    {
+        return [120, 600];
+    }
 
     public function __construct(public int $userId, public int $limit = 30) {}
 

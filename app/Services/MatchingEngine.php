@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Block;
-use App\Models\Like;
 use App\Models\MatchScore;
 use App\Models\Setting;
 use App\Models\User;
@@ -13,15 +12,26 @@ use Illuminate\Support\Facades\DB;
 
 class MatchingEngine
 {
+    /**
+     * Per-instance memos (NOT function-statics: queue workers are
+     * long-lived, so cross-request statics would serve stale blocks/
+     * weights to later jobs; instances are fresh per job/request).
+     *
+     * @var array<int, array>
+     */
+    protected array $weightsMemo = [];
+
+    /** @var array<int, array> */
+    protected array $blockedIdsMemo = [];
+
     public function weights(): array
     {
         // Memoized per request AND version: 8 Setting queries per scorePair
         // became ~1000 queries on a dailyPicks run. Version key keeps admin
         // tuning effective immediately after the bump.
-        static $memo = [];
         $version = $this->weightsVersion();
-        if (isset($memo[$version])) {
-            return $memo[$version];
+        if (isset($this->weightsMemo[$version])) {
+            return $this->weightsMemo[$version];
         }
         $defaults = [
             'age' => 10, 'location' => 10, 'preference' => 20, 'personality' => 20,
@@ -49,7 +59,7 @@ class MatchingEngine
             $merged[$k] = round($v / $total * 100, 2);
         }
 
-        return $memo[$version] = $merged;
+        return $this->weightsMemo[$version] = $merged;
     }
 
     /** Bump when admin changes weights so versioned score caches invalidate. */
@@ -83,22 +93,21 @@ class MatchingEngine
         return true;
     }
 
-    /** Block ids touching $user, memoized per request (kills pool-loop N+1). */
+    /** Block ids touching $user, memoized on this instance (see above). */
     public function blockedIdsFor(User $user): array
     {
-        static $cache = [];
         $key = (int) $user->id;
-        if (! array_key_exists($key, $cache)) {
+        if (! array_key_exists($key, $this->blockedIdsMemo)) {
             try {
-                $cache[$key] = Block::where('blocker_id', $key)->pluck('blocked_id')
+                $this->blockedIdsMemo[$key] = Block::where('blocker_id', $key)->pluck('blocked_id')
                     ->merge(Block::where('blocked_id', $key)->pluck('blocker_id'))
                     ->map(fn ($id) => (int) $id)->all();
             } catch (\Throwable) {
-                $cache[$key] = [];
+                $this->blockedIdsMemo[$key] = [];
             }
         }
 
-        return $cache[$key];
+        return $this->blockedIdsMemo[$key];
     }
 
     /** passesHardFilter() with a preloaded block list (hot loops). */
@@ -446,94 +455,15 @@ class MatchingEngine
     public function candidatesFor(User $u, array $filters = [], int $limit = 20): Collection
     {
         $u->loadMissing(['partnerPreference']);
-        $query = User::query()->active()->where('id', '!=', $u->id);
-
-        if (! empty($filters['gender'])) {
-            $query->where('gender', $filters['gender']);
-        } elseif ($u->partnerPreference?->gender_preference) {
-            $gp = $u->partnerPreference->gender_preference;
-            $query->where('gender', $gp instanceof \BackedEnum ? $gp->value : (string) $gp);
-        }
-        if (! empty($filters['city'])) {
-            $query->where('city', $filters['city']);
-        }
-        if (! empty($filters['education'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('education', 'like', '%'.$filters['education'].'%'));
-        }
-        if (! empty($filters['religion'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('religion', $filters['religion']));
-        }
-        if (! empty($filters['marital_status'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('marital_status', $filters['marital_status']));
-        }
-        if (! empty($filters['relationship_goal'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('relationship_goal', $filters['relationship_goal']));
-        }
-        if (! empty($filters['height_min'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '>=', (int) $filters['height_min']));
-        }
-        if (! empty($filters['height_max'])) {
-            $query->whereHas('profile', fn ($q) => $q->where('height_cm', '<=', (int) $filters['height_max']));
-        }
-        if (! empty($filters['has_photo']) && in_array($filters['has_photo'], ['1', 'true', true], true)) {
-            $query->whereHas('photos', fn ($q) => $q->where('status', 'approved'));
-        }
-        if (! empty($filters['keyword'])) {
-            $kw = (string) $filters['keyword'];
-            $query->where(function ($q) use ($kw) {
-                $q->where('name', 'like', "%{$kw}%")
-                    ->orWhere('display_name', 'like', "%{$kw}%")
-                    ->orWhere('username', 'like', "%{$kw}%")
-                    ->orWhere('city', 'like', "%{$kw}%")
-                    ->orWhereHas('profile', fn ($p) => $p->where('headline', 'like', "%{$kw}%")
-                        ->orWhere('bio', 'like', "%{$kw}%")
-                        ->orWhere('occupation', 'like', "%{$kw}%")
-                        ->orWhere('education', 'like', "%{$kw}%"));
-            });
-        }
-        if (! empty($filters['verified'])) {
-            $query->where('is_verified', true);
-        }
-        if (! empty($filters['online'])) {
-            $query->where('is_online', true);
-        }
-        if (! empty($filters['premium'])) {
-            $query->where('is_premium', true);
-        }
-        if (! empty($filters['max_distance_km']) && $u->latitude !== null && $u->longitude !== null) {
-            $km = max(1, (int) $filters['max_distance_km']);
-            $deg = $km / 111.0;
-            $query->whereBetween('latitude', [(float) $u->latitude - $deg, (float) $u->latitude + $deg])
-                ->whereBetween('longitude', [(float) $u->longitude - $deg, (float) $u->longitude + $deg]);
-        }
-        // Age filter
-        $minAge = $filters['min_age'] ?? $u->partnerPreference?->min_age;
-        $maxAge = $filters['max_age'] ?? $u->partnerPreference?->max_age;
-        if ($minAge) {
-            $query->where('date_of_birth', '<=', now()->subYears((int) $minAge)->toDateString());
-        }
-        if ($maxAge) {
-            $query->where('date_of_birth', '>', now()->subYears((int) $maxAge + 1)->toDateString());
-        }
-        // Exclude blocked
-        $blockedIds = Block::where('blocker_id', $u->id)->pluck('blocked_id')
-            ->merge(Block::where('blocked_id', $u->id)->pluck('blocker_id'))->all();
-        if ($blockedIds) {
-            $query->whereNotIn('id', $blockedIds);
-        }
-        // Incognito: hidden unless they already liked the viewer.
-        $query->where(function ($q) use ($u) {
-            $q->whereDoesntHave('profilePrivacy', fn ($p) => $p->where('is_incognito', true))
-                ->orWhereIn('id', Like::where('liked_id', $u->id)->select('liker_id'));
-        });
-        if (! empty($filters['exclude_ids'])) {
-            $query->whereNotIn('id', (array) $filters['exclude_ids']);
-        }
+        // Canonical pool (same hard filters as interactive discovery, plus
+        // preference defaults for gender/age; likes are never excluded here).
+        $query = app(CandidateRetrievalService::class)->pool($u, $filters, null, ['preferenceDefaults' => true]);
 
         $pool = $query->with(['profile', 'partnerPreference', 'interests', 'questionnaireAnswers'])
             ->withCount(['photos as approved_photos_count' => fn ($q) => $q->where('status', 'approved')])
             ->limit(max($limit * 5, $limit + 20))->get();
 
+        $blockedIds = $this->blockedIdsFor($u);
         $scored = $pool->map(function (User $cand) use ($u, $blockedIds) {
             if (! $this->passesHardFilterFast($u, $cand, $blockedIds)) {
                 return null;
