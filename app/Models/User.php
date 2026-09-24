@@ -20,11 +20,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Scout\Searchable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, Searchable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -282,6 +283,50 @@ class User extends Authenticatable implements MustVerifyEmail
     public function scopeVerified(Builder $query): Builder
     {
         return $query->where('is_verified', true);
+    }
+
+    // ---------- Scout search index (opt-in, SCOUT_DRIVER=null by default) ----------
+
+    /**
+     * Public-safe index document. Anything sensitive (email, phone, exact
+     * coords, dob, passwords) must NEVER enter the external index — the
+     * engine server is outside the app DB trust boundary.
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => (int) $this->id,
+            'display_name' => (string) ($this->display_name ?? $this->name),
+            'username' => (string) $this->username,
+            'city' => (string) $this->city,
+            'province' => (string) $this->province,
+            'gender' => $this->gender?->value ?? (string) $this->gender,
+        ];
+    }
+
+    /**
+     * Only discoverable members are indexed: active, real accounts, never
+     * incognito (mirrors CandidateRetrievalService privacy semantics).
+     */
+    public function shouldBeSearchable(): bool
+    {
+        if ($this->trashed()) {
+            return false;
+        }
+        if (($this->status?->value ?? 'active') !== 'active') {
+            return false;
+        }
+        if (! $this->isReal()) {
+            return false;
+        }
+        try {
+            if ((bool) ($this->profilePrivacy?->is_incognito ?? false)) {
+                return false;
+            }
+        } catch (\Throwable) {
+        }
+
+        return true;
     }
 
     // Helpers

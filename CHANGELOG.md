@@ -26,6 +26,11 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - P3: skeleton loading (`jk-skeleton` + `wire:loading`) di discover, matches,
   chat inbox, visitors; bulk moderasi admin (`bulk-decide` ≤100 item +
   checkbox di antrean, kolom `reviewer_id` baru).
+- Sisa P2: K4 webhook flood (duplikat ×5 + capture/settlement out-of-order +
+  stale pending → tepat 1 aktivasi, `WebhookFloodTest`); `scale:probe`
+  (ms/query + ukuran tabel unbounded, default rollback); Scout terinstal
+  (`SCOUT_DRIVER=null` no-op, index publik-saja siap flip); resep Reverb
+  multi-node + Search + keputusan partisi di DEPLOY/runbook.
 
 ### Fixed
 - Queue worker poisoning (retry selamanya) via batas eksplisit; timeout

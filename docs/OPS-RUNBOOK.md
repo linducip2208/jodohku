@@ -1,4 +1,16 @@
-# OPS RUNBOOK — Jodohku (scale P0–P1)
+# OPS RUNBOOK — Jodohku (scale P0–P3 + sisa P2)
+
+## Probe (ukur dulu, jangan tebak)
+
+```bash
+php artisan scale:probe              # rolled back, aman di produksi
+php artisan scale:probe --persist    # simpan warmed scores (jelang peak)
+php artisan scale:probe --user=123   # probe sebagai user tertentu
+```
+
+Baseline dev 5k user: discover p1 ~190ms/27q cold, ~100ms/10q warm;
+filtered ~170ms/11q; dailyPicks ~90ms/20q; notif ~1ms/1q. Klaim ketahanan
+hanya sah dari K1–K6 pada 100k user, bukan dari angka dev ini.
 
 ## Queue
 
@@ -36,9 +48,17 @@
 
 ## Reverb / broadcast
 
-- Single node default; multi-node (P2) butuh adapter Redis + sticky LB —
-  belum diaktifkan (tunggu K5: 5k koneksi konkuren). Monitor koneksi +
-  `TypingIndicator` storm via client throttle.
+- Single node default. Multi-node: `REVERB_SCALING_ENABLED=true` (Redis
+  pubsub, config sudah ada) + sticky LB di proxy — aktifkan hanya setelah
+  K5. Monitor koneksi + `TypingIndicator` storm via client throttle.
+  Resep lengkap: `DEPLOY.md` § Reverb multi-node.
+
+## Search
+
+- Default `SCOUT_DRIVER=null` = Scout no-op; pencarian = `LIKE` MySQL.
+- Flip ke Meilisearch hanya setelah K1 sakit (~100k user). Resep + daftar
+  field index yang aman: `DEPLOY.md` § Search. `User::shouldBeSearchable`
+  sudah mirror semantik privasi retrieval (aktif + real + non-incognito).
 
 ## Load tests (sebelum klaim siap)
 
@@ -48,5 +68,13 @@ mnt · K4 webhook flood duplikat · K5 5k koneksi Reverb · K6 daily picks
 
 ## P2 ditunda (terukur dulu)
 
-Meilisearch/Scout (search > ~100k), partisi time `messages`/`audit_logs`,
-Reverb multi-node, S3/CDN media — hanya bila K1–K6 membuktikan sakit.
+S3/CDN media — hanya bila traffic membuktikan perlu.
+
+**Partisi waktu `messages`/`audit_logs`: DITUNDA SADAR, bukan lupa.**
+MySQL RANGE partisi menuntut kunci partisi di semua unique key termasuk
+PK `id` → butuh rebuild PK + downtime + rewrite FK. Pemicu eksekusi:
+salah satu tabel > 10 juta baris ATAU K2 menunjukkan write-path jenuh.
+Sketsa saat pemicu tercapai: (1) buat tabel baru terpartisi per bulan
+(`PARTITION BY RANGE (TO_DAYS(created_at))`), (2) dual-write 1 rilis,
+(3) backfill historis per chunk, (4) swap nama tabel di maintenance window,
+(5) retention = `ALTER TABLE … DROP PARTITION` (instan, tanpa DELETE scan).

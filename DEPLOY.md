@@ -77,6 +77,55 @@ Monitor: `failed_jobs`, `payment_webhooks.is_processed=false`, `ai_usage_logs`
 - Env: `REVERB_HOST`, `REVERB_PORT=443`, `REVERB_SCHEME=https`, `REVERB_APP_KEY/SECRET/ID` sinkron dengan `VITE_*`.
 - Batasi origin via `config/reverb.php` `allowed_origins` bila perlu.
 
+## Reverb multi-node (P2, opt-in setelah K5)
+
+`config/reverb.php` sudah mendukung Redis pubsub; tidak ada perubahan kode.
+Aktifkan hanya bila K5 (5k koneksi konkuren, single node) mencapai plafon:
+
+```bash
+# .env produksi (semua node Reverb identik)
+REVERB_SCALING_ENABLED=true
+REVERB_SCALING_CHANNEL=reverb
+# REDIS_* sama seperti Redis P0 di atas
+```
+
+- Proxy/LB WAJIB sticky session (ip_hash / cookie) agar socket tetap di
+  satu node; antar-node disinkron via channel Redis.
+- Verifikasi: konek 2 client via node berbeda → broadcast dari satu node
+  diterima keduanya. Ukur ulang K5 tiap tambah node.
+
+## Search / Scout (P2, opt-in setelah K1)
+
+`laravel/scout` terinstal; default `SCOUT_DRIVER=null` = no-op total
+(jalur `LIKE` di `CandidateRetrievalService` tetap yang dipakai).
+Aktifkan hanya bila K1 menunjukkan search pain pada ~100k user:
+
+```bash
+# 1. Jalankan Meilisearch (self-host, 1 container)
+# 2. .env produksi:
+SCOUT_DRIVER=meilisearch
+MEILISEARCH_HOST=http://127.0.0.1:7700
+MEILISEARCH_KEY=
+SCOUT_PREFIX=jodohku_
+SCOUT_QUEUE=true
+# 3. Index awal: php artisan scout:import "App\Models\User"
+```
+
+- Dokumen index (`User::toSearchableArray`) hanya berisi field publik
+  (display_name, username, kota/provinsi, gender) — email/telepon/koordinat
+  persis/DOB tidak pernah masuk index. `shouldBeSearchable` mengecualikan
+  nonaktif, non-real, dan incognito (semantik privasi = retrieval).
+- Setelah flip, ganti klausa `keyword` di `CandidateRetrievalService` ke
+  `User::search()` dan ukur ulang K1 sebelum menghapus jalur LIKE.
+
+## Partisi tabel waktu (P2, ditunda sadar)
+
+`messages` dan `audit_logs` belum dipartisi: MySQL RANGE partisi menuntut
+kunci partisi di SEMUA unique key (termasuk PK `id`) → butuh rebuild PK +
+downtime, tidak sebanding pada ukuran saat ini. Pemicu: salah satu tabel
+> 10 juta baris ATAU K2 menunjukkan write-path jenuh. Lihat
+`docs/OPS-RUNBOOK.md` untuk kriteria + sketsa migrasi.
+
 ## Checklist
 
 - `APP_DEBUG=false`, `APP_KEY` terisi, `DB_*` MySQL, `REDIS_*` terisi.

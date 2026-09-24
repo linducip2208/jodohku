@@ -177,10 +177,17 @@ warming/caches → Reverb horizontal → AI caps → search/partition if measure
 - Register-time score warming (`MatchingEngine::scoreMany` reuse).
 - `PublicSeoController`/`SeoService` response cache; analytics 60–300s cache.
 
-## 15. P2 tasks (when measured)
+## 15. P2 tasks (when measured) — status 2026-09-24
 
-- Scout + Meilisearch; Reverb multi-node; time partitioning;
-  relaxed-radius backfill in `DiscoveryService.php`.
+- Backfill likuiditas: DONE (`DiscoveryService::backfillByRadius`).
+- Scout: package terinstal, `SCOUT_DRIVER=null` (no-op), `User::toSearchableArray`
+  (publik saja) + `shouldBeSearchable` (aktif/real/non-incognito) siap;
+  flip ke Meilisearch hanya setelah K1 (§ Search di DEPLOY.md).
+- Reverb multi-node: config Redis pubsub sudah ada; resep aktivasi
+  (`REVERB_SCALING_ENABLED` + sticky LB) di DEPLOY.md, tunggu K5.
+- Partisi waktu: DITUNDA SADAR (butuh rebuild PK + downtime); pemicu +
+  sketsa di runbook. K4 (webhook flood) DONE via `WebhookFloodTest`;
+  ukur K1–K3/K5–K6 + `scale:probe` sebelum klaim siap.
 
 ## 16. P3 tasks (polish) — done 2026-09-24
 
@@ -207,5 +214,5 @@ warming/caches → Reverb horizontal → AI caps → search/partition if measure
 
 - **P0**: Redis for queue/cache/session · D-indexes migration (notifications/matches/users-geo-flags/audit time) · job tries-timeout-backoff · AI spend cap + kill switch.
 - **P1**: retention/pruning jobs + schedule · throttled profile-view writer · register-time score warming · PSEO/analytics response cache.
-- **P2**: Meilisearch (if measured) · Reverb multi-node · time partitioning · liquidity backfill.
+- **P2**: backfill DONE · K4 flood DONE · Scout terinstal (null-driver, flip setelah K1) · Reverb recipe siap (tunggu K5) · partisi ditunda sadar (pemicu >10jt baris/K2).
 - **P3**: skeletons (4 list Livewire) · admin bulk (users + moderation bulk-decide) · runbook · changelog notes.

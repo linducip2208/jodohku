@@ -188,4 +188,33 @@ class ScaleHardeningTest extends TestCase
         $this->actingAs($user)->get('/matches')->assertOk()->assertSee('jk-skeleton', false);
         $this->actingAs($user)->get('/chat')->assertOk()->assertSee('jk-skeleton', false);
     }
+
+    public function test_scout_default_is_noop_and_index_is_public_only(): void
+    {
+        // SCOUT_DRIVER=null env string converts to PHP null; Scout maps that
+        // to NullEngine (verified in EngineManager::getDefaultDriver).
+        $engine = app(\Laravel\Scout\EngineManager::class)->engine();
+        $this->assertInstanceOf(\Laravel\Scout\Engines\NullEngine::class, $engine);
+
+        $user = User::factory()->create();
+        $doc = $user->toSearchableArray();
+        $this->assertEquals(['id', 'display_name', 'username', 'city', 'province', 'gender'], array_keys($doc));
+        foreach (['email', 'phone', 'password', 'latitude', 'longitude', 'date_of_birth'] as $secret) {
+            $this->assertArrayNotHasKey($secret, $doc);
+        }
+
+        // Null driver: search() never touches MySQL, returns empty.
+        $this->assertCount(0, User::search('jakarta')->get());
+
+        // shouldBeSearchable mirrors retrieval privacy.
+        $this->assertTrue($user->shouldBeSearchable());
+        $ghost = User::factory()->create();
+        $ghost->profilePrivacy()->updateOrCreate([], ['is_incognito' => true]);
+        $this->assertFalse($ghost->fresh()->shouldBeSearchable());
+        $banned = User::factory()->create(['status' => 'banned']);
+        $this->assertFalse($banned->shouldBeSearchable());
+        $deleted = User::factory()->create();
+        $deleted->delete();
+        $this->assertFalse($deleted->shouldBeSearchable());
+    }
 }
