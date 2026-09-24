@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Gifts — Jodohku')
 @section('content')
-<h1 class="jk-h1">Gifts</h1><p class="jk-muted">Didukung GiftService + CreditService. Kirim hadiah virtual ke match.</p>
+<h1 class="jk-h1">Gifts</h1><p class="jk-muted">Kirim hadiah virtual ke match.</p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @php $gifts = collect(); try { $gifts = app(\App\Services\GiftService::class)->catalog(); } catch (\Throwable) {} @endphp
 <div class="jk-grid">

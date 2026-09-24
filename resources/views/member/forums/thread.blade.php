@@ -4,7 +4,10 @@
 @php $thread = null; $replies = collect(); try { $thread = \App\Models\ForumThread::with('user')->where('is_hidden', false)->find($threadId ?? 0); if ($thread) { $replies = $thread->visibleReplies()->with('user')->oldest('id')->take(30)->get(); } } catch (\Throwable) {} @endphp
 @if($thread)
 <h1 class="jk-h1">{{ $thread->title }}</h1>
-<p class="jk-muted">Oleh {{ $thread->user?->display_name ?? 'Member' }} @if($thread->is_locked)· 🔒 Dikunci@endif</p>
+<p class="jk-muted">Oleh {{ $thread->user?->displayName() ?? 'Member' }}</p>
+@if($thread->is_locked)
+<p class="jk-muted">Dikunci moderator.</p>
+@endif
 <div class="jk-section">{!! nl2br(e($thread->body)) !!}</div>
 <h2 class="jk-h2">Balasan ({{ $thread->reply_count }})</h2>
 <div class="jk-grid" style="grid-template-columns:1fr">

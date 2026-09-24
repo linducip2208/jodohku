@@ -115,6 +115,15 @@ try {
 </div>
 <script>
 document.addEventListener('alpine:init', () => { if (window.Alpine && !window.Alpine.store('more')) { window.Alpine.store('more', { open:false }); } });
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !window.Alpine) return;
+    try {
+        if (window.Alpine.store('more')?.open) { window.Alpine.store('more').open = false; return; }
+        const root = document.querySelector('.jk-body');
+        const d = root ? window.Alpine.$data(root) : null;
+        if (d && d.confirm?.open) { d.confirm.open = false; }
+    } catch (_) {}
+});
 window.addEventListener('echo:message-received', e => { if (window.Livewire) { window.Livewire.dispatch('echo-message', e.detail); } });
 window.jkConfirm = function (title, text, action) {
     const root = document.querySelector('.jk-body');

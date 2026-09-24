@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Forum — Jodohku')
 @section('content')
-<h1 class="jk-h1">💬 Forum</h1><p class="jk-muted">Diskusi komunitas: dimoderasi, tanpa konten dewasa.</p>
+<h1 class="jk-h1">Forum</h1><p class="jk-muted">Diskusi komunitas: dimoderasi, tanpa konten dewasa.</p>
 @php $forums = collect(); try { $forums = \App\Models\Forum::where('is_active', true)->orderBy('sort_order')->withCount(['visibleThreads as threads_count'])->get(); } catch (\Throwable) {} @endphp
 <div class="jk-grid" style="grid-template-columns:1fr">
 @forelse($forums as $f)

@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Pusat Keamanan — Jodohku')
 @section('content')
-<h1 class="jk-h1">🛡️ Pusat Keamanan</h1><p class="jk-muted">Blokir, laporkan, sembunyikan, incognito. Jangan pernah kirim uang ke orang baru kenal.</p>
+<h1 class="jk-h1">Pusat Keamanan</h1><p class="jk-muted">Blokir, laporkan, sembunyikan, incognito. Jangan pernah kirim uang ke orang baru kenal.</p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @if(!empty($safetyStatus))
 <div class="jk-section"><div class="jk-h2">Status Keamanan Akunmu</div>

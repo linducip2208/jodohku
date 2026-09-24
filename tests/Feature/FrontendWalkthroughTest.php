@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\BlogPost;
 use App\Models\Courtship;
+use App\Models\Event;
+use App\Models\Forum;
 use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\ChatService;
@@ -46,6 +49,35 @@ class FrontendWalkthroughTest extends TestCase
             // 403 is legitimate for premium-gated pages (/visitors); 404/500 never are.
             $this->assertTrue(
                 in_array($res->getStatusCode(), [200, 302, 403]),
+                "{$uri} returned {$res->getStatusCode()}"
+            );
+        }
+    }
+
+    public function test_detail_pages_resolve(): void
+    {
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+        $chat = app(ChatService::class);
+        $conv = $chat->findOrCreateDirect($me->fresh(), $other->fresh());
+
+        $event = Event::create([
+            'host_id' => $me->id, 'title' => 'Kopi Darat Test', 'slug' => 'kopi-darat-test',
+            'status' => 'published', 'starts_at' => now()->addDays(5),
+        ]);
+        $forum = Forum::create(['name' => 'Umum Test', 'slug' => 'umum-test', 'is_active' => true]);
+        $thread = $forum->threads()->create(['user_id' => $me->id, 'title' => 'Halo', 'body' => 'Diskusi test']);
+        $post = BlogPost::create([
+            'user_id' => $me->id, 'title' => 'Artikel Test', 'slug' => 'artikel-test',
+            'body' => 'Isi artikel.', 'status' => 'published', 'published_at' => now(),
+        ]);
+        $publicUser = User::factory()->create(['username' => 'publiktest001']);
+        $publicUser->profilePrivacy()->updateOrCreate([], ['is_public_index' => true]);
+
+        foreach (["/chat/{$conv->id}", "/events/{$event->id}", "/forums/{$forum->slug}", "/forums/thread/{$thread->id}", "/blog/{$post->slug}", '/u/publiktest001', '/taaruf', '/panduan/cara-taaruf'] as $uri) {
+            $res = $this->actingAs($me)->get($uri);
+            $this->assertTrue(
+                in_array($res->getStatusCode(), [200, 302]),
                 "{$uri} returned {$res->getStatusCode()}"
             );
         }

@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Kuesioner Kepribadian — Jodohku')
 @section('content')
-<h1 class="jk-h1">🧠 Kuesioner</h1><p class="jk-muted">Jawabanmu menajamkan skor kompatibilitas. Bisa diubah kapan pun.</p>
+<h1 class="jk-h1">Kuesioner</h1><p class="jk-muted">Jawabanmu menajamkan skor kompatibilitas. Bisa diubah kapan pun.</p>
 <div class="jk-section" id="qWrap">
 <div class="jk-skeleton" style="height:120px;margin-bottom:10px"></div>
 <p class="jk-muted"><span class="jk-spinner"></span> Memuat pertanyaan…</p>

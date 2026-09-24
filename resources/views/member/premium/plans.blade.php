@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Premium — Jodohku')
 @section('content')
-<h1 class="jk-h1">Premium</h1><p class="jk-muted">Didukung MembershipService + SubscriptionService + PaymentService.</p>
+<h1 class="jk-h1">Premium</h1><p class="jk-muted">Pilih paket yang sesuai dengan perjalananmu.</p>
 @php $plans = collect(); try { $plans = app(\App\Services\MembershipService::class)->plans(); } catch (\Throwable) {} @endphp
 <div class="jk-grid" style="grid-template-columns:1fr">
 @forelse($plans as $p)

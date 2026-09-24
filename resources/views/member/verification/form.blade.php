@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', 'Verifikasi — Jodohku')
 @section('content')
-<h1 class="jk-h1">✅ Verifikasi</h1><p class="jk-muted">Didukung VerificationService (foto/dokumen/selfie). Status: <strong>{{ auth()->user()?->is_verified ? 'Terverifikasi ✔' : 'Belum terverifikasi' }}</strong></p>
+<h1 class="jk-h1">Verifikasi</h1><p class="jk-muted">Verifikasi foto/dokumen. Status: <strong>{{ auth()->user()?->is_verified ? 'Terverifikasi' : 'Belum terverifikasi' }}</strong></p>
 @php $reqs = auth()->check() ? auth()->user()->verificationRequests()->latest('id')->take(5)->get() : collect(); @endphp
 <div class="jk-section"><div class="jk-h2">Ajukan verifikasi</div>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
