@@ -1,10 +1,12 @@
 <div>
 <div class="jk-tabs" role="tablist" aria-label="Kategori discovery">
-@foreach(['recommended' => 'Rekomendasi', 'new' => 'Anggota baru', 'active' => 'Aktif', 'nearby' => 'Dekat', 'serious' => 'Serius menikah'] as $key => $label)
+@foreach(['recommended' => 'Untuk Anda', 'new' => 'Terbaru', 'active' => 'Online', 'nearby' => 'Terdekat', 'serious' => 'Serius'] as $key => $label)
 <button class="jk-tab {{ $tab === $key ? 'active' : '' }}" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="setTab('{{ $key }}')">{{ $label }}</button>
 @endforeach
 </div>
-<div class="jk-filterbar" wire:ignore.self>
+<details class="jk-section" style="padding:10px 14px">
+<summary class="jk-muted" style="cursor:pointer;font-size:13px;font-weight:700" aria-label="Filter pencarian">Filter</summary>
+<div class="jk-filterbar" style="margin-top:10px;margin-bottom:0" wire:ignore.self>
 <input class="jk-input" style="min-width:140px;flex:1" type="search" wire:model.live="keyword" placeholder="Cari nama, kota, minat…" aria-label="Kata kunci">
 <input class="jk-input" style="width:70px" type="number" wire:model.live="minAge" placeholder="Min" aria-label="Umur minimal"><span class="jk-muted">–</span>
 <input class="jk-input" style="width:70px" type="number" wire:model.live="maxAge" placeholder="Maks" aria-label="Umur maksimal">
@@ -17,6 +19,7 @@
 <label class="jk-pill"><input type="checkbox" wire:model.live="premium"> Premium</label>
 <button class="jk-btn jk-btn-pass" wire:click="resetFilters" style="flex:none">Reset</button>
 </div>
+</details>
 @if($candidates->isEmpty())
 @include('components.empty', ['icon' => 'cari', 'title' => auth()->check() ? 'Belum ada kandidat — longgarkan filter' : 'Masuk untuk melihat kandidat', 'hint' => auth()->check() ? 'Coba naikkan jarak / rentang usia.' : 'Daftar gratis, 2 menit.'])
 @else

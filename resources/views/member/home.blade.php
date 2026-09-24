@@ -10,6 +10,7 @@ $greet = now()->hour < 11 ? 'Selamat pagi' : (now()->hour < 15 ? 'Selamat siang'
 $me = auth()->user();
 $picks = collect(); $picksUsers = collect(); $mayLike = collect(); $newMembers = collect(); $activeNow = collect();
 $journey = null; $events = collect(); $stories = collect(); $posts = collect(); $forums = collect();
+$feed = null; $feedLiked = []; $storyStrip = collect();
 try {
     if ($me) {
         $personal = app(PersonalizationService::class);
@@ -17,8 +18,10 @@ try {
         $picks = collect($rec['picks']);
         $picksUsers = $rec['users'];
         $pickIds = collect($picks)->pluck('user_id')->all();
-        // Feed quality: never repeat daily picks inside "Mungkin kamu suka".
-        $mayLike = collect(app(\App\Services\DiscoveryService::class)->discover($me, ['sort' => 'compatibility'], 8))
+        // Feed quality: never repeat daily picks inside "Orang untukmu".
+        // NOTE: getCollection(), never collect($paginator) — the latter
+        // yields the paginator's array shape, not models.
+        $mayLike = app(\App\Services\DiscoveryService::class)->discover($me, ['sort' => 'compatibility'], 8)->getCollection()
             ->reject(fn ($u) => in_array($u->id, $pickIds))->take(4)->values();
         $newMembers = $personal->getNewMembers(6);
         $activeNow = $personal->getActiveNow($me, 6);
@@ -27,22 +30,68 @@ try {
         $forums = $personal->getRecommendedForums($me, 3);
         $stories = SuccessStory::where('status', 'published')->latest('published_at')->latest('id')->limit(2)->get();
         $posts = BlogPost::published()->latest('published_at')->limit(3)->get();
+        // Unified social feed: public, visible, non-blocked community posts.
+        $blockedIds = \App\Models\Block::where('blocker_id', $me->id)->pluck('blocked_id')
+            ->merge(\App\Models\Block::where('blocked_id', $me->id)->pluck('blocker_id'))->all();
+        $feed = \App\Models\Post::where('is_hidden', false)
+            ->when($blockedIds, fn ($q) => $q->whereNotIn('user_id', $blockedIds))
+            ->with(['user:id,display_name,name,avatar_path,is_verified,is_online', 'comments' => fn ($q) => $q->latest('id')->limit(2)->with('user:id,display_name,name')])
+            ->withCount(['comments', 'likes'])->latest('id')->paginate(8);
+        $feedLiked = \App\Models\PostLike::where('user_id', $me->id)->whereIn('post_id', $feed->getCollection()->pluck('id'))->pluck('post_id')->all();
+        // Stories strip from real entities (no ephemeral story system).
+        $storyStrip = $activeNow->take(4)->map(fn ($u) => ['user' => $u, 'label' => 'Online'])
+            ->merge($newMembers->take(4)->map(fn ($u) => ['user' => $u, 'label' => 'Baru']))
+            ->unique(fn ($s) => $s['user']->id)->take(8)->values();
     }
 } catch (\Throwable) {}
 @endphp
 <div class="jk-feed">
-<div class="jk-hero">
-<h1 class="jk-h1">{{ $greet }}, {{ $me?->displayName() ?? 'kamu' }}</h1>
-<p class="jk-greet">Temukan seseorang yang sejalan dengan nilaimu.</p>
-<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-<a class="jk-btn jk-btn-like" style="text-decoration:none;text-align:center" href="/discover">Jelajahi</a>
-<a class="jk-btn jk-btn-super" style="text-decoration:none;text-align:center" href="/boosts">Boost profil</a>
-<a class="jk-btn jk-btn-fav" style="text-decoration:none;text-align:center" href="/premium">Premium</a>
-</div>
+<div style="padding:4px 2px 0">
+<div class="jk-muted" style="font-size:12.5px">{{ $greet }},</div>
+<h1 class="jk-h1" style="font-size:20px">{{ $me?->displayName() ?? 'kamu' }}</h1>
 </div>
 
+@if($storyStrip->isNotEmpty())
+<div class="jk-row-scroll" role="list" aria-label="Sorotan" style="grid-auto-columns:minmax(72px,72px)">
+@foreach($storyStrip as $s)
+<a role="listitem" href="/profile/{{ $s['user']->id }}" style="text-decoration:none;text-align:center">
+<div class="jk-avatar" style="margin:0 auto;border:2px solid #f43f5e">@if($s['user']->avatarUrl())<img src="{{ $s['user']->avatarUrl() }}" alt="" loading="lazy" onerror="this.remove()">@else{{ strtoupper(substr((string)($s['user']->displayName() ?? '?'),0,1)) }}@endif</div>
+<div class="jk-muted" style="font-size:10px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $s['label'] }}</div>
+</a>
+@endforeach
+</div>
+@endif
+
+<div class="jk-section jk-form" style="padding:12px 14px">
+<form method="POST" action="/komunitas">@csrf
+<label class="jk-muted" style="font-size:12.5px" for="home-post">Bagikan sesuatu…</label>
+<div style="display:flex;gap:8px;margin-top:6px">
+<input id="home-post" class="jk-input" style="flex:1" name="body" maxlength="1000" required placeholder="Ceritakan harimu, tanya komunitas…">
+<button class="jk-btn jk-btn-like" style="flex:none;padding:10px 16px" type="submit">Kirim</button>
+</div>
+</form>
+</div>
+
+@if($feed && $feed->count())
+@foreach($feed as $p)
+@include('components.social-post', ['post' => $p, 'likedIds' => $feedLiked, 'compact' => true])
+@endforeach
+<div>{{ $feed->links() }}</div>
+@else
+@include('components.empty', ['icon' => 'chat', 'title' => 'Belum ada postingan di feed Anda', 'hint' => 'Tulis postingan pertama atau temukan orang baru di Discover.'])
+@endif
+
+<section class="jk-section" aria-labelledby="h-maylike">
+<h2 class="jk-h2" id="h-maylike">Orang untukmu</h2>
+@if($mayLike->isEmpty())
+@include('components.empty', ['icon' => 'hati', 'title' => 'Belum ada saran', 'hint' => 'Coba longgarkan filter di Discover.'])
+@else
+<div class="jk-grid">@foreach($mayLike as $p) @include('components.profile-card', ['user' => $p, 'score' => $p->compatibility_score ?? null]) @endforeach</div>
+@endif
+</section>
+
 <section class="jk-section" aria-labelledby="h-daily">
-<h2 class="jk-h2" id="h-daily">Kecocokan harianmu</h2>
+<h2 class="jk-h2" id="h-daily">Rekomendasi harian</h2>
 @if($picks->isEmpty())
 @include('components.empty', ['icon' => 'cerah', 'title' => 'Belum ada rekomendasi hari ini', 'hint' => 'Lengkapi profil dan jawab kuesioner untuk rekomendasi yang lebih tepat.'])
 @else
@@ -55,49 +104,23 @@ try {
 @endif
 </section>
 
-<section class="jk-section" aria-labelledby="h-maylike">
-<h2 class="jk-h2" id="h-maylike">Mungkin kamu suka</h2>
-@if($mayLike->isEmpty())
-@include('components.empty', ['icon' => 'hati', 'title' => 'Belum ada saran', 'hint' => 'Coba longgarkan filter di Discover.'])
-@else
-<div class="jk-grid">@foreach($mayLike as $p) @include('components.profile-card', ['user' => $p, 'score' => $p->compatibility_score ?? null]) @endforeach</div>
-@endif
-</section>
-
 @if($journey)
-<section class="jk-section" aria-labelledby="h-journey">
-<h2 class="jk-h2" id="h-journey">Perjalanan taarufmu</h2>
-<p class="jk-muted">Tahap saat ini: <strong>{{ $journey->stage->label() }}</strong></p>
 @php
 $stages = \App\Enums\CourtshipStage::cases();
 $currentIdx = array_search($journey->stage, $stages);
+$pct = (int) (($currentIdx + 1) / max(1, count($stages)) * 100);
 @endphp
-<ol class="jk-journey">
-@foreach($stages as $i => $s)
-<li class="{{ $i < $currentIdx ? 'done' : ($i === $currentIdx ? 'now' : '') }}"><div><div class="t">{{ $s->label() }}</div><div class="d">{{ $i < $currentIdx ? 'Selesai' : ($i === $currentIdx ? 'Berlangsung' : 'Berikutnya') }}</div></div></li>
-@endforeach
-</ol>
-<a class="jk-btn jk-btn-like" style="text-decoration:none;text-align:center;margin-top:12px" href="/biro-jodoh/taaruf/{{ $journey->id }}">Lanjutkan perjalanan</a>
+<section class="jk-section" aria-labelledby="h-journey" style="border-left:4px solid #8b5cf6">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div style="flex:1;min-width:160px"><div class="jk-h2" id="h-journey" style="margin:0">Taaruf: {{ $journey->stage->label() }}</div>
+<div class="jk-progress" style="margin-top:8px"><div style="width:{{ $pct }}%"></div></div></div>
+<a class="jk-btn jk-btn-like" style="text-decoration:none;text-align:center;flex:none;padding:10px 16px" href="/biro-jodoh/taaruf/{{ $journey->id }}">Lanjut</a>
+</div>
 </section>
 @endif
 
-<section class="jk-section" aria-labelledby="h-new">
-<h2 class="jk-h2" id="h-new">Anggota baru</h2>
-@if($newMembers->isEmpty())
-@include('components.empty', ['icon' => 'baru', 'title' => 'Belum ada anggota baru', 'hint' => 'Cek lagi nanti.'])
-@else
-<div class="jk-row-scroll">@foreach($newMembers as $u) @include('components.profile-card', ['user' => $u, 'compact' => true]) @endforeach</div>
-@endif
-</section>
-
-<section class="jk-section" aria-labelledby="h-active">
-<h2 class="jk-h2" id="h-active">Sedang aktif</h2>
-@if($activeNow->isEmpty())
-<p class="jk-muted">Tidak ada yang online saat ini. Coba lagi nanti.</p>
-@else
-<div class="jk-row-scroll">@foreach($activeNow as $u) @include('components.profile-card', ['user' => $u, 'compact' => true]) @endforeach</div>
-@endif
-</section>
+<section class="jk-section" aria-labelledby="h-maylike">
+<h2 class="jk-h2" id="h-maylike">Orang untukmu</h2>
 
 @if($events->isNotEmpty())
 <section class="jk-section" aria-labelledby="h-events">

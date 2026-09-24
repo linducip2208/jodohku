@@ -118,7 +118,12 @@ body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'I
 .jk-story{display:flex;gap:12px;align-items:center}
 .jk-story img{width:64px;height:64px;border-radius:16px;object-fit:cover;flex:none;background:#fce7f3}
 /* ---- a11y ---- */
-a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8b5cf6;outline-offset:2px;border-radius:8px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #8b5cf6;outline-offset:2px;border-radius:8px}
+/* ---- micro-interactions (subtle, reduced-motion safe) ---- */
+.jk-btn{transition:transform .12s ease, filter .12s ease}
+.jk-btn:active{transform:scale(.96)}
+.jk-pill,.jk-tab,.jk-navlink,.jk-side-link{transition:background-color .15s ease,color .15s ease}
+.jk-card{transition:box-shadow .15s ease}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 /* ---- dark mode: manual toggle (html[data-theme]) wins, OS preference is fallback ---- */
 html[data-theme="dark"]{--jk-ink:#fafafa;--jk-mute:#a1a1aa;--jk-line:#27272a;--jk-bg:#09090b;--jk-card:#18181b}

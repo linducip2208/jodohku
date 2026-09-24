@@ -7,6 +7,7 @@ use App\Models\Block;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\PostLike;
+use App\Models\Report;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -117,6 +118,30 @@ class CommunityController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Deleted.'])
             : back()->with('status', 'Postingan dihapus.');
+    }
+
+    public function report(Request $request, Post $post, AuditService $audit)
+    {
+        abort_unless(! $post->is_hidden, 404);
+        $this->authorizePostVisible($request, $post);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:50']]);
+        Report::create([
+            'reporter_id' => $request->user()->id,
+            'reported_user_id' => $post->user_id,
+            'reportable_type' => Post::class,
+            'reportable_id' => $post->id,
+            'reason' => $data['reason'] ?? 'other',
+            'details' => 'Laporan postingan komunitas #'.$post->id,
+            'status' => 'pending',
+        ]);
+        try {
+            $audit->log('community.post.reported', $request->user(), $post);
+        } catch (\Throwable) {
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Laporan terkirim.'])
+            : back()->with('status', 'Laporan terkirim. Tim moderasi meninjau.');
     }
 
     protected function authorizePostVisible(Request $request, Post $post): void

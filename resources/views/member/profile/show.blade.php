@@ -74,7 +74,24 @@ if (! $bioVisible) {
 
 @if($photos->count())
 <section class="jk-section" aria-labelledby="p-photos"><h2 class="jk-h2" id="p-photos">Foto ({{ $photos->count() }})</h2>
-<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">@foreach($photos as $ph)<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">@if(!empty($ph->path))<img src="{{ asset('storage/'.$ph->path) }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy">@elseif(!empty($ph->url))<img src="{{ $ph->url }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy">@else<div class="jk-photo-fallback">Foto</div>@endif</div></div>@endforeach</div>
+<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">@foreach($photos as $ph)<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">@if(!empty($ph->path))<img src="{{ asset('storage/'.$ph->path) }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy" onerror="this.remove()">@elseif(!empty($ph->url))<img src="{{ $ph->url }}" alt="Foto {{ $profileUser->displayName() }}" loading="lazy" onerror="this.remove()">@else<div class="jk-photo-fallback">Foto</div>@endif</div></div>@endforeach</div>
+</section>
+@endif
+
+@php
+$profilePosts = collect();
+try {
+    $profilePosts = \App\Models\Post::where('user_id', $profileUser->id)->where('is_hidden', false)
+        ->when(! $isSelf, fn ($q) => $q->where('visibility', 'public'))
+        ->withCount(['comments', 'likes'])->latest('id')->limit(5)->get();
+} catch (\Throwable) {}
+@endphp
+@if($profilePosts->isNotEmpty())
+<section class="jk-section" aria-labelledby="p-posts"><h2 class="jk-h2" id="p-posts">Postingan</h2>
+@foreach($profilePosts as $pp)
+<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--jk-line)"><p style="margin:0">{{ \Illuminate\Support\Str::limit($pp->body, 160) }}</p><div class="jk-muted" style="font-size:11px;margin-top:4px">{{ $pp->likes_count }} suka · {{ $pp->comments_count }} komentar · {{ $pp->created_at?->diffForHumans() }}</div></div>
+@endforeach
+<a class="jk-pill" href="/komunitas">Lihat komunitas</a>
 </section>
 @endif
 

@@ -425,8 +425,10 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     });
     Route::post('/safety/report', function (Request $r) {
         $r->validate(['user_id' => 'required']);
+        $reasonMap = ['Spam/scam' => 'scam', 'Foto palsu' => 'fake_profile', 'Pelecehan' => 'harassment', 'Lainnya' => 'other'];
+        $reason = $reasonMap[$r->input('reason')] ?? 'other';
         try {
-            Report::create(['reporter_id' => Auth::id(), 'reported_user_id' => (int) $r->input('user_id'), 'reason' => $r->input('reason', 'Lainnya'), 'details' => $r->input('details'), 'status' => 'open']);
+            Report::create(['reporter_id' => Auth::id(), 'reported_user_id' => (int) $r->input('user_id'), 'reason' => $reason, 'details' => $r->input('details'), 'status' => 'pending']);
         } catch (Throwable) {
         }
 
@@ -496,6 +498,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/komunitas/{post}/like', [CommunityController::class, 'toggleLike'])->name('member.community.like');
     Route::post('/komunitas/{post}/komentar', [CommunityController::class, 'comment'])->name('member.community.comment')->middleware('throttle:30,1,community-comment');
     Route::delete('/komunitas/{post}', [CommunityController::class, 'destroy'])->name('member.community.destroy');
+    Route::post('/komunitas/postingan/{post}/laporkan', [CommunityController::class, 'report'])->name('member.community.report')->middleware('throttle:10,1,community-report');
     Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
     Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
     Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');
