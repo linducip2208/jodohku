@@ -52,13 +52,14 @@ class SwipeDeck extends Component
         return $id ? User::with(['profile', 'interests'])->find($id) : null;
     }
 
-    protected function refill(DiscoveryService $discovery): void
+    protected function refill(): void
     {
         $me = auth()->user();
         if (! $me) {
             return;
         }
         try {
+            $discovery = app(DiscoveryService::class);
             $filters = array_merge($this->filters, ['exclude_ids' => $this->seen]);
             $page = $discovery->discover($me, $filters, 20);
             foreach ($page->items() as $cand) {
@@ -79,7 +80,7 @@ class SwipeDeck extends Component
         }
         $this->photoIndex = 0;
         if (count($this->stack) < 5) {
-            $this->refill(app(DiscoveryService::class));
+            $this->refill();
         }
         $this->deckEmpty = empty($this->stack);
     }
@@ -177,9 +178,12 @@ class SwipeDeck extends Component
     {
         $me = auth()->user();
         $cand = $this->current();
+        if ($this->deckEmpty || ! $cand) {
+            return view('livewire.swipe-deck-empty');
+        }
         $images = [];
         $distance = null;
-        if ($cand && $me) {
+        if ($me) {
             try {
                 $images = $photos->visibleTo($cand, $me)->values()->all();
             } catch (\Throwable) {

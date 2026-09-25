@@ -12,6 +12,13 @@
 @if($other)
 <div>
 @include('components.profile-card', ['user' => $other, 'score' => $mt->compatibility_score ?? null, 'compact' => true])
+<div x-data="{ openers: [], loading: false }" style="margin-top:6px">
+<button class="jk-pill" @click="loading = true; fetch('/ai/icebreakers/{{ $other->id }}', { headers: { 'Accept': 'application/json' } }).then(r => r.json()).then(j => { openers = j.icebreakers || []; loading = false; }).catch(() => { loading = false; })" x-show="openers.length === 0 && !loading" aria-label="Saran pembuka untuk {{ $other->displayName() }}">💬 Sapa duluan</button>
+<span class="jk-muted" x-show="loading" style="font-size:12px">Menyiapkan saran…</span>
+<template x-for="(o, i) in openers" :key="i">
+<form method="POST" action="/matches/{{ $other->id }}/icebreaker-send" style="margin-top:6px;display:flex;gap:6px">@csrf<input type="hidden" name="text" :value="o"><button class="jk-pill" type="submit" style="text-align:left" x-text="o.length > 80 ? o.slice(0, 80) + '…' : o"></button></form>
+</template>
+</div>
 <details style="margin-top:6px">
 <summary class="jk-pill" style="cursor:pointer;display:inline-block">Catatan privat</summary>
 <div style="margin-top:6px;display:flex;gap:6px">

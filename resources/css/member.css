@@ -6,6 +6,7 @@
   --jk-radius:20px; --jk-shadow:0 12px 32px rgba(244,63,94,.12);
 }
 *{box-sizing:border-box}
+img{max-width:100%}
 body.jk-body{margin:0;background:var(--jk-bg);color:var(--jk-ink);font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
 .jk-app{display:flex;min-height:100vh}
 .jk-sidebar{display:none;width:248px;flex-shrink:0;background:#fff;border-right:1px solid var(--jk-line);padding:20px 14px;position:sticky;top:0;height:100vh}

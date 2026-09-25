@@ -10,6 +10,7 @@ use App\Models\MatchNote;
 use App\Models\ProfileView;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\ChatService;
 use App\Services\MatchingEngine;
 use Illuminate\Http\Request;
 
@@ -65,6 +66,25 @@ class MatchController extends Controller
         abort_unless((bool) $match, 404);
 
         return $match;
+    }
+
+    /** Conversation starter: send chosen icebreaker as first message (creates direct conversation on demand). */
+    public function icebreakerSend(Request $request, User $user, ChatService $chat)
+    {
+        $this->activeMatchWith($request->user(), $user);
+        $data = $request->validate(['text' => ['required', 'string', 'max:500']]);
+        try {
+            $conv = $chat->findOrCreateDirect($request->user(), $user);
+            $chat->sendMessage($conv, $request->user(), ['body' => trim($data['text'])]);
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['chat' => $e->getMessage()]);
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['conversation_id' => $conv->id])
+            : redirect('/chat/'.$conv->id);
     }
 
     /** Private note about a match — visible only to its author. */

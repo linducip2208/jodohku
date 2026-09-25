@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\SavedFilter;
 use App\Services\DiscoveryService;
 use Livewire\Component;
 
@@ -92,15 +93,15 @@ class DiscoverGrid extends Component
         }
         $filters = array_intersect_key(
             array_filter($this->filters(), fn ($v) => $v !== null && $v !== '' && $v !== []),
-            array_flip(\App\Models\SavedFilter::ALLOWED)
+            array_flip(SavedFilter::ALLOWED)
         );
         if (empty($filters)) {
             return;
         }
-        if (\App\Models\SavedFilter::where('user_id', auth()->id())->count() >= 10) {
+        if (SavedFilter::where('user_id', auth()->id())->count() >= 10) {
             return;
         }
-        \App\Models\SavedFilter::create(['user_id' => auth()->id(), 'name' => $name, 'filters' => $filters]);
+        SavedFilter::create(['user_id' => auth()->id(), 'name' => $name, 'filters' => $filters]);
         $this->filterName = '';
     }
 
@@ -169,7 +170,7 @@ class DiscoverGrid extends Component
                 $candidates = collect();
             }
             try {
-                $saved = \App\Models\SavedFilter::where('user_id', $user->id)->latest('id')->limit(10)->get();
+                $saved = SavedFilter::where('user_id', $user->id)->latest('id')->limit(10)->get();
             } catch (\Throwable) {
             }
         }

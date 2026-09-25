@@ -2,6 +2,11 @@
 @section('title', 'Premium — Jodohku')
 @section('content')
 <h1 class="jk-h1">Premium</h1><p class="jk-muted">Pilih paket yang sesuai dengan perjalananmu.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" aria-label="Fitur premium lainnya">
+<a class="jk-pill" href="/gifts">🎁 Gifts</a>
+<a class="jk-pill" href="/boosts">🚀 Boost</a>
+<a class="jk-pill" href="/credits">💰 Kredit</a>
+</div>
 @php $plans = collect(); try { $plans = app(\App\Services\MembershipService::class)->plans(); } catch (\Throwable) {} @endphp
 <div class="jk-grid">
 @forelse($plans as $p)

@@ -31,6 +31,15 @@
 <label>Kota</label><input name="city" value="{{ auth()->user()->city }}">
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan</button></form>
 </div>
+<div class="jk-section jk-form"><div class="jk-h2">Prompt profil</div>
+<p class="jk-muted">Jawab 1–3 pertanyaan biar profilmu hidup. Kosongkan untuk melewati.</p>
+<form method="POST" action="/settings/profile">@csrf
+@php $savedPrompts = $user->profile?->prompts ?? []; @endphp
+@foreach(\App\Models\Profile::PROMPT_QUESTIONS as $i => $q)
+<label>{{ $q }}</label><input name="prompt_{{ $i }}" maxlength="300" value="{{ old('prompt_'.$i, $savedPrompts[$q] ?? '') }}" placeholder="Tulis jawaban singkat…">
+@endforeach
+<button class="jk-submit" style="margin-top:12px" type="submit">Simpan Prompt</button></form>
+</div>
 <div class="jk-section" x-data="{ tips:[], score:null, aiNote:null, loading:false }" aria-labelledby="h-tips">
 <div class="jk-h2" id="h-tips">Saran profil</div>
 <p class="jk-muted">Checklist jujur berdasarkan kelengkapan profilmu — tanpa janji manis.</p>

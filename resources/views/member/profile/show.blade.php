@@ -74,6 +74,12 @@ if (! $bioVisible) {
 @if($profile?->bio && $bioVisible)
 <section class="jk-section" aria-labelledby="p-about"><h2 class="jk-h2" id="p-about">Tentang</h2><p style="margin:0">{{ $profile->bio }}</p></section>
 @endif
+@php $shownPrompts = is_array($profile?->prompts ?? null) ? array_filter($profile->prompts, fn ($a, $q) => trim((string) $a) !== '' && in_array($q, \App\Models\Profile::PROMPT_QUESTIONS, true), ARRAY_FILTER_USE_BOTH) : []; @endphp
+@if($shownPrompts)
+<section class="jk-section" aria-labelledby="p-prompts"><h2 class="jk-h2" id="p-prompts">Cerita dia</h2>
+@foreach($shownPrompts as $q => $a)<div style="margin-bottom:10px"><div class="jk-muted" style="font-size:12px">{{ $q }}</div><div style="font-size:14px;margin-top:2px">{{ $a }}</div></div>@endforeach
+</section>
+@endif
 
 <section class="jk-section" aria-labelledby="p-values"><h2 class="jk-h2" id="p-values">Nilai & gaya hidup</h2>
 <div class="jk-tags">

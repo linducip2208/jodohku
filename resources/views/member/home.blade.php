@@ -41,6 +41,13 @@ try {
 } catch (\Throwable) {}
 @endphp
 <div class="jk-feed">
+@if(\App\Http\Controllers\Member\OnboardingController::needsOnboarding($me ?? auth()->user()))
+<section class="jk-section" style="border-left:4px solid #f43f5e" aria-label="Lengkapi profil">
+<div class="jk-h2">Profilmu belum lengkap</div>
+<p class="jk-muted" style="margin:4px 0 10px">4 langkah cepat → rekomendasi jauh lebih tepat.</p>
+<a class="jk-btn jk-btn-like" style="text-decoration:none;text-align:center;display:block" href="/onboarding">Lengkapi sekarang →</a>
+</section>
+@endif
 <div style="padding:4px 2px 0">
 <div class="jk-muted" style="font-size:12.5px">{{ $greet }},</div>
 <h1 class="jk-h1" style="font-size:20px">{{ $me?->displayName() ?? 'kamu' }}</h1>

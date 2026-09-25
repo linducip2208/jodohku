@@ -6,6 +6,16 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 ## [Unreleased] — dating frontend polish
 
 ### Added
+- Mode Swipe di Discover (`/discover?tab=orang&mode=swipe`, Livewire
+  `swipe-deck`): gesture sentuh + tombol + panah keyboard, carousel foto,
+  jarak/status/verified, rewind, skeleton/empty state, modal match.
+- Filter tersimpan bernama (maks 10, terapkan via query, hapus) +
+  filter pekerjaan/agama/tujuan + minat di retrieval.
+- Onboarding 4 langkah (`/onboarding`: dasar → tujuan → foto →
+  preferensi) + banner home bila profil tipis.
+- Kirim icebreaker dari kartu match (`POST /matches/{user}/icebreaker-send`,
+  `GET /ai/icebreakers/{user}`) — percakapan dibuat on-demand.
+- Prompt profil (6 pertanyaan, tersimpan JSON) + tampil di tab Tentang.
 - Tombol rewind web (`POST /rewind`, throttle) di halaman likes —
   backend `LikeService::rewind` akhirnya punya UI.
 - Modal selebrasi match di `like-buttons` (like & superlike): CTA real

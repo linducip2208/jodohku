@@ -17,9 +17,11 @@ use App\Http\Controllers\Member\HomeController;
 use App\Http\Controllers\Member\LikeController;
 use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\MessageController;
+use App\Http\Controllers\Member\OnboardingController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\QuestionnaireController;
 use App\Http\Controllers\Member\SafetyController;
+use App\Http\Controllers\Member\SavedFilterController;
 use App\Http\Controllers\Member\SearchController;
 use App\Http\Controllers\Member\SettingsController;
 use App\Http\Controllers\Member\StoryController;
@@ -30,6 +32,7 @@ use App\Models\Conversation;
 use App\Models\Event;
 use App\Models\MembershipPlan;
 use App\Models\Post;
+use App\Models\Profile;
 use App\Models\Report;
 use App\Models\SuccessStory;
 use App\Models\User;
@@ -291,6 +294,10 @@ Route::middleware('guest')->group(function () {
 /* ---------- Member ---------- */
 Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('member.home');
+    Route::get('/onboarding/{step?}', [OnboardingController::class,
+        'show'])->name('member.onboarding');
+    Route::post('/onboarding/{step}', [OnboardingController::class,
+        'store'])->name('member.onboarding.store')->middleware('throttle:30,1,onboarding');
     Route::get('/discover', fn () => view('member.discover'))->name('member.discover');
     Route::get('/profile/edit', function () {
         return view('member.profile.edit', ['user' => Auth::user()->load(['profile', 'photos', 'interests'])]);
@@ -324,11 +331,15 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
     Route::post('/rewind', [LikeController::class,
-'rewind'])->name('member.rewind')->middleware('throttle:10,1,rewind');
-    Route::post('/filter-tersimpan', [\App\Http\Controllers\Member\SavedFilterController::class,
-'store'])->name('member.filters.store')->middleware('throttle:20,1,saved-filters');
-    Route::delete('/filter-tersimpan/{savedFilter}', [\App\Http\Controllers\Member\SavedFilterController::class,
-'destroy'])->name('member.filters.destroy');
+        'rewind'])->name('member.rewind')->middleware('throttle:10,1,rewind');
+    Route::post('/matches/{user}/icebreaker-send', [MatchController::class,
+        'icebreakerSend'])->name('member.matches.icebreaker')->middleware('throttle:10,1,icebreaker-send');
+    Route::get('/ai/icebreakers/{user}', [AiAssistantController::class,
+        'icebreakers'])->name('member.ai.icebreakers')->middleware('throttle:10,1,ai-icebreakers');
+    Route::post('/filter-tersimpan', [SavedFilterController::class,
+        'store'])->name('member.filters.store')->middleware('throttle:20,1,saved-filters');
+    Route::delete('/filter-tersimpan/{savedFilter}', [SavedFilterController::class,
+        'destroy'])->name('member.filters.destroy');
     Route::get('/questionnaire', [QuestionnaireController::class, 'index'])->name('member.questionnaire');
     Route::post('/questionnaire', [QuestionnaireController::class, 'store'])->name('member.questionnaire.store');
     Route::get('/who-liked', [MatchController::class, 'whoLiked'])->name('member.who-liked');
@@ -441,10 +452,19 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         $u->update($r->only(['display_name', 'city']));
         try {
             $u->profile()->updateOrCreate([], $r->only(['bio', 'occupation', 'education']));
+            // Profile prompts: prompt_{index} => answer (fixed question list).
+            $answers = [];
+            foreach (Profile::PROMPT_QUESTIONS as $i => $q) {
+                $a = trim((string) $r->input('prompt_'.$i, ''));
+                if ($a !== '') {
+                    $answers[$q] = mb_substr($a, 0, 300);
+                }
+            }
+            $u->profile()->updateOrCreate([], ['prompts' => $answers ?: null]);
         } catch (Throwable) {
         }
 
-        return back()->with('status', 'Profil disimpan ✅');
+        return back()->with('status', 'Profil disimpan ???');
     });
     Route::post('/settings/privacy', [SettingsController::class, 'privacy'])->name('settings.privacy');
     Route::post('/settings/notifications', [SettingsController::class, 'notifications'])->name('settings.notifications');
