@@ -525,6 +525,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/settings/2fa/enable', [SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
     Route::post('/settings/2fa/disable', [SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
     Route::post('/settings/2fa/totp/start', [SettingsController::class, 'startTotp'])->name('settings.2fa.totp.start')->middleware('throttle:5,1,totp-setup');
+    Route::get('/settings/2fa/totp/qr', [SettingsController::class, 'totpQr'])->name('settings.2fa.totp.qr')->middleware('throttle:10,1,totp-qr');
     Route::post('/settings/2fa/totp/confirm', [SettingsController::class, 'confirmTotp'])->name('settings.2fa.totp.confirm')->middleware('throttle:10,1,totp-confirm');
     Route::post('/settings/2fa/totp/backup', [SettingsController::class, 'regenerateBackupCodes'])->name('settings.2fa.totp.backup')->middleware('throttle:5,1,totp-backup');
     Route::delete('/settings/account', [SettingsController::class, 'destroy'])->name('settings.account.destroy')->middleware('throttle:5,1,account-delete');

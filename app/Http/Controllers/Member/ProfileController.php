@@ -17,8 +17,10 @@ use App\Services\AuditService;
 use App\Services\PhotoService;
 use App\Services\VirtualMemberService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ProfileController extends Controller
 {
@@ -182,7 +184,10 @@ class ProfileController extends Controller
         if (stripos($head, '<svg') !== false || stripos($head, '<html') !== false) {
             abort(422, 'File bukan video valid.');
         }
-        abort_unless($request->user()->videos()->count() < 3, 422, 'Maksimal 3 video profil.');
+        abort_unless($request->user()->videos()->count() < (int) config('jodohku.video.max_profile_videos', 3), 422, 'Maksimal 3 video profil.');
+        // Duration enforcement only when ffprobe is available (media hosts).
+        // Without it, size+MIME checks above still apply — never hard-fail.
+        $this->enforceVideoDuration($file);
         $path = $file->store('profile-videos', 'public');
         // Pending moderation: not publicly visible until approved.
         $record = $request->user()->videos()->create(['path' => $path, 'is_approved' => false]);
@@ -194,6 +199,28 @@ class ProfileController extends Controller
         return $request->wantsJson()
             ? response()->json($record->fresh(), 201)
             : back()->with('status', 'Video diupload, menunggu moderasi ✅');
+    }
+
+    /** Reject over-long clips when ffprobe exists; silently skip otherwise. */
+    protected function enforceVideoDuration(UploadedFile $file): void
+    {
+        $ffprobe = (string) config('jodohku.video.ffprobe_path', '');
+        if ($ffprobe === '' || ! is_file($ffprobe) || ! is_executable($ffprobe)) {
+            return;
+        }
+        $max = max(15, (int) config('jodohku.video.max_duration_seconds', 120));
+        try {
+            $out = [];
+            $code = 1;
+            exec(escapeshellarg($ffprobe).' -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '.escapeshellarg($file->getRealPath()).' 2>&1', $out, $code);
+            $seconds = (float) trim(implode('', $out));
+            if ($code === 0 && $seconds > 0 && $seconds > $max) {
+                abort(422, 'Video maksimal '.$max.' detik.');
+            }
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (\Throwable) {
+        }
     }
 
     public function privacy(Request $request)

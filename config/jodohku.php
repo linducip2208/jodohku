@@ -44,4 +44,13 @@ return [
         'turn_username' => env('WEBRTC_TURN_USERNAME', ''),
         'turn_credential' => env('WEBRTC_TURN_CREDENTIAL', ''),
     ],
+
+    'video' => [
+        // Optional ffprobe binary for duration enforcement. Empty = skip
+        // (size+MIME checks still apply). Set FFPROBE_PATH=/usr/bin/ffprobe
+        // on media-capable hosts to reject clips over max_duration_seconds.
+        'ffprobe_path' => env('FFPROBE_PATH', ''),
+        'max_duration_seconds' => env('VIDEO_MAX_DURATION', 120),
+        'max_profile_videos' => env('VIDEO_MAX_PER_USER', 3),
+    ],
 ];

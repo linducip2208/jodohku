@@ -61,7 +61,8 @@
 @if(session('totp_setup'))
 @php $ts = session('totp_setup'); @endphp
 <div class="jk-alert ok">Pindai ke aplikasi authenticator (Google/Microsoft Authy):<br>
-<code style="word-break:break-all">{{ $ts['secret'] ?? '' }}</code><br>
+<img src="/settings/2fa/totp/qr" alt="QR kode authenticator" style="width:200px;height:200px;background:#fff;border-radius:12px;margin:8px 0" loading="lazy" onerror="this.remove()">
+<br><code style="word-break:break-all">{{ $ts['secret'] ?? '' }}</code><br>
 <button class="jk-pill" type="button" onclick="navigator.clipboard?.writeText('{{ $ts['secret'] ?? '' }}').then(()=>window.jkToast?.('Secret disalin ✅'))">Salin secret</button>
 <a class="jk-pill" href="{{ $ts['otpauth_url'] ?? '#' }}" style="text-decoration:none">Buka di aplikasi</a></div>
 <form method="POST" action="/settings/2fa/totp/confirm" class="jk-form" style="margin-top:8px">@csrf

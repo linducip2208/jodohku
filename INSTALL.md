@@ -27,7 +27,7 @@ Buka `http://localhost:8000`. Akun seed: `superadmin@jodohku.example.test` / `ad
 
 ```bash
 php artisan migrate:fresh --seed --force
-php artisan test   # 15 passed
+php artisan test   # 277 passed
 ```
 
 ## Masalah umum

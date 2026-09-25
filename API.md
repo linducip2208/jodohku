@@ -90,7 +90,7 @@ Web: `/` (landing), `/discover`, `/register`, `/login`, `/logout`.
 
 ```bash
 curl -X POST /api/v1/auth/register -H 'Content-Type: application/json' \
- -d '{"name":"Ayu","email":"ayu@example.test","password":"password123","password_confirmation":"password123"}'
+ -d '{"name":"Ayu","email":"ayu@example.test","password":"password123","password_confirmation":"password123","date_of_birth":"1998-05-10","gender":"female"}'
 curl /api/v1/discover?per_page=5 -H "Authorization: Bearer <token>"
 curl -X POST /api/v1/webhooks/midtrans -H 'Content-Type: application/json' -d '{...}'
 ```

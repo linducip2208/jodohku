@@ -55,6 +55,9 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Admin moderasi video (`/admin/moderation/videos`, approve/reject audit-logged).
 - Alpine.js kini bundled via Vite (`alpinejs` npm); CDN unpkg hanya fallback bila build absen.
 - Chat kirim dicegah saat offline (toast); `.env.example` tandai MAIL_LOG bahaya di prod.
+- TOTP QR SVG (`/settings/2fa/totp/qr`, bacon-qr-code) — pindai tanpa ketik.
+- Video: batas durasi opsional via `FFPROBE_PATH` (skip aman bila absen).
+- Docs: contoh register API lengkap, INSTALL hitungan tes, SECURITY (TOTP/HMAC/GPS/FCM), DEPLOY (FCMv1/QR/ffprobe).
 
 ### Security
 - Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.- OTP telepon disimpan sebagai HMAC-SHA256 (bukan plaintext) + rate-limit per-IP & per-nomor + verify 5/5mnt.

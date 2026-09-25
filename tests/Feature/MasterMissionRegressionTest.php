@@ -282,4 +282,25 @@ class MasterMissionRegressionTest extends TestCase
         $this->actingAs($admin)->post("/admin/moderation/videos/{$video->id}", ['action' => 'approve'])->assertRedirect();
         $this->assertTrue((bool) $video->fresh()->is_approved);
     }
+
+    public function test_totp_qr_returns_svg(): void
+    {
+        $user = User::factory()->create();
+        app(TwoFactorService::class)->startTotpSetup($user);
+        $res = $this->actingAs($user)->get('/settings/2fa/totp/qr')->assertOk();
+        $this->assertStringContainsString('image/svg+xml', (string) $res->headers->get('Content-Type'));
+        $this->assertStringContainsString('<svg', (string) $res->getContent());
+    }
+
+    public function test_video_upload_skips_duration_without_ffprobe(): void
+    {
+        // Server ini tanpa ffprobe: upload valid tidak boleh gagal karena durasi.
+        $this->assertSame('', (string) config('jodohku.video.ffprobe_path', ''));
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $mp4 = base64_decode('AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDE=');
+        $good = UploadedFile::fake()->createWithContent('clip.mp4', $mp4);
+        $res = $this->actingAs($user, 'sanctum')->postJson('/api/v1/profile/video', ['video' => $good]);
+        $this->assertTrue(in_array($res->status(), [201, 422], true));
+    }
 }

@@ -4,6 +4,10 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Notifications\TwoFactorCode;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -151,6 +155,29 @@ class TwoFactorService
     public function hasTotp(User $user): bool
     {
         return $user->two_factor_secret !== null;
+    }
+
+    /** SVG QR for the pending setup (scan with authenticator app). */
+    public function pendingQrSvg(User $user, int $size = 200): string
+    {
+        $pending = Cache::get($this->pendingKey($user));
+        if (! $pending) {
+            throw new \RuntimeException('Setup kedaluwarsa. Mulai ulang.');
+        }
+        try {
+            $secret = decrypt($pending);
+        } catch (\Throwable) {
+            throw new \RuntimeException('Setup rusak. Mulai ulang.');
+        }
+        $issuer = rawurlencode((string) config('app.name', 'Jodohku'));
+        $label = rawurlencode((string) ($user->email ?? 'user'));
+        $uri = "otpauth://totp/{$issuer}:{$label}?secret={$secret}&issuer={$issuer}&algorithm=SHA1&digits=6&period=30";
+        $renderer = new ImageRenderer(
+            new RendererStyle($size),
+            new SvgImageBackEnd
+        );
+
+        return (new Writer($renderer))->writeString($uri);
     }
 
     public function totpCodeFor(string $secret, ?int $at = null): string

@@ -213,6 +213,18 @@ class SettingsController extends Controller
             : back()->with('totp_setup', $setup);
     }
 
+    /** QR SVG for the pending setup (scan, no typing). */
+    public function totpQr(Request $request, TwoFactorService $tfa)
+    {
+        try {
+            $svg = $tfa->pendingQrSvg($request->user());
+        } catch (\RuntimeException $e) {
+            abort(422, $e->getMessage());
+        }
+
+        return response($svg, 200, ['Content-Type' => 'image/svg+xml', 'Cache-Control' => 'no-store']);
+    }
+
     /** Confirm authenticator setup. Returns single-use backup codes. */
     public function confirmTotp(Request $request, TwoFactorService $tfa)
     {
