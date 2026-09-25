@@ -10,8 +10,17 @@
 @endforeach
 </div>
 @if($tab === 'orang')
+@php $mode = request('mode', 'grid'); $mode = in_array($mode, ['grid', 'swipe'], true) ? $mode : 'grid'; @endphp
+<div style="display:flex;gap:8px;margin-bottom:10px" role="group" aria-label="Mode tampilan">
+<a class="jk-pill" @if($mode === 'grid') style="background:#f43f5e;color:#fff" @endif href="/discover?tab=orang&mode=grid">▦ Grid</a>
+<a class="jk-pill" @if($mode === 'swipe') style="background:#f43f5e;color:#fff" @endif href="/discover?tab=orang&mode=swipe">♥ Swipe</a>
+</div>
+@if($mode === 'swipe')
+@livewire('swipe-deck')
+@else
 <p class="jk-muted">Rekomendasi berbasis kecocokan, bukan katalog.</p>
 @livewire('discover-grid')
+@endif
 @elseif($tab === 'postingan')
 @php
 $trendingPosts = collect();

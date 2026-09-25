@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
  * - Base: active users, never self, never counselors (consultation
  *   context only — see BiroJodohController).
  * - Hard filters pushed into indexed queries (gender/city/age/verified/
- *   online/premium/photo/keyword/goal/height/marital/religion/distance).
+ *   online/premium/photo/keyword/goal/height/marital/religion/distance/
+ *   occupation/interests).
  * - Privacy: blocked (both directions) always excluded; incognito hidden
  *   unless they already liked the viewer; inactive never included.
  * - Reports do NOT exclude (preserved current behavior: only blocks gate).
@@ -74,6 +75,15 @@ class CandidateRetrievalService
         }
         if (! empty($filters['education'])) {
             $query->whereHas('profile', fn ($q) => $q->where('education', 'like', '%'.$filters['education'].'%'));
+        }
+        if (! empty($filters['occupation'])) {
+            $query->whereHas('profile', fn ($q) => $q->where('occupation', 'like', '%'.$filters['occupation'].'%'));
+        }
+        if (! empty($filters['interests'])) {
+            $names = array_values(array_filter(array_map('trim', (array) $filters['interests'])));
+            if ($names) {
+                $query->whereHas('interests', fn ($q) => $q->whereIn('name', $names));
+            }
         }
         if (! empty($filters['religion'])) {
             $query->whereHas('profile', fn ($q) => $q->where('religion', $filters['religion']));

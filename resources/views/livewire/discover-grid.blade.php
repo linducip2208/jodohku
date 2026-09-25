@@ -13,11 +13,28 @@
 <select class="jk-select" wire:model.live="gender" aria-label="Gender"><option value="">Semua gender</option><option value="female">Perempuan</option><option value="male">Laki-laki</option></select>
 <input class="jk-input" wire:model.live="city" placeholder="Kota" aria-label="Kota">
 <input class="jk-input" wire:model.live="education" placeholder="Pendidikan" aria-label="Pendidikan">
+<input class="jk-input" wire:model.live="occupation" placeholder="Pekerjaan" aria-label="Pekerjaan">
+<input class="jk-input" wire:model.live="religion" placeholder="Agama" aria-label="Agama">
+<select class="jk-select" wire:model.live="relationshipGoal" aria-label="Tujuan hubungan"><option value="">Semua tujuan</option><option value="marriage">Menikah</option><option value="serious_relationship">Serius</option><option value="dating">Pacaran</option><option value="friendship">Pertemanan</option></select>
 <select class="jk-select" wire:model.live="sort" aria-label="Urutan"><option value="compatibility">Skor tertinggi</option><option value="newest">Terbaru</option><option value="active">Terakhir aktif</option><option value="distance">Terdekat</option><option value="popularity">Populer</option></select>
 <label class="jk-pill"><input type="checkbox" wire:model.live="verified"> Verified</label>
 <label class="jk-pill"><input type="checkbox" wire:model.live="online"> Online</label>
 <label class="jk-pill"><input type="checkbox" wire:model.live="premium"> Premium</label>
 <button class="jk-btn jk-btn-pass" wire:click="resetFilters" style="flex:none">Reset</button>
+</div>
+@if($saved->isNotEmpty())
+<div style="margin-top:10px" aria-label="Filter tersimpan">
+<div class="jk-muted" style="font-size:12px;font-weight:700;margin-bottom:6px">Filter tersimpan</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+@foreach($saved as $sf)
+<a class="jk-pill" style="text-decoration:none" href="/discover?{{ http_build_query(array_merge(['tab' => 'orang', 'mode' => request('mode', 'grid')], $sf->filters)) }}">{{ $sf->name }}</a>
+@endforeach
+</div>
+</div>
+@endif
+<div style="display:flex;gap:6px;margin-top:10px">
+<input class="jk-input" style="flex:1" wire:model="filterName" maxlength="60" placeholder="Nama filter ini…" aria-label="Nama filter tersimpan">
+<button class="jk-btn jk-btn-pass" wire:click="saveCurrentFilter" style="flex:none" title="Simpan filter aktif">Simpan</button>
 </div>
 </details>
 <div wire:loading aria-live="polite" aria-label="Memuat kandidat">

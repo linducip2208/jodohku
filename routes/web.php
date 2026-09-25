@@ -324,7 +324,11 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
     Route::post('/rewind', [LikeController::class,
-        'rewind'])->name('member.rewind')->middleware('throttle:10,1,rewind');
+'rewind'])->name('member.rewind')->middleware('throttle:10,1,rewind');
+    Route::post('/filter-tersimpan', [\App\Http\Controllers\Member\SavedFilterController::class,
+'store'])->name('member.filters.store')->middleware('throttle:20,1,saved-filters');
+    Route::delete('/filter-tersimpan/{savedFilter}', [\App\Http\Controllers\Member\SavedFilterController::class,
+'destroy'])->name('member.filters.destroy');
     Route::get('/questionnaire', [QuestionnaireController::class, 'index'])->name('member.questionnaire');
     Route::post('/questionnaire', [QuestionnaireController::class, 'store'])->name('member.questionnaire.store');
     Route::get('/who-liked', [MatchController::class, 'whoLiked'])->name('member.who-liked');

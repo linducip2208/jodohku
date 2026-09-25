@@ -19,6 +19,12 @@ class DiscoverGrid extends Component
 
     public string $education = '';
 
+    public string $occupation = '';
+
+    public string $religion = '';
+
+    public string $relationshipGoal = '';
+
     public bool $verified = false;
 
     public bool $online = false;
@@ -30,6 +36,8 @@ class DiscoverGrid extends Component
     public string $tab = 'recommended';
 
     public string $keyword = '';
+
+    public string $filterName = '';
 
     public int $limit = 20;
 
@@ -66,13 +74,34 @@ class DiscoverGrid extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['minAge', 'maxAge', 'maxDistance', 'gender', 'city', 'education', 'verified', 'online', 'premium', 'sort', 'tab', 'keyword', 'limit']);
+        $this->reset(['minAge', 'maxAge', 'maxDistance', 'gender', 'city', 'education', 'occupation', 'religion', 'relationshipGoal', 'verified', 'online', 'premium', 'sort', 'tab', 'keyword', 'filterName', 'limit']);
         $this->minAge = 18;
         $this->maxAge = 45;
         $this->maxDistance = 200;
         $this->sort = 'compatibility';
         $this->tab = 'recommended';
         $this->limit = 20;
+    }
+
+    /** Save current sheet state as a named filter (same ALLOWED allowlist as SavedFilterController). */
+    public function saveCurrentFilter(): void
+    {
+        $name = mb_substr(trim($this->filterName), 0, 60);
+        if ($name === '' || ! auth()->check()) {
+            return;
+        }
+        $filters = array_intersect_key(
+            array_filter($this->filters(), fn ($v) => $v !== null && $v !== '' && $v !== []),
+            array_flip(\App\Models\SavedFilter::ALLOWED)
+        );
+        if (empty($filters)) {
+            return;
+        }
+        if (\App\Models\SavedFilter::where('user_id', auth()->id())->count() >= 10) {
+            return;
+        }
+        \App\Models\SavedFilter::create(['user_id' => auth()->id(), 'name' => $name, 'filters' => $filters]);
+        $this->filterName = '';
     }
 
     public function loadMore(): void
@@ -105,6 +134,9 @@ class DiscoverGrid extends Component
             'gender' => $this->gender ?: null,
             'city' => $this->city ?: null,
             'education' => $this->education ?: null,
+            'occupation' => $this->occupation ?: null,
+            'religion' => $this->religion ?: null,
+            'relationship_goal' => $this->relationshipGoal ?: null,
             'verified' => $this->verified ?: null,
             'online' => $this->online ?: null,
             'premium' => $this->premium ?: null,
@@ -127,6 +159,7 @@ class DiscoverGrid extends Component
         $user = auth()->user();
         $candidates = collect();
         $hasMore = false;
+        $saved = collect();
         if ($user) {
             try {
                 $paginator = $discovery->discover($user, array_filter($this->filters(), fn ($v) => $v !== null && $v !== ''), $this->limit);
@@ -135,8 +168,12 @@ class DiscoverGrid extends Component
             } catch (\Throwable) {
                 $candidates = collect();
             }
+            try {
+                $saved = \App\Models\SavedFilter::where('user_id', $user->id)->latest('id')->limit(10)->get();
+            } catch (\Throwable) {
+            }
         }
 
-        return view('livewire.discover-grid', ['candidates' => $candidates, 'hasMore' => $hasMore]);
+        return view('livewire.discover-grid', ['candidates' => $candidates, 'hasMore' => $hasMore, 'saved' => $saved]);
     }
 }

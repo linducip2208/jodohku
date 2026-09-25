@@ -16,7 +16,7 @@ class Profile extends Model
         'user_id', 'headline', 'bio', 'occupation', 'education', 'religion',
         'ethnicity', 'height_cm', 'weight_kg', 'body_type', 'smoking', 'drinking',
         'marital_status', 'children_count', 'want_children', 'relationship_goal',
-        'languages', 'zodiac', 'is_complete', 'is_featured',
+        'languages', 'zodiac', 'is_complete', 'is_featured', 'prompts',
     ];
 
     protected function casts(): array
@@ -26,8 +26,19 @@ class Profile extends Model
             'relationship_goal' => RelationshipGoal::class,
             'is_complete' => 'boolean',
             'is_featured' => 'boolean',
+            'prompts' => 'array',
         ];
     }
+
+    /** Fixed prompt questions (Indonesian); answers stored as {question: answer}. */
+    public const PROMPT_QUESTIONS = [
+        'Akhir pekan ideal menurutmu?',
+        'Hal kecil yang membuatmu bahagia?',
+        'Tujuan hubungan yang kamu cari?',
+        'Kebiasaan yang tidak bisa kamu tinggalkan?',
+        'Kencan pertama yang berkesan versi kamu?',
+        'Nilai yang paling penting dalam pasangan?',
+    ];
 
     public function user(): BelongsTo
     {
