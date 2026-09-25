@@ -1195,11 +1195,18 @@ class JodohkuDemo extends Command
         $tagNames = ['taaruf', 'nikah', 'hijrah', 'kuliner', 'jakarta', 'keluarga'];
         $tagIds = [];
         foreach ($tagNames as $t) {
-            $tagIds[$t] = DB::table('hashtags')->insertGetId(['slug' => $t, 'name' => '#'.$t, 'posts_count' => 0, 'created_at' => $now, 'updated_at' => $now]);
+            // Rerunnable: demo may run twice (determinism check), so never
+            // blind-insert unique slugs.
+            $tagIds[$t] = DB::table('hashtags')->where('slug', $t)->value('id')
+                ?? DB::table('hashtags')->insertGetId(['slug' => $t, 'name' => '#'.$t, 'posts_count' => 0, 'created_at' => $now, 'updated_at' => $now]);
         }
         $ph = [];
+        $existingPh = DB::table('post_hashtag')->pluck('hashtag_id', 'post_id')->all();
         foreach (array_slice($postIds, 0, 300) as $pid) {
             $t = $tagNames[mt_rand(0, count($tagNames) - 1)];
+            if (($existingPh[$pid] ?? null) === $tagIds[$t]) {
+                continue;
+            }
             $ph[$pid.':'.$t] = ['post_id' => $pid, 'hashtag_id' => $tagIds[$t], 'created_at' => $now, 'updated_at' => $now];
         }
         $this->bulk('post_hashtag', array_values($ph));

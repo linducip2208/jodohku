@@ -10,7 +10,7 @@ $greet = now()->hour < 11 ? 'Selamat pagi' : (now()->hour < 15 ? 'Selamat siang'
 $me = auth()->user();
 $picks = collect(); $picksUsers = collect(); $mayLike = collect(); $newMembers = collect(); $activeNow = collect();
 $journey = null; $events = collect(); $stories = collect(); $posts = collect(); $forums = collect();
-$feed = null; $feedLiked = []; $storyStrip = collect();
+$storyStrip = collect();
 try {
     if ($me) {
         $personal = app(PersonalizationService::class);

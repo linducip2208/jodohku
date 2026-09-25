@@ -2,7 +2,7 @@
 @section('title', 'Discover — Jodohku')
 @section('content')
 <h1 class="jk-h1">Discover</h1>
-<p class="jk-muted">Orang, postingan, komunitas, dan event — sesuai minatmu.</p>
+<p class="jk-muted">Orang di sekitarmu — rekomendasi berbasis kecocokan, bukan katalog.</p>
 @php $tab = request('tab', 'orang'); @endphp
 <div class="jk-tabs" role="tablist" aria-label="Kategori discovery">
 @foreach(['orang' => 'Orang', 'postingan' => 'Postingan', 'komunitas' => 'Komunitas', 'event' => 'Event', 'trending' => 'Trending'] as $k => $label)

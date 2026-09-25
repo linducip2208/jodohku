@@ -44,7 +44,9 @@ class FeedService
         $ranked = $candidates->map(function (Post $p) use ($followingIds, $groupIds, $interestIds) {
             $score = 0;
             $hours = max(1, (int) $p->created_at?->diffInHours(now()));
-            $score += 100 / $hours; // recency
+            // Recency dominates: fresh posts always surface (matches the old
+            // reverse-chron contract), engagement/social/boost reorder within.
+            $score += 1000 / $hours; // recency
             $score += min(50, ((int) $p->likes_count) * 2 + ((int) $p->comments_count) * 4); // engagement
             if (in_array((int) $p->user_id, $followingIds, true)) {
                 $score += 60; // following
