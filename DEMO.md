@@ -103,6 +103,77 @@ limited, MIME/dimension validated, and fall back to generated avatars on
 failure — seeding never hard-fails on photos. Regenerate with
 `jodohku:demo:photos --force`; preview with `--dry-run`.
 
+`jodohku:demo:photos` honors `DEMO_PHOTOS_PER_USER` (default 1.5): every
+user gets 1 photo and ~half deterministically get a 2nd (index 1), with
+correct `sort_order`/`is_primary`. Existing slots are topped up, never
+duplicated.
+
+## Synthetic-face library (`local_library` driver)
+
+For realistic Southeast Asian-style profile photos without touching real
+people's faces or stock licensing, point the provider at a local folder
+of **synthetic faces**:
+
+```env
+DEMO_PHOTO_DRIVER=local_library
+DEMO_PHOTO_LIBRARY=demo/faces
+```
+
+Folder structure (paths relative to the `local` disk, i.e.
+`storage/app/demo/faces/`; override disk with `DEMO_PHOTO_LIBRARY_DISK`):
+
+```text
+storage/app/demo/faces/
+    male/      # *.jpg *.jpeg *.png *.webp (recursive)
+    female/    # *.jpg *.jpeg *.png *.webp (recursive)
+```
+
+Behavior:
+
+- Gender-aware: male users draw from `male/`, female from `female/`,
+  unknown gender from the whole library.
+- Deterministic: same demo user + photo index always resolves to the same
+  file (hash offset into the sorted file list), so reruns are stable.
+- Consecutive users never receive the identical photo when the library
+  has more than one image in the pool.
+- Every pick is resized/cropped to the 480x600 profile JPEG format with
+  Intervention Image (already a project dependency); output rows keep
+  `status=approved`, primary flag, schema, and disk behavior identical
+  to generated avatars.
+- Insufficient/empty library: that slot falls back to the `generated`
+  driver instead of failing the seed; the command reports
+  `Fallback photos: N`.
+
+Example output:
+
+```text
+Demo users: 5000
+Photo library: local_library
+Male photos: 2500
+Female photos: 2500
+Users processed: 5000
+Photos generated: 7500
+Fallback photos: 0
+```
+
+### How many photos are required for 5,000 users?
+
+`DEMO_PHOTOS_PER_USER=1.5` → ~7,500 photo slots. Because selection is
+hash-spread (not 1:1), aim for **at least ~500–1,000 unique faces per
+gender** for natural variety; fewer still works (selection cycles) but
+repeats become visible. Zero images also works (100% generated fallback).
+
+### Licensing requirement (operator responsibility)
+
+The package ships **no faces**. You must supply the library yourself and
+may only use images whose license permits commercial demo and
+source-code distribution. Recommended: generate them locally with an
+open image model (e.g. Stable Diffusion/SDXL with a Southeast Asian
+portrait prompt set), or a synthetic-face dataset with an explicit
+commercial-use grant. Do NOT use: real people's photos, screenshots,
+social-media scrapes, or stock-photo sites (their licenses forbid
+redistribution inside a sold source package).
+
 ## Measured performance (dev MySQL 8, 5000 users)
 
 ```text

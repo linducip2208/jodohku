@@ -15,10 +15,15 @@ return [
 
     /*
     | Photo provider: "generated" renders abstract GD avatars locally
-    | (safe to redistribute). "remote" downloads from a URL template
-    | containing {seed}; the operator owns that source's licensing.
+    | (safe to redistribute). "local_library" picks synthetic faces from a
+    | local folder (gender-aware male/female subfolders, deterministic per
+    | user, resized to 480x600) with fallback to "generated" per slot.
+    | "remote" downloads from a URL template containing {seed}; the
+    | operator owns that source's licensing.
     */
     'photo_driver' => env('DEMO_PHOTO_DRIVER', 'generated'),
+    'photo_library' => env('DEMO_PHOTO_LIBRARY', 'demo-faces'),
+    'photo_library_disk' => env('DEMO_PHOTO_LIBRARY_DISK', 'local'),
     'photo_url_template' => env('DEMO_PHOTO_URL_TEMPLATE', ''),
     'photo_retries' => (int) env('DEMO_PHOTO_RETRIES', 2),
     'photo_rate_limit_us' => (int) env('DEMO_PHOTO_RATE_LIMIT_US', 200000),

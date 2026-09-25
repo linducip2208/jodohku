@@ -435,7 +435,7 @@ class JodohkuDemo extends Command
 
     protected function seedPhotos(array $ids, int $target, DemoPhotoProvider $provider): void
     {
-        $names = User::whereIn('id', $ids)->pluck('display_name', 'id')->all();
+        $users = User::whereIn('id', $ids)->get(['id', 'display_name', 'gender'])->keyBy('id');
         // Exact distribution: base photos each + remainder spread (max 5/user).
         $target = max(count($ids), min($target, count($ids) * 5));
         $base = max(1, intdiv($target, count($ids)));
@@ -448,9 +448,12 @@ class JodohkuDemo extends Command
         $bar->setFormat('Photos %current%/%max% [%bar%] %percent:3s%%');
         foreach ($ids as $id) {
             $count = $base + (isset($bonus[$id]) ? 1 : 0);
+            $u = $users[$id] ?? null;
+            $gender = $u?->gender;
+            $gender = $gender instanceof \BackedEnum ? $gender->value : (string) ($gender ?? '');
             for ($i = 0; $i < $count; $i++) {
                 try {
-                    $path = $provider->avatar($id, (string) ($names[$id] ?? 'Member'), $i, (string) config('demo.photo_disk', 'public'));
+                    $path = $provider->avatar($id, (string) ($u?->display_name ?? 'Member'), $i, (string) config('demo.photo_disk', 'public'), false, $gender ?: null);
                 } catch (\Throwable) {
                     $path = null;
                 }
