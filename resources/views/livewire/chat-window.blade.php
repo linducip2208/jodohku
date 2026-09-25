@@ -1,4 +1,4 @@
-<div x-data="{ open: false }" wire:poll.10s @call-invited.window="window.JodohkuCall?.start($event.detail.conversationId, $event.detail.callId, $event.detail.type, true)">
+<div x-data="{ open: false }" data-jk-conv="{{ $conv?->id }}" wire:poll.10s @call-invited.window="window.JodohkuCall?.start($event.detail.conversationId, $event.detail.callId, $event.detail.type, true)">
 <div id="jk-chat-offline" role="alert">📡 Kamu offline — pesan akan coba dikirim ulang saat koneksi kembali.</div>
 <script>
 (function () {
@@ -10,6 +10,43 @@
     window.addEventListener('offline', jkChatNet);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', jkChatNet);
     else jkChatNet();
+})();
+(function () {
+    // Draft outbox: persist unsent message per conversation, restore on load.
+    function jkChatDraft(mode) {
+        var root = document.querySelector('[data-jk-conv]');
+        if (!root) return;
+        var id = root.getAttribute('data-jk-conv');
+        if (!id) return;
+        var key = 'jk-draft:' + id;
+        var input = root.querySelector('form[wire\\:submit\\.prevent="send"] input[wire\\:model="body"], form input[wire\\:model="body"]');
+        if (!input) return;
+        try {
+            if (mode === 'restore' && !input.value) {
+                var saved = localStorage.getItem(key);
+                if (saved) {
+                    input.value = saved;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            } else if (mode === 'save') {
+                if (input.value) localStorage.setItem(key, input.value);
+                else localStorage.removeItem(key);
+            } else if (mode === 'clear') {
+                localStorage.removeItem(key);
+            }
+        } catch (e) {}
+    }
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.matches && e.target.matches('input[wire\\:model="body"]')) jkChatDraft('save');
+    });
+    document.addEventListener('submit', function (e) {
+        if (e.target && e.target.matches && e.target.matches('form[wire\\:submit\\.prevent="send"]')) {
+            setTimeout(function () { jkChatDraft('clear'); }, 500);
+        }
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { jkChatDraft('restore'); });
+    else jkChatDraft('restore');
+    document.addEventListener('livewire:navigated', function () { jkChatDraft('restore'); });
 })();
 </script>
 @if(!$conv)
