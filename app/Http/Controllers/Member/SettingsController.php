@@ -98,11 +98,77 @@ class SettingsController extends Controller
             app(AuditService::class)->log('account.deleted', $user, $user);
         } catch (\Throwable) {
         }
-        $user->tokens()->delete();
-        $user->update(['status' => UserStatus::Deleted]);
-        auth()->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // GDPR-style erasure: revoke tokens/sessions, wipe contact hashes,
+        // disable push tokens, anonymize PII, then soft-delete.
+        try {
+            $user->tokens()->delete();
+        } catch (\Throwable) {
+        }
+        try {
+            \DB::table('sessions')->where('user_id', $user->id)->delete();
+        } catch (\Throwable) {
+        }
+        try {
+            $user->contactHashes()->delete();
+        } catch (\Throwable) {
+        }
+        try {
+            $user->pushTokens()->update(['disabled_at' => now()]);
+        } catch (\Throwable) {
+        }
+        $stamp = 'deleted_'.$user->id.'_'.time();
+        $user->forceFill([
+            'name' => 'Deleted User',
+            'display_name' => 'Deleted User',
+            'email' => $stamp.'@deleted.local',
+            'phone' => null,
+            'phone_hash' => null,
+            'username' => $stamp,
+            'city' => null,
+            'province' => null,
+            'country' => null,
+            'latitude' => null,
+            'longitude' => null,
+            'avatar_path' => null,
+            'cover_path' => null,
+            'passport_city' => null,
+            'passport_province' => null,
+            'passport_country' => null,
+            'passport_latitude' => null,
+            'passport_longitude' => null,
+            'passport_active' => false,
+            'referral_code' => null,
+            'status' => UserStatus::Deleted,
+        ])->save();
+        try {
+            $user->profile()->update(['headline' => null, 'bio' => null]);
+        } catch (\Throwable) {
+        }
+        // Guard-aware logout: web session vs API token (RequestGuard has no logout()).
+        try {
+            $currentToken = $request->user()?->currentAccessToken();
+            if ($currentToken) {
+                $currentToken->delete();
+            } else {
+                auth()->logout();
+            }
+        } catch (\Throwable) {
+            try {
+                auth()->logout();
+            } catch (\Throwable) {
+            }
+        }
+        // Stateless API requests have no session store — guard it.
+        if ($request->hasSession()) {
+            try {
+                $request->session()->invalidate();
+            } catch (\Throwable) {
+            }
+            try {
+                $request->session()->regenerateToken();
+            } catch (\Throwable) {
+            }
+        }
         $user->delete();
 
         return $request->wantsJson()

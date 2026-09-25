@@ -43,6 +43,10 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Landing: render `online-now`, `demo-members`, `feed-preview` yang sebelumnya mati.
 - Boosted badge (⚡ BOOST) di kartu profil + status boost kaya.
 - Verification upload web (`files[]` → private disk, max 3×10MB) — sebelumnya form tanpa file.
+- Event → match: endpoint `suggested` (web `/events/{event}/kenalan` + API `/api/v1/events/{event}/suggested`, filter blok/paused) + RSVP bawa `suggested_count`.
+- API saved-filters CRUD penuh (`/api/v1/saved-filters`, rename/duplikat/default) untuk Flutter.
+- `UserResource` kini sertakan `verification` tiers (email/phone/photo/identity dari request approved).
+- Delete-account GDPR: anonimasi PII + revoke token/sesi + wipe contact-hash + disable push.
 
 ### Security
 - Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.
@@ -57,6 +61,7 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 ### Fixed
 - `CallService::end()` idempoten: row-lock + replay aman + guard transaksi `reference_type=call`.
 - `BoostService::activate()` serialize per-user; spend boost bawa `reference_type=boost`.
+- `SettingsController::destroy` via API: guard-aware logout + session guard (perbaiki 500 `Session store not set` / `RequestGuard::logout`).
 - FCM legacy ditandai deprecated; jalur utama FCM v1 OAuth2 service-account.
 - Scheduler semua job `withoutOverlapping()->onOneServer()` (anti double-run).
 - Index `users(latitude, longitude)` untuk discovery bounding-box.

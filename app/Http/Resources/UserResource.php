@@ -35,6 +35,7 @@ class UserResource extends JsonResource
             'country' => $showLocation ? $this->country : null,
             'avatar' => $this->avatar_path,
             'is_verified' => (bool) $this->is_verified,
+            'verification' => $this->resource instanceof User ? $this->verificationBadges() : null,
             'is_premium' => (bool) $this->is_premium,
             'is_online' => $showOnline ? (bool) $this->is_online : null,
             'last_active_at' => $showOnline ? $this->last_active_at : null,

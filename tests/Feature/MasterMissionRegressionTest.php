@@ -2,14 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\Block;
 use App\Models\CompatibilityReport;
 use App\Models\Consultation;
 use App\Models\Conversation;
 use App\Models\Courtship;
 use App\Models\CreditTransaction;
+use App\Models\Event;
 use App\Models\Group;
 use App\Models\SavedFilter;
 use App\Models\User;
+use App\Models\VerificationRequest;
 use App\Services\BoostService;
 use App\Services\CallService;
 use App\Services\CreditService;
@@ -143,5 +146,73 @@ class MasterMissionRegressionTest extends TestCase
         $this->actingAs($user)->postJson('/api/v1/boost', [], ['Accept' => 'application/json'])->assertSuccessful();
         $this->assertTrue(app(BoostService::class)->isLive($user->fresh()));
         $this->assertDatabaseHas('credit_transactions', ['user_id' => $user->id, 'reference_type' => 'boost']);
+    }
+
+    public function test_event_suggested_excludes_self_and_blocks(): void
+    {
+        $me = User::factory()->create();
+        $friend = User::factory()->create();
+        $blocked = User::factory()->create();
+        $event = Event::create([
+            'host_id' => $me->id, 'title' => 'Kopi Darat Test',
+            'slug' => 'kopi-darat-test-'.uniqid(), 'city' => 'Jakarta',
+            'starts_at' => now()->addDays(3), 'status' => 'published',
+        ]);
+        foreach ([$me, $friend, $blocked] as $u) {
+            $event->members()->create(['user_id' => $u->id, 'status' => 'confirmed']);
+        }
+        Block::create(['blocker_id' => $me->id, 'blocked_id' => $blocked->id]);
+
+        $res = $this->actingAs($me, 'sanctum')->getJson("/api/v1/events/{$event->id}/suggested")->assertOk();
+        $ids = collect($res->json('data'))->pluck('id')->all();
+        $this->assertContains($friend->id, $ids);
+        $this->assertNotContains($me->id, $ids);
+        $this->assertNotContains($blocked->id, $ids);
+
+        // RSVP nudge carries suggested_count.
+        $rsvp = $this->actingAs($me, 'sanctum')->postJson("/api/v1/events/{$event->id}/rsvp", ['status' => 'confirmed'])->assertOk()->json();
+        $this->assertArrayHasKey('suggested_count', $rsvp);
+    }
+
+    public function test_api_saved_filters_crud(): void
+    {
+        $user = User::factory()->create();
+        $created = $this->actingAs($user, 'sanctum')->postJson('/api/v1/saved-filters', [
+            'name' => 'API Filter', 'filters' => ['gender' => 'female'],
+        ])->assertCreated()->json();
+        $id = (int) $created['id'];
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/saved-filters')->assertOk();
+        $this->actingAs($user, 'sanctum')->patchJson("/api/v1/saved-filters/{$id}", ['name' => 'API Baru'])->assertOk();
+        $this->actingAs($user, 'sanctum')->postJson("/api/v1/saved-filters/{$id}/duplicate")->assertCreated();
+        $this->actingAs($user, 'sanctum')->postJson("/api/v1/saved-filters/{$id}/default")->assertOk();
+        $this->assertTrue((bool) SavedFilter::find($id)->fresh()->is_default);
+        // Cross-user access forbidden.
+        $other = User::factory()->create();
+        $this->actingAs($other, 'sanctum')->patchJson("/api/v1/saved-filters/{$id}", ['name' => 'Hack'])->assertForbidden();
+    }
+
+    public function test_verification_badges_derive_from_approved_requests(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'phone_verified_at' => null]);
+        $badges = $user->verificationBadges();
+        $this->assertTrue($badges['email']);
+        $this->assertFalse($badges['phone']);
+        $this->assertFalse($badges['photo']);
+        VerificationRequest::create(['user_id' => $user->id, 'type' => 'selfie', 'status' => 'approved']);
+        $this->assertTrue($user->fresh()->verificationBadges()['photo']);
+
+        $res = $this->actingAs($user, 'sanctum')->getJson('/api/v1/me')->assertOk()->json();
+        $this->assertArrayHasKey('verification', $res['user'] ?? $res);
+    }
+
+    public function test_delete_account_anonymizes_pii(): void
+    {
+        $user = User::factory()->create(['email' => 'hapus@test.local', 'phone' => '+628999000111']);
+        $this->actingAs($user, 'sanctum')->deleteJson('/api/v1/auth/account', ['password' => 'password'])->assertOk();
+        $fresh = $user->fresh();
+        $this->assertNotNull($fresh->deleted_at);
+        $this->assertStringContainsString('@deleted.local', (string) $fresh->email);
+        $this->assertNull($fresh->phone);
+        $this->assertNull($fresh->phone_hash);
     }
 }

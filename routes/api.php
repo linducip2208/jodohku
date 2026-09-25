@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\DiscoveryController;
 use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushController;
+use App\Http\Controllers\Api\V1\SavedFilterController;
 use App\Http\Controllers\Api\V1\SocialController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\AiAssistantController;
@@ -66,6 +67,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/questions', [PreferenceController::class, 'questions']);
         Route::get('/questionnaire/answers', [PreferenceController::class, 'answers']);
         Route::post('/questionnaire/answers', [PreferenceController::class, 'answer']);
+
+        // Saved discovery filters (Flutter-ready CRUD).
+        Route::get('/saved-filters', [SavedFilterController::class, 'index']);
+        Route::post('/saved-filters', [SavedFilterController::class, 'store'])->middleware('throttle:20,1,saved-filters');
+        Route::patch('/saved-filters/{savedFilter}', [SavedFilterController::class, 'update'])->middleware('throttle:20,1,saved-filters');
+        Route::post('/saved-filters/{savedFilter}/duplicate', [SavedFilterController::class, 'duplicate'])->middleware('throttle:20,1,saved-filters');
+        Route::post('/saved-filters/{savedFilter}/default', [SavedFilterController::class, 'makeDefault'])->middleware('throttle:20,1,saved-filters');
+        Route::delete('/saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy']);
 
         Route::get('/discover', [DiscoveryController::class, 'discover']);
         // Social graph + feed + stories + search (SocialController).
@@ -248,6 +257,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
         Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
         Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
+        Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
 
         Route::get('/courtships', [BiroJodohController::class, 'courtships']);
         Route::post('/courtships', [BiroJodohController::class, 'startCourtship'])->middleware('throttle:10,1,courtships');

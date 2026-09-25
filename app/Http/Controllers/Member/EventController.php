@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Member;
 
 use App\Enums\EventStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Block;
 use App\Models\Event;
+use App\Models\User;
 use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -106,9 +108,19 @@ class EventController extends Controller
         } catch (\Throwable) {
         }
 
+        // Nudge: how many other confirmed attendees are discoverable now.
+        $suggestedCount = 0;
+        if ($status === 'confirmed') {
+            try {
+                $suggestedCount = $event->members()->where('status', 'confirmed')
+                    ->where('user_id', '!=', $request->user()->id)->count();
+            } catch (\Throwable) {
+            }
+        }
+
         return $request->wantsJson()
-            ? response()->json(['message' => "RSVP: {$status}", 'member_id' => $member->id])
-            : back()->with('status', 'RSVP tersimpan: '.$status.'.');
+            ? response()->json(['message' => "RSVP: {$status}", 'member_id' => $member->id, 'suggested_count' => $suggestedCount])
+            : back()->with('status', 'RSVP tersimpan: '.$status.'.'.($suggestedCount > 0 ? " Lihat {$suggestedCount} peserta lain yang bisa kenalan 👋" : ''));
     }
 
     public function attendees(Request $request, Event $event)
@@ -116,6 +128,47 @@ class EventController extends Controller
         $attendees = $event->members()->with('user')->where('status', 'confirmed')->paginate(20);
 
         return response()->json($attendees);
+    }
+
+    /**
+     * Suggested people to meet at this event: confirmed attendees as
+     * privacy-aware dating candidates (excludes self, paused accounts,
+     * and either-way blocks). Attendees discover each other → like →
+     * match → chat (never exposes exact GPS or private photos).
+     */
+    public function suggested(Request $request, Event $event)
+    {
+        $me = $request->user();
+        $attendeeIds = $event->members()->where('status', 'confirmed')
+            ->where('user_id', '!=', $me->id)
+            ->pluck('user_id')->all();
+
+        if (empty($attendeeIds)) {
+            return $request->wantsJson()
+                ? response()->json(['data' => [], 'message' => 'Belum ada peserta lain yang konfirmasi.'])
+                : view('member.events.suggested', ['event' => $event, 'suggested' => collect()]);
+        }
+
+        $blockedIds = Block::where(function ($q) use ($me) {
+            $q->where('blocker_id', $me->id)->orWhere('blocked_id', $me->id);
+        })->get()->flatMap(fn ($b) => [(int) $b->blocker_id, (int) $b->blocked_id])
+            ->unique()->reject(fn ($id) => $id === (int) $me->id)->all();
+
+        $candidates = User::query()->active()
+            ->whereIn('id', $attendeeIds)
+            ->whereNotIn('id', $blockedIds)
+            ->where('is_paused', false)
+            ->with(['profile', 'photos' => fn ($q) => $q->ordered()->where('status', 'approved')->where('is_private', false), 'interests'])
+            ->paginate(20);
+
+        try {
+            app(AnalyticsService::class)->capture($me, 'event_suggested_view', $event, ['value' => $candidates->total()]);
+        } catch (\Throwable) {
+        }
+
+        return $request->wantsJson()
+            ? response()->json($candidates)
+            : view('member.events.suggested', ['event' => $event, 'suggested' => $candidates]);
     }
 
     public function upcoming(Request $request)

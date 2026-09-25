@@ -591,6 +591,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/events/{event}/leave', [EventController::class, 'leave'])->name('member.events.leave');
     Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->name('member.events.rsvp');
     Route::get('/events/{event}/attendees', [EventController::class, 'attendees'])->name('member.events.attendees');
+    Route::get('/events/{event}/kenalan', [EventController::class, 'suggested'])->name('member.events.suggested');
     Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
 
     Route::get('/biro-jodoh/taaruf', [BiroJodohController::class, 'courtships'])->name('member.biro-jodoh.courtships');

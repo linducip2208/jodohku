@@ -499,6 +499,30 @@ class User extends Authenticatable implements MustVerifyEmail
             ->exists();
     }
 
+    /**
+     * Verification tiers (no new columns — derived from timestamps + approved
+     * verification requests). EMAIL/PHONE from verified_at; PHOTO from
+     * approved selfie/video; IDENTITY from approved id_card.
+     *
+     * @return array{email:bool, phone:bool, photo:bool, identity:bool}
+     */
+    public function verificationBadges(): array
+    {
+        try {
+            $approved = $this->verificationRequests()->where('status', 'approved')->pluck('type');
+            $types = $approved->map(fn ($t) => $t instanceof \BackedEnum ? $t->value : (string) $t)->all();
+        } catch (\Throwable) {
+            $types = [];
+        }
+
+        return [
+            'email' => $this->email_verified_at !== null,
+            'phone' => $this->phone_verified_at !== null,
+            'photo' => in_array('selfie', $types, true) || in_array('video', $types, true) || in_array('photo', $types, true),
+            'identity' => in_array('id_card', $types, true),
+        ];
+    }
+
     public function activeSubscription(): ?Subscription
     {
         return $this->subscriptions()
