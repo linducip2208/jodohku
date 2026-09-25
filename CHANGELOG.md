@@ -51,6 +51,10 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Video profil: perbaiki kolom salah (`file_path` → `path`), MIME+ekstensi, tolak polyglot, maks 3/user, pending moderasi + audit; routes web+API + UI upload.
 - Admin funnel penuh (verified → discover → like → match → chat → call → taaruf → paying); OpenAPI v1 stub di `docs/API-V1-OPENAPI.yaml`.
 - Match modal confetti + pop (hormati reduced-motion); banner offline di chat.
+- Settings: UI hubungkan authenticator (secret + otpauth URL + salin) + backup codes.
+- Admin moderasi video (`/admin/moderation/videos`, approve/reject audit-logged).
+- Alpine.js kini bundled via Vite (`alpinejs` npm); CDN unpkg hanya fallback bila build absen.
+- Chat kirim dicegah saat offline (toast); `.env.example` tandai MAIL_LOG bahaya di prod.
 
 ### Security
 - Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.- OTP telepon disimpan sebagai HMAC-SHA256 (bukan plaintext) + rate-limit per-IP & per-nomor + verify 5/5mnt.

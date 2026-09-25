@@ -262,4 +262,24 @@ class MasterMissionRegressionTest extends TestCase
             $this->assertArrayHasKey($key, $json);
         }
     }
+
+    public function test_totp_api_setup_flow(): void
+    {
+        $user = User::factory()->create();
+        $setup = $this->actingAs($user, 'sanctum')->postJson('/api/v1/auth/2fa/totp/start')->assertOk()->json();
+        $this->assertArrayHasKey('secret', $setup);
+        $code = app(TwoFactorService::class)->totpCodeFor($setup['secret']);
+        $confirm = $this->actingAs($user, 'sanctum')->postJson('/api/v1/auth/2fa/totp/confirm', ['code' => $code])->assertOk()->json();
+        $this->assertCount(8, $confirm['backup_codes']);
+    }
+
+    public function test_admin_video_moderation_flow(): void
+    {
+        $user = User::factory()->create();
+        $video = $user->videos()->create(['path' => 'profile-videos/test.mp4', 'is_approved' => false]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $this->actingAs($admin)->get('/admin/moderation/videos')->assertOk();
+        $this->actingAs($admin)->post("/admin/moderation/videos/{$video->id}", ['action' => 'approve'])->assertRedirect();
+        $this->assertTrue((bool) $video->fresh()->is_approved);
+    }
 }

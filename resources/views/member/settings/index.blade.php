@@ -55,6 +55,31 @@
 <button class="jk-submit" type="submit">Aktifkan 2FA (kode via email)</button></form>
 @endif
 </div>
+<div class="jk-section"><div class="jk-h2">Aplikasi Authenticator</div>
+@php $hasTotp = false; try { $hasTotp = app(\App\Services\TwoFactorService::class)->hasTotp(auth()->user()); } catch (\Throwable) {} @endphp
+<p class="jk-muted">Status: {{ $hasTotp ? 'Terhubung ✅' : 'Belum terhubung' }} — lebih aman dari kode email, tetap bisa login offline.</p>
+@if(session('totp_setup'))
+@php $ts = session('totp_setup'); @endphp
+<div class="jk-alert ok">Pindai ke aplikasi authenticator (Google/Microsoft Authy):<br>
+<code style="word-break:break-all">{{ $ts['secret'] ?? '' }}</code><br>
+<button class="jk-pill" type="button" onclick="navigator.clipboard?.writeText('{{ $ts['secret'] ?? '' }}').then(()=>window.jkToast?.('Secret disalin ✅'))">Salin secret</button>
+<a class="jk-pill" href="{{ $ts['otpauth_url'] ?? '#' }}" style="text-decoration:none">Buka di aplikasi</a></div>
+<form method="POST" action="/settings/2fa/totp/confirm" class="jk-form" style="margin-top:8px">@csrf
+<label>Kode 6 digit dari aplikasi</label><input name="code" inputmode="numeric" maxlength="6" required placeholder="123456">
+<button class="jk-submit" type="submit">Verifikasi & Aktifkan</button></form>
+@elseif($hasTotp)
+<form method="POST" action="/settings/2fa/totp/backup" style="margin-top:8px">@csrf
+<label>Password saat ini</label><input type="password" name="password" required>
+<button class="jk-btn jk-btn-like" style="width:100%;margin-top:8px" type="submit">Buat backup codes baru</button></form>
+@else
+<form method="POST" action="/settings/2fa/totp/start" style="margin-top:8px">@csrf
+<button class="jk-submit" type="submit">Hubungkan authenticator</button></form>
+@endif
+@if(session('backup_codes'))
+<div class="jk-alert ok">Simpan sekali saja:<br><code>@foreach((array) session('backup_codes') as $bc){{ $bc }}<br>@endforeach</code></div>
+@endif
+@if($errors->has('code'))<div class="jk-alert">{{ $errors->first('code') }}</div>@endif
+</div>
 <div class="jk-section">
 <form method="POST" action="/logout" style="margin-top:0">@csrf<button class="jk-btn jk-btn-pass" style="width:100%" type="submit">Keluar</button></form>
 </div>

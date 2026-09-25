@@ -15,6 +15,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "alpinejs": "^3.17.4",
         "laravel-echo": "^2.5.0",
         "pusher-js": "^8.6.0"
     }

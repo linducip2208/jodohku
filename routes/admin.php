@@ -44,6 +44,8 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::post('/photos/{photo}/moderate', [UserController::class, 'moderatePhoto'])->name('photos.moderate');
 
         Route::get('/moderation', [ModerationController::class, 'queues'])->name('moderation.queues');
+        Route::get('/moderation/videos', [ModerationController::class, 'videos'])->name('moderation.videos');
+        Route::post('/moderation/videos/{video}', [ModerationController::class, 'decideVideo'])->name('moderation.videos.decide');
         Route::post('/moderation/bulk-decide', [ModerationController::class, 'bulkDecide'])->name('moderation.bulk-decide');
         Route::post('/moderation/{queue}/decide', [ModerationController::class, 'decide'])->name('moderation.decide');
         Route::get('/moderation/words', [ModerationController::class, 'words'])->name('moderation.words');

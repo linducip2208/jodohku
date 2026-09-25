@@ -19,7 +19,11 @@
 @endif
 <style>body{margin:0;font-family:'Instrument Sans',system-ui,sans-serif;background:#fafafb;color:#18181b}</style>
 @livewireStyles
-<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+{{-- Alpine is bundled via Vite (offline-safe). CDN only as fallback when the
+      built bundle is absent (e.g. fresh clone before `npm run build`). --}}
+@if (! (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot'))))
+<script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer onerror="window.jkAlpineFailed=true"></script>
+@endif
 <script>try{var t=localStorage.getItem('jk-theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
 </head>
 <body class="jk-body" x-data="{ sidebar:false, confirm:{open:false,title:'',text:'',action:''} }">

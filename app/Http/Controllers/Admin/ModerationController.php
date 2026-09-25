@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ModerationLog;
 use App\Models\ModerationQueue;
 use App\Models\ProfanityWord;
+use App\Models\ProfileVideo;
 use App\Models\Report;
 use App\Services\AuditService;
 use App\Services\ProfanityService;
@@ -13,6 +14,7 @@ use App\Services\ScamDetectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ModerationController extends Controller
 {
@@ -21,6 +23,37 @@ class ModerationController extends Controller
         $items = ModerationQueue::latest('id')->paginate(25);
 
         return $request->wantsJson() ? response()->json($items) : view('admin.moderation', ['items' => $items]);
+    }
+
+    /** Pending profile videos (uploaded, not yet approved). */
+    public function videos(Request $request)
+    {
+        $videos = ProfileVideo::where('is_approved', false)
+            ->with('user:id,display_name,name')->latest('id')->paginate(25);
+
+        return $request->wantsJson()
+            ? response()->json($videos)
+            : view('admin.videos', ['videos' => $videos]);
+    }
+
+    /** Approve/reject a profile video (audit-logged). */
+    public function decideVideo(Request $request, ProfileVideo $video, AuditService $audit)
+    {
+        $data = $request->validate(['action' => ['required', 'string', 'in:approve,reject']]);
+        if ($data['action'] === 'approve') {
+            $video->update(['is_approved' => true]);
+            $audit->log('admin.video.approved', $request->user(), $video);
+        } else {
+            DB::transaction(function () use ($video) {
+                Storage::disk('public')->delete($video->path);
+                $video->delete();
+            });
+            $audit->log('admin.video.rejected', $request->user(), $video);
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Video '.$data['action'].'d.'])
+            : back()->with('status', 'Video '.$data['action'].'d.');
     }
 
     public function decide(Request $request, ModerationQueue $queue, AuditService $audit)
