@@ -15,6 +15,7 @@ use App\Notifications\PaymentNotification;
 use App\Notifications\ReportStatusChanged;
 use App\Notifications\SubscriptionActive;
 use App\Notifications\VerificationDecided;
+use App\Services\Push\PushService;
 use Illuminate\Notifications\Notification;
 
 class NotificationService
@@ -71,6 +72,16 @@ class NotificationService
                     (int) $user->id, class_basename($notification), (string) ($data['title'] ?? 'Notifikasi baru'));
             } catch (\Throwable) {
             }
+        }
+        // Push leg (same gating as above already applied). Best-effort.
+        try {
+            $data = method_exists($notification, 'toDatabase') ? $notification->toDatabase($user) : [];
+            $data = is_array($data) ? $data : [];
+            $title = (string) ($data['title'] ?? class_basename($notification));
+            $body = (string) ($data['body'] ?? $data['preview'] ?? '');
+            $url = app(PushService::class)->deepLink(class_basename($notification), $data);
+            app(PushService::class)->fanout($user, $title, $body, array_filter(['url' => $url]));
+        } catch (\Throwable) {
         }
     }
 

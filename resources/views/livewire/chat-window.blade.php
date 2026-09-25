@@ -1,4 +1,4 @@
-<div x-data="{ open: false }" wire:poll.10s>
+<div x-data="{ open: false }" wire:poll.10s @call-invited.window="window.JodohkuCall?.start($event.detail.conversationId, $event.detail.callId, $event.detail.type, true)">
 @if(!$conv)
 @include('components.empty', ['icon' => 'chat', 'title' => 'Percakapan tidak ditemukan', 'hint' => 'Kembali ke inbox.'])
 @else
@@ -34,16 +34,36 @@
 <div class="jk-alert err" role="alert">Perhatikan keamanan saat berkomunikasi. Jangan kirim uang atau kode OTP kepada orang lain.</div>
 @endif
 @if(!empty($activeCall))
-<div class="jk-section" role="alert" style="border-left:4px solid #ec4899">
-<div class="jk-h2">{{ $activeCall->type === 'video' ? 'Panggilan video' : 'Panggilan suara' }} — {{ $activeCall->status->label() }}</div>
+<div class="jk-section" role="alert" style="border-left:4px solid #ec4899"
+  x-data="{ cstate: 'idle', elapsed: '00:00', muted: false, camOff: false }"
+  x-init="
+    window.addEventListener('call:state', e => { cstate = e.detail.state; });
+    window.addEventListener('call:tick', e => { elapsed = e.detail.elapsed; });
+    window.addEventListener('call:local-stream', e => { $refs.localVideo.srcObject = e.detail.stream; });
+    window.addEventListener('call:remote-stream', e => { $refs.remoteVideo.srcObject = e.detail.stream; });
+    @if($activeCall->status->value === 'ongoing') window.JodohkuCall?.start({{ $conv->id }}, {{ $activeCall->id }}, '{{ $activeCall->type }}', {{ (int) $activeCall->caller_id === (int) ($me?->id) ? 'true' : 'false' }}); @endif
+  ">
+<div class="jk-h2">{{ $activeCall->type === 'video' ? 'Panggilan video' : 'Panggilan suara' }} — {{ $activeCall->status->label() }} <span x-show="elapsed !== '00:00'" x-text="elapsed" style="font-size:13px"></span></div>
+<div x-show="['calling','ringing','ongoing','reconnecting'].includes(cstate)" style="margin-top:8px">
+<div style="position:relative;background:#09090b;border-radius:14px;overflow:hidden;min-height:180px">
+<video x-ref="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;background:#09090b"></video>
+<video x-ref="localVideo" autoplay playsinline muted style="position:absolute;right:10px;bottom:10px;width:110px;border-radius:10px;background:#27272a"></video>
+<div x-show="cstate === 'reconnecting'" style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;border-radius:8px;padding:4px 10px">Menyambung ulang…</div>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+<button class="jk-pill" @click="muted = window.JodohkuCall.toggleMute()" x-text="muted ? 'Unmute' : 'Mute'">Mute</button>
+<button class="jk-pill" @click="camOff = !window.JodohkuCall.toggleCamera()" x-show="'{{ $activeCall->type }}' === 'video'">Kamera</button>
+<button class="jk-pill" @click="window.JodohkuCall.switchCamera()" x-show="'{{ $activeCall->type }}' === 'video'">Ganti kamera</button>
+</div>
+</div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
 @if($activeCall->status->value === 'ringing' && (int) $activeCall->receiver_id === (int) ($me?->id))
-<button class="jk-btn jk-btn-like" style="padding:8px 16px" wire:click="answerCall({{ $activeCall->id }}, 'accept')">Angkat</button>
+<button class="jk-btn jk-btn-like" style="padding:8px 16px" @click="window.JodohkuCall?.start({{ $conv->id }}, {{ $activeCall->id }}, '{{ $activeCall->type }}', false)" wire:click="answerCall({{ $activeCall->id }}, 'accept')">Angkat</button>
 <button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'reject')">Tolak</button>
 @elseif($activeCall->status->value === 'ringing')
 <button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'cancel')">Batalkan</button>
 @else
-<button class="jk-pill" wire:click="answerCall({{ $activeCall->id }}, 'end')">Akhiri</button>
+<button class="jk-pill" @click="window.JodohkuCall?.hangup()" wire:click="answerCall({{ $activeCall->id }}, 'end')">Akhiri</button>
 @endif
 </div>
 </div>

@@ -17,6 +17,8 @@ class BoostService
         }
 
         return DB::transaction(function () use ($user, $durationMinutes) {
+            // Serialize concurrent activations for the same user.
+            Boost::where('user_id', $user->id)->lockForUpdate()->exists();
             Boost::where('user_id', $user->id)->where('status', BoostStatus::Active->value)
                 ->update(['status' => BoostStatus::Expired->value]);
             $boost = Boost::create([

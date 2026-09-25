@@ -2,6 +2,7 @@
 @section('title', 'Pusat Keamanan — Jodohku')
 @section('content')
 <h1 class="jk-h1">Pusat Keamanan</h1><p class="jk-muted">Blokir, laporkan, sembunyikan, incognito. Jangan pernah kirim uang ke orang baru kenal.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><a class="jk-pill" href="/kontak-blokir">Blokir kontak HP</a><a class="jk-pill" href="/privasi">Pusat Privasi →</a></div>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @if(!empty($safetyStatus))
 <div class="jk-section"><div class="jk-h2">Status Keamanan Akunmu</div>

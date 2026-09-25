@@ -24,6 +24,8 @@ $interestNames = collect($user->interests ?? [])->pluck('name')->filter()->take(
 <div class="jk-name"><a href="/profile/{{ $user->id }}" style="color:inherit;text-decoration:none">{{ $name }}</a>{{ $age ? ', ' . $age : '' }}
 @if(!empty($user->is_verified))<span class="jk-badge-verified" title="Terverifikasi" aria-label="Terverifikasi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8 12.5l2.7 2.7L16.5 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>@endif
 @if(!empty($user->is_premium))<span class="jk-pill premium">PREMIUM</span>@endif
+@php $boosted = false; try { $boosted = isset($user->id) ? app(\App\Services\BoostService::class)->isLive($user) : false; } catch (\Throwable) {} @endphp
+@if($boosted)<span class="jk-pill" style="background:#fef3c7;color:#92400e" title="Sedang boost — prioritas discovery">⚡ BOOST</span>@endif
 </div>
 <div class="jk-meta">{{ $city ?? 'Indonesia' }}{{ $occupation ? ' · ' . $occupation : '' }}</div>
 @if($goalLabel && !$compact)<div class="jk-meta">Tujuan: {{ $goalLabel }}</div>@endif

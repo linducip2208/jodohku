@@ -12,6 +12,9 @@ $isSelf = auth()->id() === $profileUser->id;
 $profile = $profileUser->profile;
 @endphp
 <a href="/discover" class="jk-muted">← Kembali ke Discover</a>
+@if($profileUser->coverUrl())
+<div style="margin:8px 0 -8px;border-radius:14px;overflow:hidden"><img src="{{ $profileUser->coverUrl() }}" alt="Cover {{ $profileUser->displayName() }}" loading="lazy" style="width:100%;aspect-ratio:3/1;object-fit:cover;display:block" onerror="this.remove()"></div>
+@endif
 <div class="jk-card" style="margin-top:8px">
 <div class="jk-photo" style="aspect-ratio:4/3">
 @if($profileUser->avatarUrl())<img src="{{ $profileUser->avatarUrl() }}" alt="Foto {{ $profileUser->displayName() }}">@else<div class="jk-photo-fallback">{{ strtoupper(substr((string)($profileUser->displayName() ?? '?'),0,1)) }}</div>@endif

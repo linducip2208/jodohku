@@ -10,8 +10,10 @@
 <meta name="theme-color" content="#f43f5e">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-@vite(['resources/css/app.css', 'resources/css/member.css', 'resources/js/app.js'])
+@vite(['resources/css/app.css', 'resources/css/member.css', 'resources/js/app.js', 'resources/js/call.js'])
 @else
 <style>body{margin:0;font-family:'Instrument Sans',system-ui,sans-serif;background:#fafafb;color:#18181b}</style>
 @endif
@@ -86,6 +88,10 @@ try {
 <a class="jk-navlink {{ request()->is('chat*') ? 'active' : '' }}" href="/chat" @if(request()->is('chat*')) aria-current="page" @endif><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>Chat @if($unreadChats > 0)<span class="jk-dot">{{ $unreadChats > 9 ? '9+' : $unreadChats }}</span>@endif</a>
 <button class="jk-navlink {{ request()->is('matches*') || request()->is('likes*') || request()->is('biro-jodoh*') || request()->is('forums*') || request()->is('blog*') || request()->is('events*') || request()->is('notifications*') || request()->is('settings*') || request()->is('profile*') || request()->is('komunitas*') ? 'active' : '' }}" @click="$store.more.open = true" aria-label="Menu lainnya" aria-haspopup="dialog" style="background:none;border:0;cursor:pointer;font-family:inherit"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Lainnya</button>
 </nav>
+<div id="jk-install" style="display:none;position:fixed;left:12px;right:12px;bottom:76px;z-index:60;background:#18181b;color:#fff;border-radius:14px;padding:10px 14px;align-items:center;gap:10px" role="dialog" aria-label="Install aplikasi">
+<span style="flex:1;font-size:13px">Install Jodohku agar terbuka seperti aplikasi.</span>
+<button class="jk-btn jk-btn-like" style="flex:none;padding:8px 14px" onclick="window.jkInstallApp()">Install</button>
+</div>
 <div class="jk-modal-bg" x-show="$store.more.open" x-data @click.self="$store.more.open = false" style="display:none" role="dialog" aria-label="Menu lainnya">
 <div class="jk-modal" x-effect="if ($store.more.open) { $nextTick(() => $el.querySelector('a, button')?.focus()) }">
 <div class="jk-h2">Jelajahi</div>
@@ -103,8 +109,7 @@ try {
 </div>
 @livewireScripts
 <div x-data="{ show:@json(session('status') ? true : false) }" x-show="show" x-init="setTimeout(() => show = false, 4000)" class="jk-toast" style="display:none" x-transition>{{ session('status') }}</div>
-<div class="jk-modal-bg" x-show="confirm.open" style="display:none" @click.self="confirm.open = false">
-<div class="jk-modal" role="alertdialog" aria-label="Konfirmasi" x-effect="if (confirm.open) { $nextTick(() => $el.querySelector('button')?.focus()) }">
+<div class="jk-modal-bg" x-show="confirm.open" style="display:none" @click.self="confirm.open = false"><div class="jk-modal" role="alertdialog" aria-label="Konfirmasi" x-effect="if (confirm.open) { $nextTick(() => $el.querySelector('button')?.focus()) }">
 <div class="jk-h2" x-text="confirm.title || 'Yakin?'"></div>
 <p class="jk-muted" x-text="confirm.text || 'Tindakan ini tidak bisa dibatalkan.'"></p>
 <div style="display:flex;gap:8px;margin-top:14px">
@@ -148,6 +153,28 @@ window.jkToast = function (msg, ok = true) {
     t.className = 'jk-toast' + (ok ? ' ok' : ' err'); t.textContent = msg;
     document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
 };
+// PWA: service worker (offline shell) + install prompt. Never breaks web.
+(function () {
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+    let deferred = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferred = e;
+        const bar = document.getElementById('jk-install');
+        if (bar) bar.style.display = 'flex';
+    });
+    window.jkInstallApp = async function () {
+        if (!deferred) return;
+        deferred.prompt();
+        try { await deferred.userChoice; } catch (_) {}
+        deferred = null;
+        const bar = document.getElementById('jk-install');
+        if (bar) bar.style.display = 'none';
+    };
+})();
 </script>
 @stack('scripts')
 </body>

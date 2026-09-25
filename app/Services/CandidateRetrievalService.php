@@ -43,6 +43,9 @@ class CandidateRetrievalService
         $defaults = (bool) ($options['preferenceDefaults'] ?? false);
 
         $query = User::query()->active()->where('id', '!=', $user->id);
+        // Paused accounts stay logged in but vanish from every discovery
+        // surface (privacy requirement, enforced at the query layer).
+        $query->where('is_paused', false);
 
         // Counselors are never dating candidates: they live in the
         // consultation context (BiroJodohController), not discovery.
@@ -144,11 +147,13 @@ class CandidateRetrievalService
     /** @param array<string,mixed> $filters */
     protected function applyDistanceFilter(Builder $query, User $user, array $filters): void
     {
-        if (! empty($filters['max_distance_km']) && $user->latitude !== null) {
+        // Passport-aware: virtual location drives the bounding box when active.
+        $loc = app(PassportService::class)->effectiveLocation($user);
+        if (! empty($filters['max_distance_km']) && $loc['latitude'] !== null) {
             $km = max(1, (int) $filters['max_distance_km']);
             $deg = $km / 111.0;
-            $query->whereBetween('latitude', [(float) $user->latitude - $deg, (float) $user->latitude + $deg])
-                ->whereBetween('longitude', [(float) $user->longitude - $deg, (float) $user->longitude + $deg]);
+            $query->whereBetween('latitude', [(float) $loc['latitude'] - $deg, (float) $loc['latitude'] + $deg])
+                ->whereBetween('longitude', [(float) $loc['longitude'] - $deg, (float) $loc['longitude'] + $deg]);
         }
     }
 

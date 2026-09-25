@@ -100,7 +100,7 @@ class FollowService
             $myFollows = Follow::where('follower_id', $user->id)->pluck('followed_id')->all();
             $myGroups = GroupMember::where('user_id', $user->id)->pluck('group_id')->all();
 
-            $candidates = User::query()->active()->real()->whereNotIn('users.id', $excluded ?: [0])
+            $candidates = User::query()->active()->real()->where('is_paused', false)->whereNotIn('users.id', $excluded ?: [0])
                 ->whereDoesntHave('counselor')
                 ->whereDoesntHave('profilePrivacy', fn ($q) => $q->where('is_incognito', true))
                 ->whereNotIn('users.id', Follow::where('follower_id', $user->id)->select('followed_id'))

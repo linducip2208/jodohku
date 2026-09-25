@@ -7,6 +7,7 @@ use App\Enums\Gender;
 use App\Enums\SubscriptionStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Services\ContactBlockService;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -32,6 +33,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'phone',
         'password',
+        // NOTE: privileged flags below are fillable for internal services,
+        // seeders, factories, and admin actions (which use explicit allowlists
+        // + authorization). NEVER mass-assign request->all() in member/API
+        // controllers — always use validated only() allowlists (see
+        // ProfileController::update, AuthController::register).
         'account_type',
         'role',
         'status',
@@ -50,6 +56,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'province',
         'country',
         'avatar_path',
+        'cover_path',
+        'referral_code',
+        'passport_city', 'passport_province', 'passport_country',
+        'passport_latitude', 'passport_longitude', 'passport_active',
+        'is_paused',
         'profile_completion',
         'two_factor_enabled',
     ];
@@ -77,6 +88,10 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_active_at' => 'datetime',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'passport_latitude' => 'decimal:7',
+            'passport_longitude' => 'decimal:7',
+            'passport_active' => 'boolean',
+            'is_paused' => 'boolean',
             'profile_completion' => 'integer',
             'two_factor_enabled' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
@@ -93,6 +108,17 @@ class User extends Authenticatable implements MustVerifyEmail
             $user->account_type ??= AccountType::Real;
             $user->role ??= UserRole::Member;
             $user->status ??= UserStatus::Active;
+        });
+        // Keep the contact-blocking lookup hash in sync (raw phone is
+        // never used for matching; see ContactBlockService).
+        static::saving(function (User $user) {
+            try {
+                if ($user->isDirty('phone')) {
+                    $normalized = ContactBlockService::normalizePhone((string) ($user->phone ?? ''));
+                    $user->phone_hash = $normalized ? ContactHash::hash($normalized) : null;
+                }
+            } catch (\Throwable) {
+            }
         });
     }
 
@@ -268,6 +294,26 @@ class User extends Authenticatable implements MustVerifyEmail
     public function postBookmarks(): HasMany
     {
         return $this->hasMany(PostBookmark::class);
+    }
+
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(PushToken::class);
+    }
+
+    public function contactHashes(): HasMany
+    {
+        return $this->hasMany(ContactHash::class);
+    }
+
+    public function referralsGiven(): HasMany
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    public function affiliateAccount(): HasOne
+    {
+        return $this->hasOne(AffiliateAccount::class);
     }
 
     public function isFollowing(User $user): bool
@@ -488,10 +534,24 @@ class User extends Authenticatable implements MustVerifyEmail
             // Avatar is inherently public: never fall back to a private or
             // unapproved photo (prevents private-photo URL disclosure).
             $photo = $this->relationLoaded('photos')
-                ? $this->photos->first()
+                ? $this->photos->first(fn ($p) => ($p->status ?? null) === 'approved' && ! ($p->is_private ?? false))
                 : $this->photos()->ordered()->where('status', 'approved')->where('is_private', false)->first();
             $path = $photo?->path;
         }
+        if (! $path) {
+            return null;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return asset('storage/'.ltrim($path, '/'));
+    }
+
+    /** Public cover URL (covers are always public approved uploads). */
+    public function coverUrl(): ?string
+    {
+        $path = $this->cover_path;
         if (! $path) {
             return null;
         }

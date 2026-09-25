@@ -336,7 +336,10 @@ class AccountController extends Controller
         }
 
         try {
-            $credits->spend($request->user(), 50, 'Profile boost');
+            $credits->spend($request->user(), 50, 'Profile boost '.now()->format('YmdHi'), [
+                'reference_type' => 'boost',
+                'reference_id' => $request->user()->id,
+            ]);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

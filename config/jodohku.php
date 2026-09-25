@@ -19,9 +19,29 @@ return [
         'rewind_cooldown_minutes' => 5,
     ],
 
+    'boost' => [
+        'post_cost' => env('BOOST_POST_COST', 50),
+    ],
+
     'virtual' => [
         'max_daily_messages' => env('VIRTUAL_MAX_DAILY', 5),
         'active_from_hour' => env('VIRTUAL_ACTIVE_FROM', 8),
         'active_until_hour' => env('VIRTUAL_ACTIVE_UNTIL', 22),
+    ],
+
+    'referrals' => [
+        'daily_cap' => env('REFERRAL_DAILY_CAP', 20),
+        'reward_credits' => env('REFERRAL_REWARD_CREDITS', 100),
+    ],
+
+    'affiliates' => [
+        'default_rate' => env('AFFILIATE_DEFAULT_RATE', 0.10),
+    ],
+
+    'webrtc' => [
+        'stun' => env('WEBRTC_STUN', 'stun:stun.l.google.com:19302'),
+        'turn_url' => env('WEBRTC_TURN_URL', ''),
+        'turn_username' => env('WEBRTC_TURN_USERNAME', ''),
+        'turn_credential' => env('WEBRTC_TURN_CREDENTIAL', ''),
     ],
 ];

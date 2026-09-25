@@ -45,23 +45,28 @@ class AdminSeeder extends Seeder
         ];
 
         foreach ($accounts as $a) {
-            User::firstOrCreate(
-                ['email' => $a['email']],
-                [
-                    'name' => $a['name'],
-                    'username' => $a['username'],
-                    'display_name' => $a['name'],
-                    'password' => Hash::make('password'),
-                    'email_verified_at' => now(),
+            User::unguarded(function () use ($a) {
+                $user = User::firstOrCreate(
+                    ['email' => $a['email']],
+                    [
+                        'name' => $a['name'],
+                        'username' => $a['username'],
+                        'display_name' => $a['name'],
+                        'password' => Hash::make('password'),
+                        'email_verified_at' => now(),
+                        'city' => 'Jakarta',
+                        'province' => 'DKI Jakarta',
+                        'country' => 'Indonesia',
+                    ]
+                );
+                // Privileged fields only via forceFill (fillable-safe).
+                $user->forceFill([
                     'account_type' => $a['account_type'],
                     'role' => $a['role'],
                     'status' => UserStatus::Active,
-                    'city' => 'Jakarta',
-                    'province' => 'DKI Jakarta',
-                    'country' => 'Indonesia',
                     'is_verified' => true,
-                ]
-            );
+                ])->save();
+            });
         }
     }
 }

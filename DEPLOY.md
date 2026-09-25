@@ -132,3 +132,11 @@ downtime, tidak sebanding pada ukuran saat ini. Pemicu: salah satu tabel
 - `php artisan storage:link`, permission `storage/`, `bootstrap/cache/`.
 - Webhook gateway mengarah ke `https://domain/api/v1/webhooks/{gateway}`.
 - Monitor: `failed_jobs`, `payment_webhooks.is_processed=false`, `ai_usage_logs`.
+- Push: `PUSH_DRIVER=fcm` + `PUSH_FCM_SERVER_KEY` bila ingin notifikasi
+  mobile nyata (default `log` aman untuk tahap awal).
+- WebRTC: STUN publik default cukup; isi `WEBRTC_TURN_*` bila user di
+  belakang NAT ketat. Reverb `accept_client_events_from=members` wajib
+  untuk signaling whisper (default config sudah benar).
+- Storage: `FILESYSTEM_DISK=s3` + kredensial bila media keluar dari lokal;
+  ikon PWA ikut repo (`public/icons`, dibuat via `php artisan pwa:icons`).
+- Scheduler + queue workers jalan (renewal, expiry, pruning, analytics).

@@ -298,14 +298,21 @@ class DiscoveryService
 
     public function distanceKm(User $a, User $b): ?float
     {
-        if ($a->latitude === null || $b->latitude === null) {
+        // Passport-aware for the viewer side; candidates always use real coords.
+        // Privacy: distances are fuzzed to 0.5km steps (never exact GPS).
+        $passport = app(PassportService::class);
+        $la = $passport->effectiveLocation($a);
+        if ($la['latitude'] === null || $b->latitude === null) {
             return null;
         }
+        $aLat = $la['latitude'];
+        $aLng = $la['longitude'];
         $r = 6371;
-        $dLat = deg2rad((float) $b->latitude - (float) $a->latitude);
-        $dLon = deg2rad((float) $b->longitude - (float) $a->longitude);
-        $h = sin($dLat / 2) ** 2 + cos(deg2rad((float) $a->latitude)) * cos(deg2rad((float) $b->latitude)) * sin($dLon / 2) ** 2;
+        $dLat = deg2rad((float) $b->latitude - (float) $aLat);
+        $dLon = deg2rad((float) $b->longitude - (float) $aLng);
+        $h = sin($dLat / 2) ** 2 + cos(deg2rad((float) $aLat)) * cos(deg2rad((float) $b->latitude)) * sin($dLon / 2) ** 2;
+        $raw = 2 * $r * asin(min(1, sqrt($h)));
 
-        return round(2 * $r * asin(min(1, sqrt($h))), 2);
+        return max(0.5, round($raw * 2) / 2);
     }
 }

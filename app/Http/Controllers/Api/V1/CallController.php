@@ -82,4 +82,20 @@ class CallController extends Controller
             'invite_ttl_seconds' => app(CallService::class)->inviteTtlSeconds(),
         ]);
     }
+
+    /** ICE servers for WebRTC (STUN always; TURN only when configured). */
+    public function ice()
+    {
+        $servers = [['urls' => (string) config('jodohku.webrtc.stun', 'stun:stun.l.google.com:19302')]];
+        $turn = (string) config('jodohku.webrtc.turn_url', '');
+        if ($turn !== '') {
+            $servers[] = [
+                'urls' => $turn,
+                'username' => (string) config('jodohku.webrtc.turn_username', ''),
+                'credential' => (string) config('jodohku.webrtc.turn_credential', ''),
+            ];
+        }
+
+        return response()->json(['iceServers' => $servers]);
+    }
 }

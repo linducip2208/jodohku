@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdController;
+use App\Http\Controllers\Admin\AffiliateController;
 use App\Http\Controllers\Admin\AiUsageController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -149,6 +150,9 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::get('/payments', [PaymentAdminController::class, 'index'])->name('payments');
         Route::get('/payments/{payment}', [PaymentAdminController::class, 'show'])->name('payments.show');
         Route::post('/payments/{payment}/refund', [PaymentAdminController::class, 'refund'])->name('payments.refund');
+        Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates');
+        Route::post('/affiliates/{account}/decide', [AffiliateController::class, 'decideAccount'])->name('affiliates.decide');
+        Route::post('/affiliates/commissions/{commission}', [AffiliateController::class, 'decideCommission'])->name('affiliates.commission');
 
         Route::get('/gateways', [GatewayController::class, 'index'])->name('gateways');
         Route::post('/gateways/{gateway}/toggle', [GatewayController::class, 'toggle'])->name('gateways.toggle');

@@ -39,16 +39,13 @@ class MemberSeeder extends Seeder
         $interestIds = Interest::pluck('id')->all();
 
         foreach ($members as $idx => $m) {
-            $user = User::firstOrCreate(
+            $user = User::unguarded(fn () => User::firstOrCreate(
                 ['email' => $m['email']],
                 [
                     'name' => $m['name'],
                     'display_name' => explode(' ', $m['name'])[0],
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
-                    'account_type' => AccountType::Real,
-                    'role' => UserRole::Member,
-                    'status' => UserStatus::Active,
                     'date_of_birth' => $m['dob'],
                     'gender' => $m['gender'],
                     'city' => $m['city'],
@@ -56,10 +53,16 @@ class MemberSeeder extends Seeder
                     'country' => 'Indonesia',
                     'latitude' => -6.2 + ($idx * 0.01),
                     'longitude' => 106.8 + ($idx * 0.01),
-                    'is_verified' => $idx % 3 === 0,
                     'profile_completion' => 85,
                 ]
-            );
+            ));
+            // Privileged flags via forceFill (fillable-safe).
+            $user->forceFill([
+                'account_type' => AccountType::Real,
+                'role' => UserRole::Member,
+                'status' => UserStatus::Active,
+                'is_verified' => $idx % 3 === 0,
+            ])->save();
 
             Profile::firstOrCreate(
                 ['user_id' => $user->id],

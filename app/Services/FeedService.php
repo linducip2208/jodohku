@@ -36,6 +36,7 @@ class FeedService
 
         $candidates = Post::visibleTo($user)
             ->whereNotIn('user_id', $excludedAuthors ?: [0])
+            ->whereDoesntHave('user', fn ($q) => $q->where('is_paused', true))
             ->whereDoesntHave('user.profilePrivacy', fn ($q) => $q->where('is_incognito', true))
             ->with(['user:id,display_name,name,avatar_path,is_verified,is_online', 'comments' => fn ($q) => $q->latest('id')->limit(3)->with('user:id,display_name,name'), 'hashtags'])
             ->withCount(['comments', 'likes'])
@@ -81,6 +82,7 @@ class FeedService
             ->merge(Block::where('blocked_id', $user->id)->pluck('blocker_id'))->all();
 
         return Post::visibleTo($user)->whereNotIn('user_id', $blocked ?: [0])
+            ->whereDoesntHave('user', fn ($q) => $q->where('is_paused', true))
             ->where('created_at', '>=', now()->subHours(72))
             ->with(['user:id,display_name,name,avatar_path,is_verified'])
             ->withCount(['comments', 'likes'])

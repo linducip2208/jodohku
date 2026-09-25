@@ -21,7 +21,8 @@ class VirtualMemberService
     public function createVirtual(array $attrs): User
     {
         return DB::transaction(function () use ($attrs) {
-            $user = User::create([
+            // Privileged fields bypass fillable via forceCreate (internal only).
+            $user = User::forceCreate([
                 'name' => $attrs['name'],
                 'email' => $attrs['email'] ?? 'virtual_'.Str::random(8).'@virtual.jodohku',
                 'password' => Hash::make(Str::random(32)),

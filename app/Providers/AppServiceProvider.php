@@ -11,10 +11,14 @@ use App\Listeners\AnalyticsListener;
 use App\Listeners\FireVirtualTrigger;
 use App\Listeners\LogAudit;
 use App\Listeners\RecordProfileViewListener;
+use App\Listeners\ReferralListener;
 use App\Listeners\SendMatchNotification;
 use App\Listeners\WarmNewUserMatches;
 use App\Models\Comment;
+use App\Models\CompatibilityReport;
+use App\Models\Consultation;
 use App\Models\Conversation;
+use App\Models\Courtship;
 use App\Models\Group;
 use App\Models\Message;
 use App\Models\PartnerPreference;
@@ -32,7 +36,10 @@ use App\Observers\MatchRecalcObserver;
 use App\Observers\PostObserver;
 use App\Payments\PaymentGatewayManager;
 use App\Policies\CommentPolicy;
+use App\Policies\CompatibilityReportPolicy;
+use App\Policies\ConsultationPolicy;
 use App\Policies\ConversationPolicy;
+use App\Policies\CourtshipPolicy;
 use App\Policies\GroupPolicy;
 use App\Policies\MessagePolicy;
 use App\Policies\PaymentPolicy;
@@ -62,6 +69,9 @@ class AppServiceProvider extends ServiceProvider
         Comment::class => CommentPolicy::class,
         Story::class => StoryPolicy::class,
         Group::class => GroupPolicy::class,
+        Courtship::class => CourtshipPolicy::class,
+        Consultation::class => ConsultationPolicy::class,
+        CompatibilityReport::class => CompatibilityReportPolicy::class,
     ];
 
     public function register(): void
@@ -91,6 +101,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(FireVirtualTrigger::class);
         Event::subscribe(LogAudit::class);
         Event::subscribe(AnalyticsListener::class);
+        Event::subscribe(ReferralListener::class);
         Event::listen(MutualMatchCreated::class, SendMatchNotification::class);
         // Scale P1: throttled profile-view writer + register-time warming.
         Event::listen(ProfileViewed::class, RecordProfileViewListener::class);

@@ -85,9 +85,10 @@ class VerificationFlowsTest extends TestCase
             ->assertSessionHasErrors('code');
         $this->assertNull($user->fresh()->phone_verified_at);
 
-        $real = Cache::get('phone-otp:081234567890');
-        $this->assertNotNull($real);
-        $this->actingAs($user)->post('/phone-verify', ['phone' => '081234567890', 'otp' => $real])
+        // OTP is stored as HMAC hash (never plaintext) under sha1(phone) key.
+        // Seed a known OTP hash for the success path.
+        Cache::put('phone-otp:'.sha1('081234567890'), hash_hmac('sha256', '123456', (string) config('app.key')), now()->addMinutes(10));
+        $this->actingAs($user)->post('/phone-verify', ['phone' => '081234567890', 'otp' => '123456'])
             ->assertRedirect('/home');
         $this->assertNotNull($user->fresh()->phone_verified_at);
     }

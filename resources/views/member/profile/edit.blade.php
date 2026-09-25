@@ -5,8 +5,7 @@
 <p class="jk-muted">Foto baru masuk moderasi (maks 8MB, JPG/PNG/WebP) lalu tampil publik setelah disetujui.</p>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @php $myPhotos = auth()->user()->photos()->ordered()->get(); @endphp
-<div class="jk-section"><div class="jk-h2">Foto saya ({{ $myPhotos->count() }}/9)</div>
-<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">
+<div class="jk-section"><div class="jk-h2">Foto saya ({{ $myPhotos->count() }}/9)</div><div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">
 @foreach($myPhotos as $ph)
 <div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">
 @if($ph->path)<img src="{{ asset('storage/'.($ph->thumbnail_path ?: $ph->path)) }}" alt="" loading="lazy">@else<div class="jk-photo-fallback">📷</div>@endif
@@ -25,6 +24,12 @@
 <button class="jk-submit" style="margin-top:10px" type="submit">Upload</button>
 </form>
 </div>
+<div class="jk-section"><div class="jk-h2">Foto sampul</div>
+@if(auth()->user()?->coverUrl())<img src="{{ auth()->user()->coverUrl() }}" alt="Cover saat ini" loading="lazy" style="width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:12px;display:block" onerror="this.remove()">@endif
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+<form method="POST" action="{{ route('member.profile.cover') }}" enctype="multipart/form-data" style="display:flex;gap:8px;flex-wrap:wrap">@csrf<input type="file" name="cover" accept=".jpg,.jpeg,.png,.webp" required aria-label="Upload cover"><button class="jk-btn jk-btn-like" style="flex:none;padding:8px 16px" type="submit">Upload cover</button></form>
+@if(auth()->user()?->cover_path)<form method="POST" action="{{ route('member.profile.cover.destroy') }}" style="display:inline">@csrf @method('DELETE')<button class="jk-pill" type="submit">Hapus cover</button></form>@endif
+</div></div>
 <div class="jk-section jk-form"><div class="jk-h2">Data dasar</div>
 <form method="POST" action="/settings/profile">@csrf
 <label>Nama tampilan</label><input name="display_name" value="{{ $user->display_name ?? auth()->user()->display_name }}">

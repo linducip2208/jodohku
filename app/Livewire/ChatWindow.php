@@ -269,8 +269,9 @@ class ChatWindow extends Component
             return;
         }
         try {
-            $calls->invite($me, $conv, $type);
+            $call = $calls->invite($me, $conv, $type);
             $this->dispatch('refresh-messages');
+            $this->dispatch('call-invited', conversationId: $conv->id, callId: $call->id, type: $type);
         } catch (\Throwable $e) {
             $this->addError('body', $e->getMessage());
         }

@@ -26,6 +26,43 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Composer chat inline `background:#fff` → token dark-mode.
 - Tulis `docs/FRONTEND-AUDIT.md` (inventaris + temuan + non-temuan).
 
+## [Unreleased] — premium matchmaking platform
+
+### Added
+- Passport/travel mode (Premium, virtual location in discovery, audit).
+- Contact blocking privacy-preserving (hash HMAC, tanpa nomor mentah).
+- Push architecture (log default, FCM HTTP v1 + legacy fallback, device tokens, deep links).
+- Referral (kode/link, reward kredit idempoten) + afiliasi (komisi, approval) + tombol salin/share WA/X.
+- WebRTC media layer (`call.js`: STUN/TURN, signaling via Reverb whispers,
+  timer/reconnect/mute/kamera, billing tetap server-side idempoten).
+- Profile cover + group cover + group invite/request flow + member event create.
+- Privacy Center (blokir/bisu/sesi/ekspor/jeda) + story balas-via-chat.
+- PWA (manifest, service worker, icons, install prompt, `/offline-fallback`).
+- Admin afiliasi + `/admin/analytics/social`; SEO sitemap grup + robots.
+- Saved filters: rename/duplikat/set-default (`is_default`, 4 endpoint baru).
+- Landing: render `online-now`, `demo-members`, `feed-preview` yang sebelumnya mati.
+- Boosted badge (⚡ BOOST) di kartu profil + status boost kaya.
+- Verification upload web (`files[]` → private disk, max 3×10MB) — sebelumnya form tanpa file.
+
+### Security
+- Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.
+- OTP telepon disimpan sebagai HMAC-SHA256 (bukan plaintext) + rate-limit per-IP & per-nomor + verify 5/5mnt.
+- 2FA API (`/api/v1/auth/2fa/verify`) rate-limit per-user+IP 5/5mnt.
+- Daftarkan `Courtship/Consultation/CompatibilityReport` policies yang sebelumnya mati.
+- `GroupPolicy` MembersOnly kini wajib anggota/pengelola (tutup kebocoran view).
+- Jarak discovery di-fuzz ke kelipatan 0.5km (anti-triangulasi GPS exact).
+- `avatarUrl()` fallback kini filter `approved + !private` juga saat relasi preloaded.
+- Verification submit web di-throttle (5,1) + validasi MIME.
+
+### Fixed
+- `CallService::end()` idempoten: row-lock + replay aman + guard transaksi `reference_type=call`.
+- `BoostService::activate()` serialize per-user; spend boost bawa `reference_type=boost`.
+- FCM legacy ditandai deprecated; jalur utama FCM v1 OAuth2 service-account.
+- Scheduler semua job `withoutOverlapping()->onOneServer()` (anti double-run).
+- Index `users(latitude, longitude)` untuk discovery bounding-box.
+- Duplikat route passport/kontak/referral/privasi dibersihkan; `admin.php` import rapi.
+- Migrasi duplikat `000004` → `000005_user_phone_hash`.
+
 ## [Unreleased] — social dating platform
 
 ### Added

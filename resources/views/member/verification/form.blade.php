@@ -7,6 +7,7 @@
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 <form method="POST" action="/verification" enctype="multipart/form-data" class="jk-form">@csrf
 <label>Jenis verifikasi</label><select name="type"><option value="photo">Foto + selfie</option><option value="id_card">KTP/Identitas</option><option value="video">Video singkat</option></select>
+<label>Bukti (foto/dokumen, maks 3 file @10MB — tersimpan privat, hanya reviewer)</label><input type="file" name="files[]" accept=".jpg,.jpeg,.png,.webp,.pdf,.mp4,.mov" multiple>
 <label>Catatan (opsional)</label><textarea name="notes" rows="2" placeholder="Contoh: nama sesuai KTP..."></textarea>
 <button class="jk-submit" style="margin-top:12px" type="submit">Kirim Pengajuan →</button></form>
 </div>

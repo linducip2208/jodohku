@@ -17,6 +17,7 @@ use App\Services\PhotoService;
 use App\Services\VirtualMemberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -126,6 +127,38 @@ class ProfileController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Photo deleted.'])
             : back()->with('status', 'Foto dihapus.');
+    }
+
+    /** Profile cover: single public image ≤8MB (validated like photos). */
+    public function cover(Request $request)
+    {
+        $request->validate(['cover' => ['required', 'file', 'max:8192', 'mimetypes:image/jpeg,image/png,image/webp']]);
+        $file = $request->file('cover');
+        if (! $file->isValid() || @getimagesize($file->getRealPath()) === false) {
+            abort(422, 'File bukan gambar valid.');
+        }
+        $user = $request->user();
+        if ($user->cover_path) {
+            Storage::disk('public')->delete($user->cover_path);
+        }
+        $user->update(['cover_path' => $file->store('covers/'.$user->id, 'public')]);
+
+        return $request->wantsJson()
+            ? response()->json(['cover_url' => $user->fresh()->coverUrl()])
+            : back()->with('status', 'Cover diperbarui.');
+    }
+
+    public function destroyCover(Request $request)
+    {
+        $user = $request->user();
+        if ($user->cover_path) {
+            Storage::disk('public')->delete($user->cover_path);
+            $user->update(['cover_path' => null]);
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Cover deleted.'])
+            : back()->with('status', 'Cover dihapus.');
     }
 
     public function video(Request $request)

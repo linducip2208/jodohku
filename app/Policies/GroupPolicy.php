@@ -26,7 +26,7 @@ class GroupPolicy
             return true;
         }
         if ($vis === PrivacyVisibility::MembersOnly) {
-            return true;
+            return $group->hasMember((int) $viewer->id) || $group->isManager((int) $viewer->id);
         }
 
         return $group->hasMember((int) $viewer->id);

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Member;
 use App\Enums\PrivacyVisibility;
 use App\Http\Controllers\Controller;
 use App\Models\Group;
+use App\Models\GroupJoinRequest;
 use App\Models\GroupMember;
 use App\Models\Post;
+use App\Models\User;
 use App\Services\AnalyticsService;
 use App\Services\ReactionService;
 use Illuminate\Http\Request;
@@ -157,5 +159,75 @@ class GroupController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Member updated.'])
             : back()->with('status', 'Anggota diperbarui.');
+    }
+
+    /** Manager invites a user by username (direct add + notification). */
+    public function invite(Request $request, Group $group)
+    {
+        $this->authorize('manage', $group);
+        $data = $request->validate(['username' => ['required', 'string', 'max:190']]);
+        $user = User::where('username', $data['username'])->firstOrFail();
+        abort_unless(! $group->hasMember((int) $user->id), 422, 'Sudah anggota.');
+        GroupMember::create(['group_id' => $group->id, 'user_id' => $user->id, 'role' => 'member', 'joined_at' => now()]);
+        $group->update(['members_count' => $group->members()->count()]);
+
+        return $request->wantsJson()
+            ? response()->json(['message' => 'Invited.'])
+            : back()->with('status', $user->displayName().' diundang ke grup.');
+    }
+
+    /** Cover upload (manager only, images ≤8MB, public disk). */
+    public function cover(Request $request, Group $group)
+    {
+        $this->authorize('manage', $group);
+        $data = $request->validate(['cover' => ['required', 'file', 'max:8192', 'mimetypes:image/jpeg,image/png,image/webp']]);
+        $file = $data['cover'];
+        if (! $file->isValid() || @getimagesize($file->getRealPath()) === false) {
+            abort(422, 'File bukan gambar valid.');
+        }
+        $path = $file->store('group-covers/'.$group->id, 'public');
+        $group->update(['cover_path' => $path]);
+
+        return $request->wantsJson()
+            ? response()->json($group->fresh())
+            : back()->with('status', 'Cover grup diperbarui.');
+    }
+
+    /** Request to join a private group (public groups join directly). */
+    public function requestJoin(Request $request, Group $group)
+    {
+        abort_unless(! $group->hasMember((int) $request->user()->id), 422, 'Sudah anggota.');
+        $req = GroupJoinRequest::firstOrCreate(
+            ['group_id' => $group->id, 'user_id' => $request->user()->id],
+            ['status' => GroupJoinRequest::STATUS_PENDING]
+        );
+
+        return $request->wantsJson()
+            ? response()->json($req, 201)
+            : back()->with('status', 'Permintaan bergabung terkirim, menunggu persetujuan pengelola.');
+    }
+
+    /** Approve/reject a join request (manager only). */
+    public function decideRequest(Request $request, Group $group, GroupJoinRequest $joinRequest)
+    {
+        $this->authorize('manage', $group);
+        abort_unless((int) $joinRequest->group_id === (int) $group->id, 404);
+        $data = $request->validate(['action' => ['required', 'string', 'in:approve,reject']]);
+        DB::transaction(function () use ($group, $joinRequest, $data) {
+            $joinRequest->update(['status' => $data['action'] === 'approve'
+                ? GroupJoinRequest::STATUS_APPROVED
+                : GroupJoinRequest::STATUS_REJECTED]);
+            if ($data['action'] === 'approve') {
+                GroupMember::firstOrCreate(
+                    ['group_id' => $group->id, 'user_id' => $joinRequest->user_id],
+                    ['role' => 'member', 'joined_at' => now()]
+                );
+                $group->update(['members_count' => $group->members()->count()]);
+            }
+        });
+
+        return $request->wantsJson()
+            ? response()->json($joinRequest->fresh())
+            : back()->with('status', 'Permintaan diproses.');
     }
 }

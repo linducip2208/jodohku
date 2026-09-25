@@ -7,6 +7,7 @@ use App\Events\CallInvite;
 use App\Events\CallStatusChanged;
 use App\Models\Call;
 use App\Models\Conversation;
+use App\Models\CreditTransaction;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\MissedCall;
@@ -117,40 +118,52 @@ class CallService
         return $call->fresh();
     }
 
-    /** End an ongoing call and charge tokens for the used minutes. */
+    /** End an ongoing call and charge tokens for the used minutes. Idempotent. */
     public function end(Call $call, User $user): Call
     {
         if ((int) $call->caller_id !== (int) $user->id && (int) $call->receiver_id !== (int) $user->id) {
             throw new \RuntimeException('Not a call participant.');
         }
-        if ($call->status !== CallStatus::Ongoing) {
-            throw new \RuntimeException('Call is not ongoing.');
-        }
 
         return DB::transaction(function () use ($call, $user) {
-            $seconds = max(1, $call->started_at ? now()->diffInSeconds($call->started_at) : 1);
+            // Lock the call row: concurrent end() retries serialize here.
+            $locked = Call::whereKey($call->id)->lockForUpdate()->firstOrFail();
+            // Idempotent replay: already ended → return as-is, never recharge.
+            if ($locked->status === CallStatus::Ended) {
+                return $locked->fresh();
+            }
+            if ($locked->status !== CallStatus::Ongoing) {
+                throw new \RuntimeException('Call is not ongoing.');
+            }
+            // Double-charge guard: a credit txn with this call reference already exists.
+            $existing = CreditTransaction::where('reference_type', 'call')
+                ->where('reference_id', $locked->id)->exists();
+            $seconds = max(1, $locked->started_at ? now()->diffInSeconds($locked->started_at) : 1);
             $minutes = (int) ceil($seconds / 60);
-            $cost = $minutes * $this->ratePerMinute($call->type);
-            $caller = $call->caller;
-            $charged = 0;
-            if ($caller && $cost > 0) {
+            $cost = $minutes * $this->ratePerMinute($locked->type);
+            $caller = $locked->caller;
+            $charged = (int) ($locked->credits_charged ?? 0);
+            if (! $existing && $caller && $cost > 0) {
                 $balance = $this->credits->balance($caller);
                 $charged = min($cost, $balance);
                 if ($charged > 0) {
-                    $this->credits->spend($caller, $charged, "Call #{$call->id} ({$call->type}, {$minutes} min)");
+                    $this->credits->spend($caller, $charged, "Call #{$locked->id} ({$locked->type}, {$minutes} min)", [
+                        'reference_type' => 'call',
+                        'reference_id' => $locked->id,
+                    ]);
                 }
                 if ($charged < $cost) {
-                    $this->audit->log('call.charge_shortfall', $user, $call, [], ['cost' => $cost, 'charged' => $charged]);
+                    $this->audit->log('call.charge_shortfall', $user, $locked, [], ['cost' => $cost, 'charged' => $charged]);
                 }
             }
-            $call->update([
+            $locked->update([
                 'status' => CallStatus::Ended, 'ended_at' => now(),
                 'duration_seconds' => $seconds, 'credits_charged' => $charged,
             ]);
-            $this->audit->log('call.ended', $user, $call, [], ['duration' => $seconds, 'charged' => $charged]);
-            event(new CallStatusChanged($call->fresh(), 'ended'));
+            $this->audit->log('call.ended', $user, $locked, [], ['duration' => $seconds, 'charged' => $charged]);
+            event(new CallStatusChanged($locked->fresh(), 'ended'));
 
-            return $call->fresh();
+            return $locked->fresh();
         });
     }
 

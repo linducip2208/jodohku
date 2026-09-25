@@ -49,7 +49,7 @@ class StoryService
         $followedIds = Follow::where('follower_id', $viewer->id)->pluck('followed_id')->all();
 
         $stories = Story::active()->whereNotIn('user_id', $excluded ?: [0])
-            ->whereHas('user', fn ($q) => $q->active()->real()
+            ->whereHas('user', fn ($q) => $q->active()->real()->where('is_paused', false)
                 ->whereDoesntHave('counselor')
                 ->whereDoesntHave('profilePrivacy', fn ($qq) => $qq->where('is_incognito', true)))
             ->with(['user:id,display_name,name,avatar_path,is_verified'])

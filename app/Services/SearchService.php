@@ -32,7 +32,7 @@ class SearchService
         )) : [];
         $muted = $viewer ? $this->follows->mutedIds($viewer) : [];
 
-        $people = User::query()->active()->real()
+        $people = User::query()->active()->real()->where('is_paused', false)
             ->whereNotIn('users.id', array_merge($blocked, $muted, $viewer ? [$viewer->id] : [0]) ?: [0])
             ->whereDoesntHave('counselor')
             ->whereDoesntHave('profilePrivacy', fn ($q) => $q->where('is_incognito', true))

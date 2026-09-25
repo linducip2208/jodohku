@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DiscoveryController;
 use App\Http\Controllers\Api\V1\PreferenceController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\PushController;
 use App\Http\Controllers\Api\V1\SocialController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\AiAssistantController;
@@ -132,6 +133,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/conversations/{conversation}/read', [ChatController::class, 'read']);
         Route::post('/conversations/{conversation}/typing', [ChatController::class, 'typing']);
         Route::get('/calls/rates', [CallController::class, 'rates']);
+        Route::get('/calls/ice', [CallController::class, 'ice']);
         Route::post('/conversations/{conversation}/calls', [CallController::class, 'invite'])->middleware('throttle:10,1,calls');
         Route::get('/conversations/{conversation}/calls', [CallController::class, 'history']);
         Route::post('/calls/{call}/accept', [CallController::class, 'accept']);
@@ -162,6 +164,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/notifications', [AccountController::class, 'notifications']);
         Route::post('/notifications/read-all', [AccountController::class, 'markNotifications']);
+        Route::get('/push-tokens', [PushController::class, 'index']);
+        Route::post('/push-tokens', [PushController::class, 'store'])->middleware('throttle:20,1,push-token');
+        Route::delete('/push-tokens', [PushController::class, 'destroy']);
 
         Route::get('/plans', [AccountController::class, 'plans']);
         Route::get('/plans/matrix', [AccountController::class, 'plansMatrix']);

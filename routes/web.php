@@ -9,6 +9,7 @@ use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\CommunityController;
+use App\Http\Controllers\Member\ContactBlockController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\FollowController;
 use App\Http\Controllers\Member\ForumController;
@@ -18,8 +19,11 @@ use App\Http\Controllers\Member\LikeController;
 use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\MessageController;
 use App\Http\Controllers\Member\OnboardingController;
+use App\Http\Controllers\Member\PassportController;
+use App\Http\Controllers\Member\PrivacyCenterController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\QuestionnaireController;
+use App\Http\Controllers\Member\ReferralController;
 use App\Http\Controllers\Member\SafetyController;
 use App\Http\Controllers\Member\SavedFilterController;
 use App\Http\Controllers\Member\SearchController;
@@ -107,6 +111,31 @@ Route::get('/', function () {
 
     return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans', 'onlineNow', 'feedPosts'));
 })->name('landing');
+
+// PWA manifest (installable, standalone, push-ready architecture).
+Route::get('/manifest.webmanifest', function () {
+    $name = (string) config('app.name', 'Jodohku');
+
+    return response()->json([
+        'name' => $name.' — Biro Jodoh Modern Indonesia',
+        'short_name' => $name,
+        'start_url' => '/',
+        'scope' => '/',
+        'display' => 'standalone',
+        'orientation' => 'portrait',
+        'background_color' => '#fafafb',
+        'theme_color' => '#f43f5e',
+        'description' => 'Social dating, matchmaking, taaruf, dan komunitas Indonesia.',
+        'icons' => [
+            ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
+            ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
+            ['src' => '/icons/icon-maskable.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ],
+    ])->header('Content-Type', 'application/manifest+json');
+})->name('pwa.manifest');
+
+// PWA offline shell (cached by sw.js; never breaks web when offline).
+Route::get('/offline-fallback', fn () => response()->view('pwa.offline'))->name('pwa.offline');
 
 // Public community pages (indexable): public groups only — GroupController
 // 404s anything non-public for guests (no existence leaks).
@@ -200,7 +229,7 @@ Route::middleware('guest')->group(function () {
         $r->session()->regenerate();
 
         return redirect()->intended('/home');
-    })->name('login.attempt');
+    })->middleware('throttle:5,1,web-login')->name('login.attempt');
 
     Route::get('/register', fn () => view('auth.register'))->name('register');
     Route::post('/register', function (Request $r) {
@@ -226,7 +255,7 @@ Route::middleware('guest')->group(function () {
         Auth::login($user);
 
         return redirect('/home');
-    })->name('register.store');
+    })->middleware('throttle:10,1,web-register')->name('register.store');
 
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'send'])->middleware('throttle:3,1,web-password')->name('password.email');
@@ -239,7 +268,7 @@ Route::post('/verify-email/send', [VerificationController::class, 'resend'])->mi
 Route::get('/verify-email/{id}/{hash}', [VerificationController::class, 'verify'])->middleware(['signed', 'throttle:10,1,email-verify-click'])->name('verification.verify');
 Route::get('/phone-verify', fn () => view('auth.phone-verify'))->name('phone.verify');
 Route::post('/phone-verify/send', [PhoneVerificationController::class, 'send'])->middleware('throttle:5,1,phone-otp')->name('phone.send');
-Route::post('/phone-verify', [PhoneVerificationController::class, 'verify'])->name('phone.verify.store');
+Route::post('/phone-verify', [PhoneVerificationController::class, 'verify'])->middleware(['auth', 'throttle:5,1,phone-verify'])->name('phone.verify.store');
 Route::post('/logout', function (Request $r) {
     Auth::logout();
     $r->session()->invalidate();
@@ -328,6 +357,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/profile/completeness', [ProfileController::class, 'completeness'])->name('member.profile.completeness');
     Route::post('/profile/photos', [ProfileController::class, 'photos'])->name('member.profile.photos');
     Route::delete('/profile/photos/{photo}', [ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
+    Route::post('/profile/cover', [ProfileController::class, 'cover'])->name('member.profile.cover')->middleware('throttle:10,1,profile-cover');
+    Route::delete('/profile/cover', [ProfileController::class, 'destroyCover'])->name('member.profile.cover.destroy');
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
     Route::post('/rewind', [LikeController::class,
@@ -340,6 +371,12 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         'store'])->name('member.filters.store')->middleware('throttle:20,1,saved-filters');
     Route::delete('/filter-tersimpan/{savedFilter}', [SavedFilterController::class,
         'destroy'])->name('member.filters.destroy');
+    Route::patch('/filter-tersimpan/{savedFilter}', [SavedFilterController::class,
+        'update'])->name('member.filters.update')->middleware('throttle:20,1,saved-filters');
+    Route::post('/filter-tersimpan/{savedFilter}/duplikat', [SavedFilterController::class,
+        'duplicate'])->name('member.filters.duplicate')->middleware('throttle:20,1,saved-filters');
+    Route::post('/filter-tersimpan/{savedFilter}/default', [SavedFilterController::class,
+        'makeDefault'])->name('member.filters.default')->middleware('throttle:20,1,saved-filters');
     Route::get('/questionnaire', [QuestionnaireController::class, 'index'])->name('member.questionnaire');
     Route::post('/questionnaire', [QuestionnaireController::class, 'store'])->name('member.questionnaire.store');
     Route::get('/who-liked', [MatchController::class, 'whoLiked'])->name('member.who-liked');
@@ -434,15 +471,31 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
     Route::get('/verification', fn () => view('member.verification.form'))->name('member.verification');
     Route::post('/verification', function (Request $r, VerificationService $svc) {
-        $data = $r->validate(['type' => 'required|string', 'notes' => 'nullable|string']);
+        $data = $r->validate([
+            'type' => 'required|string',
+            'notes' => 'nullable|string|max:2000',
+            'files' => 'nullable|array|max:3',
+            'files.*' => 'file|max:10240|mimetypes:image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/quicktime',
+        ]);
+        $documents = [];
+        foreach ($r->file('files', []) as $file) {
+            if (! $file->isValid()) {
+                continue;
+            }
+            $documents[] = [
+                'document_type' => $data['type'],
+                'file_path' => $file->store('verifications', 'private'),
+                'mime_type' => $file->getMimeType(),
+            ];
+        }
         try {
-            $svc->submit(Auth::user(), $data['type'], [], $data['notes'] ?? null);
+            $svc->submit(Auth::user(), $data['type'], $documents, $data['notes'] ?? null);
 
             return back()->with('status', 'Pengajuan verifikasi terkirim. Pantau status di bawah.');
         } catch (Throwable $e) {
             return back()->with('status', $e->getMessage());
         }
-    });
+    })->middleware('throttle:5,1,verification-submit');
 
     Route::get('/settings', fn () => view('member.settings.index'))->name('member.settings');
     Route::get('/settings/login-history', [SettingsController::class, 'loginHistory'])->name('settings.login-history');
@@ -588,6 +641,27 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/pengikut/{user}', [FollowController::class, 'followers'])->name('member.followers');
     Route::get('/mengikuti/{user}', [FollowController::class, 'following'])->name('member.following');
     Route::get('/suggested', [FollowController::class, 'suggested'])->name('member.suggested');
+    // Passport / travel mode (premium entitlement enforced in service).
+    Route::get('/passport', [PassportController::class, 'show'])->name('member.passport');
+    Route::post('/passport', [PassportController::class,
+        'store'])->name('member.passport.store')->middleware('throttle:10,1,passport');
+    Route::delete('/passport', [PassportController::class, 'destroy'])->name('member.passport.destroy');
+    // Privacy-preserving contact blocking (hashes only, never raw numbers).
+    Route::get('/kontak-blokir', [ContactBlockController::class, 'show'])->name('member.contacts');
+    Route::post('/kontak-blokir', [ContactBlockController::class,
+        'store'])->name('member.contacts.store')->middleware('throttle:5,1,contact-import');
+    Route::delete('/kontak-blokir', [ContactBlockController::class, 'destroy'])->name('member.contacts.destroy');
+    // Referral dashboard + affiliate application.
+    Route::get('/referral', [ReferralController::class, 'dashboard'])->name('member.referral');
+    Route::post('/referral/affiliate', [ReferralController::class,
+        'applyAffiliate'])->name('member.referral.affiliate')->middleware('throttle:5,1,affiliate-apply');
+    // Privacy Center: blocks/mutes/sessions/export/pause in one place.
+    Route::get('/privasi', [PrivacyCenterController::class, 'index'])->name('member.privacy');
+    Route::delete('/privasi/sesi/{id}', [PrivacyCenterController::class,
+        'revokeSession'])->name('member.privacy.session');
+    Route::post('/privasi/jeda', [PrivacyCenterController::class, 'pause'])->name('member.privacy.pause');
+    Route::post('/privasi/lanjut', [PrivacyCenterController::class, 'resume'])->name('member.privacy.resume');
+    Route::get('/privasi/ekspor', [PrivacyCenterController::class, 'export'])->name('member.privacy.export');
     Route::post('/ikuti/{user}', [FollowController::class,
         'store'])->name('member.follow')->middleware('throttle:30,1,social-follow');
     Route::delete('/ikuti/{user}', [FollowController::class, 'destroy'])->name('member.unfollow');
@@ -614,6 +688,17 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/groups/{group}/join', [GroupController::class,
         'join'])->name('member.groups.join')->middleware('throttle:20,1,group-join');
     Route::delete('/groups/{group}/leave', [GroupController::class, 'leave'])->name('member.groups.leave');
+    // Premium platform: group cover / invite / join-request + member event create.
+    Route::post('/groups/{group}/cover', [GroupController::class,
+        'cover'])->name('member.groups.cover')->middleware('throttle:10,1,group-cover');
+    Route::post('/groups/{group}/invite', [GroupController::class,
+        'invite'])->name('member.groups.invite')->middleware('throttle:30,1,group-invite');
+    Route::post('/groups/{group}/request', [GroupController::class,
+        'requestJoin'])->name('member.groups.request')->middleware('throttle:10,1,group-request');
+    Route::post('/groups/{group}/requests/{joinRequest}', [GroupController::class,
+        'decideRequest'])->name('member.groups.requests.decide')->middleware('throttle:30,1,group-manage');
+    Route::post('/events', [EventController::class,
+        'store'])->name('member.events.store')->middleware('throttle:5,1,event-create');
     Route::put('/groups/{group}', [GroupController::class, 'update'])->name('member.groups.update');
     Route::post('/groups/{group}/members', [GroupController::class,
         'manageMember'])->name('member.groups.members')->middleware('throttle:30,1,group-manage');

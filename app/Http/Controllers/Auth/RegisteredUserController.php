@@ -18,6 +18,9 @@ class RegisteredUserController extends Controller
 {
     public function create(Request $request)
     {
+        if ($request->filled('ref')) {
+            $request->session()->put('registration_ref', (string) $request->input('ref'));
+        }
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Register endpoint.']);
         }

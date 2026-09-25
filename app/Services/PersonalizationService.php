@@ -41,7 +41,7 @@ class PersonalizationService
     public function getNewMembers(int $limit = 6): Collection
     {
         try {
-            return User::active()->real()->whereDoesntHave('counselor')->latest('id')->limit($limit)->with(['profile'])->get();
+            return User::active()->real()->where('is_paused', false)->whereDoesntHave('counselor')->latest('id')->limit($limit)->with(['profile'])->get();
         } catch (\Throwable) {
             return collect();
         }
@@ -50,7 +50,7 @@ class PersonalizationService
     public function getActiveNow(User $user, int $limit = 6): Collection
     {
         try {
-            return User::active()->real()->whereDoesntHave('counselor')->where('is_online', true)->where('id', '!=', $user->id)
+            return User::active()->real()->where('is_paused', false)->whereDoesntHave('counselor')->where('is_online', true)->where('id', '!=', $user->id)
                 ->limit($limit)->with(['profile'])->get();
         } catch (\Throwable) {
             return collect();

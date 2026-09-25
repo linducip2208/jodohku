@@ -15,6 +15,9 @@
 <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
 <form method="POST" action="/stories/{{ $story->id }}/reaksi" style="display:inline">@csrf<button class="jk-pill" type="submit">♡ {{ $story->reactions_count }}</button></form>
 <span class="jk-muted" style="font-size:12px">👁 {{ $story->views_count }} dilihat</span>
+@if((int) auth()->id() !== (int) $story->user_id)
+<button class="jk-pill" type="button" onclick="fetch('/chat/create', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept':'application/json' }, body: JSON.stringify({ user_id: {{ (int) $story->user_id }} }) }).then(r => r.json()).then(j => { if (j.conversation_id) window.location.href = '/chat/' + j.conversation_id; else window.jkToast('Gagal membuka chat', false); }).catch(() => window.jkToast('Gagal membuka chat', false))">💬 Balas via chat</button>
+@endif
 @if((int) auth()->id() === (int) $story->user_id || auth()->user()?->isStaff())
 <form method="POST" action="/stories/{{ $story->id }}" style="display:inline">@csrf @method('DELETE')<button class="jk-pill" type="submit">Hapus</button></form>
 @endif

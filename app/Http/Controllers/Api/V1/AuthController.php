@@ -12,6 +12,7 @@ use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -89,6 +90,13 @@ class AuthController extends Controller
     public function verify2fa(Request $request)
     {
         $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'code' => ['required', 'string', 'max:6']]);
+        // Per-user+IP brute-force guard (user_id is enumerable by design for
+        // the 2FA step, so rate-limit aggressively per account + IP).
+        $key = 'auth-2fa:'.(int) $request->integer('user_id').':'.$request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return response()->json(['message' => 'Too many attempts.'], 429);
+        }
+        RateLimiter::hit($key, 300);
         $user = User::findOrFail($request->integer('user_id'));
         if ($reason = $user->loginBlockedReason()) {
             return response()->json(['message' => $reason], 403);
@@ -102,6 +110,7 @@ class AuthController extends Controller
         if (! $ok) {
             return response()->json(['message' => 'Invalid code.'], 422);
         }
+        RateLimiter::clear($key);
         $user->update(['is_online' => true, 'last_active_at' => now()]);
         $token = $user->createToken('api')->plainTextToken;
 

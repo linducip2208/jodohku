@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Member;
 
+use App\Enums\EventStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -29,6 +31,40 @@ class EventController extends Controller
         return $request->wantsJson()
             ? response()->json($event->load('members'))
             : view('member.events.show', ['event' => $event]);
+    }
+
+    /** Member-created events publish immediately (throttled, reportable). */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'venue' => ['nullable', 'string', 'max:200'],
+            'starts_at' => ['required', 'date', 'after:now'],
+            'ends_at' => ['nullable', 'date', 'after:starts_at'],
+            'capacity' => ['nullable', 'integer', 'min:2', 'max:10000'],
+            'is_online' => ['nullable', 'boolean'],
+            'online_url' => ['nullable', 'string', 'max:500'],
+        ]);
+        $event = Event::create([
+            'host_id' => $request->user()->id,
+            'title' => trim($data['title']),
+            'slug' => Str::slug($data['title']).'-'.Str::lower(Str::random(5)),
+            'description' => $data['description'] ?? null,
+            'city' => $data['city'] ?? $request->user()->city,
+            'venue' => $data['venue'] ?? null,
+            'starts_at' => $data['starts_at'],
+            'ends_at' => $data['ends_at'] ?? null,
+            'capacity' => $data['capacity'] ?? null,
+            'is_online' => (bool) ($data['is_online'] ?? false),
+            'online_url' => $data['online_url'] ?? null,
+            'status' => EventStatus::Published,
+        ]);
+
+        return $request->wantsJson()
+            ? response()->json($event->fresh(), 201)
+            : redirect('/events/'.$event->id)->with('status', 'Event dibuat.');
     }
 
     public function join(Request $request, Event $event)
