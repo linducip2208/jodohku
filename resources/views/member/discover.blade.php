@@ -3,17 +3,20 @@
 @section('content')
 <h1 class="jk-h1">Discover</h1>
 <p class="jk-muted">Orang di sekitarmu — rekomendasi berbasis kecocokan, bukan katalog.</p>
-@php $tab = request('tab', 'orang'); @endphp
+@php
+$tab = request('tab', 'orang');
+$mode = request('mode', 'grid'); $mode = in_array($mode, ['grid', 'swipe'], true) ? $mode : 'grid';
+$modeQuery = fn ($m) => '/discover?'.http_build_query(array_merge(request()->except('mode'), ['mode' => $m]));
+@endphp
 <div class="jk-tabs" role="tablist" aria-label="Kategori discovery">
 @foreach(['orang' => 'Orang', 'postingan' => 'Postingan', 'komunitas' => 'Komunitas', 'event' => 'Event', 'trending' => 'Trending'] as $k => $label)
 <a class="jk-tab {{ $tab === $k ? 'active' : '' }}" role="tab" aria-selected="{{ $tab === $k ? 'true' : 'false' }}" href="/discover?tab={{ $k }}">{{ $label }}</a>
 @endforeach
 </div>
 @if($tab === 'orang')
-@php $mode = request('mode', 'grid'); $mode = in_array($mode, ['grid', 'swipe'], true) ? $mode : 'grid'; @endphp
 <div style="display:flex;gap:8px;margin-bottom:10px" role="group" aria-label="Mode tampilan">
-<a class="jk-pill" @if($mode === 'grid') style="background:#f43f5e;color:#fff" @endif href="/discover?tab=orang&mode=grid">▦ Grid</a>
-<a class="jk-pill" @if($mode === 'swipe') style="background:#f43f5e;color:#fff" @endif href="/discover?tab=orang&mode=swipe">♥ Swipe</a>
+<a class="jk-pill" @if($mode === 'grid') style="background:#f43f5e;color:#fff" @endif href="{{ $modeQuery('grid') }}">▦ Grid</a>
+<a class="jk-pill" @if($mode === 'swipe') style="background:#f43f5e;color:#fff" @endif href="{{ $modeQuery('swipe') }}">♥ Swipe</a>
 </div>
 @if($mode === 'swipe')
 @livewire('swipe-deck')

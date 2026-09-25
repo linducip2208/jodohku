@@ -121,4 +121,13 @@ class DatingUxTest extends TestCase
         $this->assertStringContainsString('Tujuan hubungan', $html);
         $this->assertStringContainsString('Filter tersimpan', $html);
     }
+
+    public function test_mode_toggle_preserves_active_filters(): void
+    {
+        $me = User::factory()->create();
+        $html = $this->actingAs($me)->get('/discover?tab=orang&mode=grid&city=Bandung&min_age=20')->assertOk()->getContent();
+        $this->assertStringContainsString('city=Bandung', $html);
+        $this->assertStringContainsString('min_age=20', $html);
+        $this->assertStringContainsString('mode=swipe', $html);
+    }
 }

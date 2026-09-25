@@ -4,6 +4,6 @@
 </div>
 <div wire:loading.remove>
 @include('components.empty', ['icon' => 'hati', 'title' => 'Kartu habis', 'hint' => 'Longgarkan filter atau kembali lagi nanti.'])
-<div style="text-align:center;margin-top:10px"><a class="jk-btn jk-btn-pass" style="text-decoration:none;display:inline-block;max-width:280px" href="/discover">Mode grid</a></div>
+<div style="text-align:center;margin-top:10px"><a class="jk-btn jk-btn-pass" style="text-decoration:none;display:inline-block;max-width:280px" href="/discover?{{ http_build_query(array_merge(request()->except('mode'), ['mode' => 'grid'])) }}">Mode grid</a></div>
 </div>
 </div>
