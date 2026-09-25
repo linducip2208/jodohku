@@ -159,3 +159,16 @@ html:not([data-theme]) .jk-iconbtn{background:#27272a;color:#e4e4e7}
 html:not([data-theme]) .jk-photo{background:linear-gradient(135deg,#3f3f46,#52525b)}
 html:not([data-theme]) .jk-form input,html:not([data-theme]) .jk-form select,html:not([data-theme]) .jk-form textarea{background:#27272a;border-color:#3f3f46;color:#fafafa}
 }
+
+/* Match celebration: pop-in + falling confetti (respects reduced motion). */
+.jk-match-pop{animation:jk-pop .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes jk-pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.jk-confetti{position:absolute;inset:-8px 0 auto 0;display:flex;justify-content:space-around;font-size:22px;pointer-events:none}
+.jk-confetti span{display:inline-block;animation:jk-fall 1.8s ease-in infinite}
+.jk-confetti span:nth-child(2){animation-delay:.2s}.jk-confetti span:nth-child(3){animation-delay:.4s}.jk-confetti span:nth-child(4){animation-delay:.6s}.jk-confetti span:nth-child(5){animation-delay:.3s}.jk-confetti span:nth-child(6){animation-delay:.5s}
+@keyframes jk-fall{0%{transform:translateY(-12px) rotate(0);opacity:0}20%{opacity:1}100%{transform:translateY(120px) rotate(40deg);opacity:0}}
+.jk-match-bg .jk-modal{position:relative;overflow:hidden}
+@media(prefers-reduced-motion:reduce){.jk-match-pop,.jk-confetti span{animation:none}}
+/* Chat offline banner (toggled by inline onLine listeners). */
+#jk-chat-offline{display:none;background:#fef3c7;color:#92400e;font-size:12.5px;font-weight:600;text-align:center;padding:8px 12px;border-radius:10px;margin-bottom:8px}
+#jk-chat-offline.show{display:block}

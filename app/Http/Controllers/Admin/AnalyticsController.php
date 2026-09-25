@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsEvent;
+use App\Models\Call;
 use App\Models\Comment;
+use App\Models\Courtship;
 use App\Models\Follow;
 use App\Models\Group;
 use App\Models\GroupMember;
@@ -243,9 +245,15 @@ class AnalyticsController extends Controller
     {
         $data = Cache::remember('admin.analytics.funnel', 300, fn () => [
             'registered' => User::count(),
+            'verified' => User::where('is_verified', true)->count(),
             'with_photo' => User::has('photos')->count(),
             'with_questionnaire' => User::has('questionnaireAnswers')->count(),
+            'discover_viewers' => ProfileView::distinct('viewer_id')->count('viewer_id'),
+            'likers' => Like::distinct('liker_id')->count('liker_id'),
             'with_match' => User::where(fn ($q) => $q->whereHas('matchesA')->orWhereHas('matchesB'))->count(),
+            'chatters' => Message::distinct('sender_id')->count('sender_id'),
+            'callers' => Call::distinct('caller_id')->count('caller_id'),
+            'taaruf' => Courtship::distinct('initiator_id')->count('initiator_id'),
             'paying' => User::where('is_premium', true)->count(),
         ]);
 

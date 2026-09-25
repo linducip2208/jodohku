@@ -24,6 +24,24 @@
 <button class="jk-submit" style="margin-top:10px" type="submit">Upload</button>
 </form>
 </div>
+@php $myVideos = auth()->user()->videos()->latest('id')->take(3)->get(); @endphp
+<div class="jk-section"><div class="jk-h2">Video saya ({{ $myVideos->count() }}/3)</div>
+<p class="jk-muted" style="font-size:13px">MP4/MOV maks 50MB. Video masuk moderasi dan tampil setelah disetujui.</p>
+<div class="jk-grid" style="grid-template-columns:repeat(3,1fr)">
+@foreach($myVideos as $vd)
+<div class="jk-card"><div class="jk-photo" style="aspect-ratio:1/1">
+@if($vd->path)<video src="{{ asset('storage/'.$vd->path) }}" style="width:100%;height:100%;object-fit:cover" preload="metadata" playsinline></video>@else<div class="jk-photo-fallback">🎬</div>@endif
+</div>
+<div style="padding:6px"><span class="jk-pill {{ $vd->is_approved ? 'verified' : '' }}">{{ $vd->is_approved ? 'approved' : 'pending' }}</span></div></div>
+@endforeach
+</div>
+<form method="POST" action="{{ route('member.profile.video') }}" enctype="multipart/form-data" style="margin-top:12px" class="jk-form">
+@csrf
+<label>Tambah video</label>
+<input type="file" name="video" accept=".mp4,.mov" required>
+<button class="jk-submit" style="margin-top:10px" type="submit">Upload video</button>
+</form>
+</div>
 <div class="jk-section"><div class="jk-h2">Foto sampul</div>
 @if(auth()->user()?->coverUrl())<img src="{{ auth()->user()->coverUrl() }}" alt="Cover saat ini" loading="lazy" style="width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:12px;display:block" onerror="this.remove()">@endif
 <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">

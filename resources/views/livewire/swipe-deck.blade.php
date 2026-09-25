@@ -69,8 +69,9 @@ $dist = $distance;
 <div class="jk-muted" style="text-align:center;font-size:12px" role="status">{{ $status }}</div>
 @endif
 @if($matchedUserId)
-<div class="jk-modal-bg" style="display:flex" role="dialog" aria-modal="true" aria-label="Match baru!">
-<div class="jk-modal" style="text-align:center" x-data x-init="$nextTick(() => $el.querySelector('a, button')?.focus())">
+<div class="jk-modal-bg jk-match-bg" style="display:flex" role="dialog" aria-modal="true" aria-label="Match baru!">
+<div class="jk-modal jk-match-pop" style="text-align:center" x-data x-init="$nextTick(() => $el.querySelector('a, button')?.focus())">
+<div class="jk-confetti" aria-hidden="true"><span>🎉</span><span>💘</span><span>✨</span><span>🎊</span><span>💖</span><span>⭐</span></div>
 <div style="font-size:44px" aria-hidden="true">💘</div>
 <div class="jk-h2">It's a Match!</div>
 <p class="jk-muted">Kamu dan <strong>{{ $matchedName }}</strong> saling suka.</p>

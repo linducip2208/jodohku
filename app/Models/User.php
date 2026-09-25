@@ -63,11 +63,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_paused',
         'profile_completion',
         'two_factor_enabled',
+        'two_factor_secret',
+        'two_factor_backup_codes',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
     ];
 
     protected function casts(): array
@@ -95,6 +98,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'profile_completion' => 'integer',
             'two_factor_enabled' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
+            'two_factor_backup_codes' => 'array',
         ];
     }
 

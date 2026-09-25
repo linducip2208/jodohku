@@ -1,0 +1,82 @@
+openapi: 3.0.3
+info:
+  title: Jodohku API v1 (Flutter-ready)
+  version: 1.0.0
+  description: >
+    Auth via Sanctum Bearer. Pagination Laravel-style (data/meta).
+    Errors: {message, errors}. All money/call billing idempotent via
+    reference_type+reference_id. Distances fuzzed to 0.5km, exact GPS never exposed.
+servers:
+  - url: https://domain/api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        display_name: { type: string }
+        age: { type: integer, nullable: true }
+        city: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        is_verified: { type: boolean }
+        verification:
+          type: object
+          properties:
+            email: { type: boolean }
+            phone: { type: boolean }
+            photo: { type: boolean }
+            identity: { type: boolean }
+        is_premium: { type: boolean }
+paths:
+  /auth/register:
+    post:
+      security: []
+      summary: Register (name, email, password+confirmed, date_of_birth, gender)
+  /auth/login:
+    post:
+      security: []
+      summary: Login (may return two_factor_required + user_id)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login: { type: string }
+                password: { type: string }
+  /auth/2fa/verify:
+    post:
+      security: []
+      summary: Verify 2FA (TOTP authenticator, backup code, or email OTP)
+  /me: { get: { summary: Current user } }
+  /discover:
+    get: { summary: Scored discovery (passport-aware, boost-ordered) }
+  /matches: { get: { summary: Mutual matches } }
+  /conversations/{id}/messages:
+    get: { summary: Paginated messages }
+    post: { summary: Send (idempotent via client_message_id) }
+  /conversations/{id}/calls:
+    get: { summary: Call history }
+    post: { summary: Invite voice/video call }
+  /calls/ice: { get: { summary: WebRTC ICE servers (STUN+TURN) } }
+  /profile: { get: { summary: Own profile }, put: { summary: Update profile } }
+  /profile/video:
+    post: { summary: Upload profile video (pending moderation, max 3) }
+  /saved-filters:
+    get: { summary: List saved filters }
+    post: { summary: Save filter }
+  /saved-filters/{id}: { patch: { summary: Rename }, delete: { summary: Delete } }
+  /saved-filters/{id}/duplicate: { post: { summary: Duplicate } }
+  /saved-filters/{id}/default: { post: { summary: Set default } }
+  /events: { get: { summary: List events } }
+  /events/{id}/suggested: { get: { summary: Discoverable attendees } }
+  /push-tokens:
+    post: { summary: Register device token }
+    delete: { summary: Remove token }
+  /boost: { post: { summary: Activate boost (50 credits, idempotent ref) } }
+  /2fa/totp/start: { post: { summary: Start authenticator setup } }
+  /2fa/totp/confirm: { post: { summary: Confirm + get backup codes } }

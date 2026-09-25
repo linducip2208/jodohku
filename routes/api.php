@@ -38,6 +38,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/2fa/enable', [SettingsController::class, 'enable2fa']);
             Route::post('/2fa/disable', [SettingsController::class, 'disable2fa']);
+            Route::post('/2fa/totp/start', [SettingsController::class, 'startTotp'])->middleware('throttle:5,1,totp-setup');
+            Route::post('/2fa/totp/confirm', [SettingsController::class, 'confirmTotp'])->middleware('throttle:10,1,totp-confirm');
+            Route::post('/2fa/totp/backup', [SettingsController::class, 'regenerateBackupCodes'])->middleware('throttle:5,1,totp-backup');
             Route::delete('/account', [SettingsController::class, 'destroy'])->middleware('throttle:5,1,account-delete');
         });
     });
@@ -55,6 +58,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/profile', [ProfileController::class, 'me']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/profile/photos', [App\Http\Controllers\Member\ProfileController::class, 'photos']);
+        Route::post('/profile/video', [App\Http\Controllers\Member\ProfileController::class, 'video'])->middleware('throttle:5,1,profile-video');
         Route::delete('/profile/photos/{photo}', [App\Http\Controllers\Member\ProfileController::class, 'destroyPhoto']);
         Route::get('/profile/{user}', [ProfileController::class, 'show'])->middleware('blocked');
         Route::get('/profile/{user}/view-history', [ProfileController::class, 'viewHistory']);

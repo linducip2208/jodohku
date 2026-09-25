@@ -13,6 +13,7 @@ use App\Models\ProfilePrivacy;
 use App\Models\SuperLike;
 use App\Models\User;
 use App\Models\UserMatch;
+use App\Services\AuditService;
 use App\Services\PhotoService;
 use App\Services\VirtualMemberService;
 use Illuminate\Http\Request;
@@ -161,13 +162,38 @@ class ProfileController extends Controller
             : back()->with('status', 'Cover dihapus.');
     }
 
+    /** Profile video upload: hardened (MIME+extension, 50MB, max 3/user, pending moderation). */
     public function video(Request $request)
     {
         $request->validate(['video' => ['required', 'file', 'max:51200', 'mimetypes:video/mp4,video/quicktime']]);
-        $path = $request->file('video')->store('profile-videos', 'public');
-        $record = $request->user()->videos()->create(['file_path' => $path]);
+        $file = $request->file('video');
+        if (! $file->isValid()) {
+            abort(422, 'Upload gagal.');
+        }
+        // Never trust the extension: verify real MIME via finfo + match extension.
+        $mime = (string) $file->getMimeType();
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $allowedByMime = ['video/mp4' => ['mp4'], 'video/quicktime' => ['mov', 'qt']];
+        if (! in_array($ext, $allowedByMime[$mime] ?? [], true)) {
+            abort(422, 'Ekstensi tidak cocok dengan isi video.');
+        }
+        // Reject obvious polyglots (svg/html disguised as video).
+        $head = @file_get_contents($file->getRealPath(), false, null, 0, 512) ?: '';
+        if (stripos($head, '<svg') !== false || stripos($head, '<html') !== false) {
+            abort(422, 'File bukan video valid.');
+        }
+        abort_unless($request->user()->videos()->count() < 3, 422, 'Maksimal 3 video profil.');
+        $path = $file->store('profile-videos', 'public');
+        // Pending moderation: not publicly visible until approved.
+        $record = $request->user()->videos()->create(['path' => $path, 'is_approved' => false]);
+        try {
+            app(AuditService::class)->log('video.uploaded', $request->user(), $record);
+        } catch (\Throwable) {
+        }
 
-        return response()->json($record, 201);
+        return $request->wantsJson()
+            ? response()->json($record->fresh(), 201)
+            : back()->with('status', 'Video diupload, menunggu moderasi ✅');
     }
 
     public function privacy(Request $request)

@@ -47,10 +47,13 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - API saved-filters CRUD penuh (`/api/v1/saved-filters`, rename/duplikat/default) untuk Flutter.
 - `UserResource` kini sertakan `verification` tiers (email/phone/photo/identity dari request approved).
 - Delete-account GDPR: anonimasi PII + revoke token/sesi + wipe contact-hash + disable push.
+- 2FA authenticator (TOTP RFC 6238 tanpa dep baru): setup secret + otpauth URL, backup codes sekali-pakai; email-OTP tetap fallback.
+- Video profil: perbaiki kolom salah (`file_path` → `path`), MIME+ekstensi, tolak polyglot, maks 3/user, pending moderasi + audit; routes web+API + UI upload.
+- Admin funnel penuh (verified → discover → like → match → chat → call → taaruf → paying); OpenAPI v1 stub di `docs/API-V1-OPENAPI.yaml`.
+- Match modal confetti + pop (hormati reduced-motion); banner offline di chat.
 
 ### Security
-- Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.
-- OTP telepon disimpan sebagai HMAC-SHA256 (bukan plaintext) + rate-limit per-IP & per-nomor + verify 5/5mnt.
+- Throttle `web-login` (5,1) + `web-register` (10,1); `phone-verify` wajib auth + throttle.- OTP telepon disimpan sebagai HMAC-SHA256 (bukan plaintext) + rate-limit per-IP & per-nomor + verify 5/5mnt.
 - 2FA API (`/api/v1/auth/2fa/verify`) rate-limit per-user+IP 5/5mnt.
 - Daftarkan `Courtship/Consultation/CompatibilityReport` policies yang sebelumnya mati.
 - `GroupPolicy` MembersOnly kini wajib anggota/pengelola (tutup kebocoran view).

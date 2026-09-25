@@ -203,6 +203,44 @@ class SettingsController extends Controller
             : back()->with('status', '2FA dinonaktifkan.');
     }
 
+    /** Start authenticator-app setup (TOTP). Returns secret + otpauth URL. */
+    public function startTotp(Request $request, TwoFactorService $tfa)
+    {
+        $setup = $tfa->startTotpSetup($request->user());
+
+        return $request->wantsJson()
+            ? response()->json($setup)
+            : back()->with('totp_setup', $setup);
+    }
+
+    /** Confirm authenticator setup. Returns single-use backup codes. */
+    public function confirmTotp(Request $request, TwoFactorService $tfa)
+    {
+        $request->validate(['code' => ['required', 'string', 'size:6']]);
+        try {
+            $codes = $tfa->confirmTotpSetup($request->user(), (string) $request->input('code'));
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['code' => $e->getMessage()]);
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['backup_codes' => $codes])
+            : back()->with('backup_codes', $codes)->with('status', 'Authenticator aktif ✅ Simpan backup codes di tempat aman.');
+    }
+
+    /** Regenerate backup codes (old ones die). */
+    public function regenerateBackupCodes(Request $request, TwoFactorService $tfa)
+    {
+        $request->validate(['password' => ['required', 'current_password']]);
+        $codes = $tfa->regenerateBackupCodes($request->user());
+
+        return $request->wantsJson()
+            ? response()->json(['backup_codes' => $codes])
+            : back()->with('backup_codes', $codes)->with('status', 'Backup codes baru dibuat.');
+    }
+
     public function loginHistory(Request $request)
     {
         $logs = AuditLog::where('actor_id', $request->user()->id)

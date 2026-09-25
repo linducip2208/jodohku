@@ -356,6 +356,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/profile/blocking', [ProfileController::class, 'blocking'])->name('member.profile.blocking');
     Route::get('/profile/completeness', [ProfileController::class, 'completeness'])->name('member.profile.completeness');
     Route::post('/profile/photos', [ProfileController::class, 'photos'])->name('member.profile.photos');
+    Route::post('/profile/video', [ProfileController::class, 'video'])->name('member.profile.video')->middleware('throttle:5,1,profile-video');
     Route::delete('/profile/photos/{photo}', [ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
     Route::post('/profile/cover', [ProfileController::class, 'cover'])->name('member.profile.cover')->middleware('throttle:10,1,profile-cover');
     Route::delete('/profile/cover', [ProfileController::class, 'destroyCover'])->name('member.profile.cover.destroy');
@@ -523,6 +524,9 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/settings/notifications', [SettingsController::class, 'notifications'])->name('settings.notifications');
     Route::post('/settings/2fa/enable', [SettingsController::class, 'enable2fa'])->name('settings.2fa.enable');
     Route::post('/settings/2fa/disable', [SettingsController::class, 'disable2fa'])->name('settings.2fa.disable');
+    Route::post('/settings/2fa/totp/start', [SettingsController::class, 'startTotp'])->name('settings.2fa.totp.start')->middleware('throttle:5,1,totp-setup');
+    Route::post('/settings/2fa/totp/confirm', [SettingsController::class, 'confirmTotp'])->name('settings.2fa.totp.confirm')->middleware('throttle:10,1,totp-confirm');
+    Route::post('/settings/2fa/totp/backup', [SettingsController::class, 'regenerateBackupCodes'])->name('settings.2fa.totp.backup')->middleware('throttle:5,1,totp-backup');
     Route::delete('/settings/account', [SettingsController::class, 'destroy'])->name('settings.account.destroy')->middleware('throttle:5,1,account-delete');
 
     Route::get('/safety', [SafetyController::class, 'index'])->name('member.safety');

@@ -1,4 +1,17 @@
 <div x-data="{ open: false }" wire:poll.10s @call-invited.window="window.JodohkuCall?.start($event.detail.conversationId, $event.detail.callId, $event.detail.type, true)">
+<div id="jk-chat-offline" role="alert">📡 Kamu offline — pesan akan coba dikirim ulang saat koneksi kembali.</div>
+<script>
+(function () {
+    function jkChatNet() {
+        var bar = document.getElementById('jk-chat-offline');
+        if (bar) bar.classList.toggle('show', !navigator.onLine);
+    }
+    window.addEventListener('online', jkChatNet);
+    window.addEventListener('offline', jkChatNet);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', jkChatNet);
+    else jkChatNet();
+})();
+</script>
 @if(!$conv)
 @include('components.empty', ['icon' => 'chat', 'title' => 'Percakapan tidak ditemukan', 'hint' => 'Kembali ke inbox.'])
 @else
