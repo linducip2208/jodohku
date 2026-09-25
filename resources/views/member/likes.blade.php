@@ -23,7 +23,12 @@ try {
 } catch (\Throwable) {}
 @endphp
 <h1 class="jk-h1">Likes</h1>
+@if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
+@if($errors->has('rewind'))<div class="jk-alert err">{{ $errors->first('rewind') }}</div>@endif
 <p class="jk-muted">Sisa like hari ini: <strong>{{ $quota === 'unlimited' ? 'Unlimited (Premium)' : $quota }}</strong></p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+<form method="POST" action="/rewind" style="display:inline">@csrf<button class="jk-pill" type="submit" title="Urungkan like/pass terakhir">↩ Urungkan terakhir</button></form>
+</div>
 <div class="jk-tabs" role="tablist" aria-label="Kategori likes">
 <a class="jk-tab {{ $tab === 'received' ? 'active' : '' }}" role="tab" aria-selected="{{ $tab === 'received' ? 'true' : 'false' }}" href="/likes?tab=received">Menyukaimu</a>
 <a class="jk-tab {{ $tab === 'given' ? 'active' : '' }}" role="tab" aria-selected="{{ $tab === 'given' ? 'true' : 'false' }}" href="/likes?tab=given">Kamu suka</a>

@@ -3,6 +3,19 @@
 Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 (`APP_VERSION`).
 
+## [Unreleased] — dating frontend polish
+
+### Added
+- Tombol rewind web (`POST /rewind`, throttle) di halaman likes —
+  backend `LikeService::rewind` akhirnya punya UI.
+- Modal selebrasi match di `like-buttons` (like & superlike): CTA real
+  ke `/matches` + profil pasangan. Terverifikasi browser end-to-end.
+
+### Fixed
+- Paket Premium 1 kolom di desktop → grid responsif `.jk-grid`.
+- Composer chat inline `background:#fff` → token dark-mode.
+- Tulis `docs/FRONTEND-AUDIT.md` (inventaris + temuan + non-temuan).
+
 ## [Unreleased] — social dating platform
 
 ### Added

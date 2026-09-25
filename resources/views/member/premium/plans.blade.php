@@ -3,7 +3,7 @@
 @section('content')
 <h1 class="jk-h1">Premium</h1><p class="jk-muted">Pilih paket yang sesuai dengan perjalananmu.</p>
 @php $plans = collect(); try { $plans = app(\App\Services\MembershipService::class)->plans(); } catch (\Throwable) {} @endphp
-<div class="jk-grid" style="grid-template-columns:1fr">
+<div class="jk-grid">
 @forelse($plans as $p)
 <div class="jk-section"><div class="jk-h2">{{ $p->name ?? $p->code }} @if(auth()->user()?->isPremium())<span class="jk-pill premium">AKTIF</span>@endif</div>
 <div class="jk-muted">Rp{{ number_format($p->price ?? 0, 0, ',', '.') }} / {{ $p->interval ?? 'bulan' }}</div>

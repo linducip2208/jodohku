@@ -150,7 +150,7 @@
 </label>
 <span class="jk-muted" style="font-size:11.5px">Foto, video, voice note &amp; PDF (maks 50MB video, 25MB audio)</span>
 </form>
-<form wire:submit.prevent="send" style="display:flex;gap:8px;position:sticky;bottom:70px;background:#fff;padding:8px;border:1px solid #f1f1f4;border-radius:14px">
+<form wire:submit.prevent="send" style="display:flex;gap:8px;position:sticky;bottom:70px;background:var(--jk-card);padding:8px;border:1px solid var(--jk-line);border-radius:14px">
 <input class="jk-input" style="flex:1" wire:model="body" placeholder="Tulis pesan..." autocomplete="off" aria-label="Tulis pesan">
 <button class="jk-btn jk-btn-like" style="flex:none;padding:10px 18px" type="submit">Kirim</button>
 </form>

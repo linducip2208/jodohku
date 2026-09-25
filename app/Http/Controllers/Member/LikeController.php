@@ -76,11 +76,21 @@ class LikeController extends Controller
 
     public function rewind(Request $request, LikeService $likes)
     {
-        $result = $likes->rewind($request->user());
+        try {
+            $result = $likes->rewind($request->user());
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['rewind' => $e->getMessage()]);
+        }
         if (! $result) {
-            return response()->json(['message' => 'Nothing to rewind.'], 422);
+            return $request->wantsJson()
+                ? response()->json(['message' => 'Nothing to rewind.'], 422)
+                : back()->with('status', 'Tidak ada aksi untuk diurungkan.');
         }
 
-        return response()->json($result);
+        return $request->wantsJson()
+            ? response()->json($result)
+            : back()->with('status', 'Aksi terakhir diurungkan.');
     }
 }

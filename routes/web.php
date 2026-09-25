@@ -14,6 +14,7 @@ use App\Http\Controllers\Member\FollowController;
 use App\Http\Controllers\Member\ForumController;
 use App\Http\Controllers\Member\GroupController;
 use App\Http\Controllers\Member\HomeController;
+use App\Http\Controllers\Member\LikeController;
 use App\Http\Controllers\Member\MatchController;
 use App\Http\Controllers\Member\MessageController;
 use App\Http\Controllers\Member\ProfileController;
@@ -322,6 +323,8 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::delete('/profile/photos/{photo}', [ProfileController::class, 'destroyPhoto'])->name('member.profile.photos.destroy');
     Route::get('/matches', fn () => view('member.matches'))->name('member.matches');
     Route::get('/likes', fn () => view('member.likes'))->name('member.likes');
+    Route::post('/rewind', [LikeController::class,
+        'rewind'])->name('member.rewind')->middleware('throttle:10,1,rewind');
     Route::get('/questionnaire', [QuestionnaireController::class, 'index'])->name('member.questionnaire');
     Route::post('/questionnaire', [QuestionnaireController::class, 'store'])->name('member.questionnaire.store');
     Route::get('/who-liked', [MatchController::class, 'whoLiked'])->name('member.who-liked');
