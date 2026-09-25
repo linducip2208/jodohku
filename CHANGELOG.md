@@ -12,6 +12,9 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
   `ReactionService` + bulk `prime()` anti-N+1).
 - Komentar balasan + edit/hapus + reaksi + laporkan; bookmark/simpanan;
   share dengan kutipan + counter; boost postingan kredit 24 jam.
+- Composer community/group: upload foto (maks 4, JPG/PNG/WebP 8MB,
+  MIME terverifikasi, `post-media/`, ikut visibilitas post) —
+  terverifikasi end-to-end via browser.
 - Hashtag (`HashtagService`, trending cache) + mention `@username`
   (`MentionService` + notifikasi) via `PostObserver`.
 - Stories 24 jam (teks/foto/video, viewers, reaksi, expiry scope tanpa

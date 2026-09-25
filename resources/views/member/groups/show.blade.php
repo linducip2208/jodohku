@@ -17,8 +17,8 @@
 </div></div>
 @if($isMember)
 <div class="jk-section jk-form" style="padding:12px 14px;margin-top:12px">
-<form method="POST" action="/komunitas">@csrf<input type="hidden" name="group_id" value="{{ $group->id }}">
-<div style="display:flex;gap:8px"><input class="jk-input" style="flex:1" name="body" maxlength="1000" required placeholder="Posting ke {{ $group->name }}…"><button class="jk-btn jk-btn-like" style="flex:none;padding:10px 16px" type="submit">Kirim</button></div>
+<form method="POST" action="/komunitas" enctype="multipart/form-data">@csrf<input type="hidden" name="group_id" value="{{ $group->id }}">
+<div style="display:flex;gap:8px;flex-wrap:wrap"><input class="jk-input" style="flex:1;min-width:160px" name="body" maxlength="1000" required placeholder="Posting ke {{ $group->name }}…"><input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple aria-label="Foto postingan" style="max-width:220px"><button class="jk-btn jk-btn-like" style="flex:none;padding:10px 16px" type="submit">Kirim</button></div>
 </form>
 </div>
 @endif

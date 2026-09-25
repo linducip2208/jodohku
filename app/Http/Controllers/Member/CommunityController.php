@@ -75,15 +75,19 @@ class CommunityController extends Controller
             'body' => ['required', 'string', 'max:1000'],
             'visibility' => ['nullable', 'string', 'in:public,members_only,premium_only,matches_only'],
             'group_id' => ['nullable', 'integer', 'exists:groups,id'],
+            'photos' => ['nullable', 'array', 'max:4'],
+            'photos.*' => ['file', 'max:8192', 'mimetypes:image/jpeg,image/png,image/webp'],
         ]);
         if (! empty($data['group_id'])) {
             $group = Group::findOrFail($data['group_id']);
             abort_unless($group->hasMember((int) $request->user()->id) || $request->user()->isStaff(), 403);
         }
+        $mediaPaths = $this->storePhotos($request);
         $post = DB::transaction(fn () => Post::create([
             'user_id' => $request->user()->id,
             'group_id' => $data['group_id'] ?? null,
             'body' => trim($data['body']),
+            'media_paths' => $mediaPaths ?: null,
             'visibility' => $data['visibility'] ?? 'public',
         ]));
         try {
@@ -368,5 +372,30 @@ class CommunityController extends Controller
     {
         $me = (int) $request->user()->id;
         abort_unless(! in_array((int) $post->user_id, $this->blockedIds($me), true), 403);
+    }
+
+    /**
+     * Store composer photos (max 4). Real-MIME verified like PhotoService;
+     * media inherits the post visibility (same row, no separate ACL).
+     *
+     * @return string[]
+     */
+    protected function storePhotos(Request $request): array
+    {
+        $paths = [];
+        $files = $request->file('photos', []);
+        foreach (is_array($files) ? array_slice($files, 0, 4) : [] as $file) {
+            if (! $file || ! $file->isValid()) {
+                continue;
+            }
+            $mime = (string) $file->getMimeType();
+            $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+            if (! isset($allowed[$mime]) || @getimagesize($file->getRealPath()) === false) {
+                continue;
+            }
+            $paths[] = $file->store('post-media/'.$request->user()->id, 'public');
+        }
+
+        return $paths;
     }
 }

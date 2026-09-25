@@ -10,9 +10,11 @@
 </div>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 <div class="jk-section jk-form" id="composer">
-<form method="POST" action="/komunitas">@csrf
+<form method="POST" action="/komunitas" enctype="multipart/form-data">@csrf
 <label for="post-body">Bagikan sesuatu…</label>
 <textarea id="post-body" name="body" rows="3" maxlength="1000" required placeholder="Cerita taaruf, tips, atau pertanyaan untuk komunitas…"></textarea>
+<label class="jk-muted" style="font-size:12.5px;margin-top:8px" for="post-photos">Foto (maks 4, masing-masing 8MB)</label>
+<input id="post-photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple aria-label="Foto postingan">
 <button class="jk-submit" style="margin-top:10px" type="submit">Posting</button>
 </form>
 </div>
