@@ -1,7 +1,7 @@
 @extends('layouts.member')
 @section('title', ($group->name ?? 'Komunitas').' — Jodohku')
 @section('content')
-@php $me = auth()->user(); $isMember = $group->hasMember((int) $me->id); $isManager = $group->isManager((int) $me->id); @endphp
+@php $meId = (int) (auth()->id() ?? 0); $isMember = $meId > 0 && $group->hasMember($meId); $isManager = $meId > 0 && $group->isManager($meId); @endphp
 <div class="jk-card"><div class="jk-card-body">
 <div class="jk-name" style="font-size:22px">{{ $group->name }}</div>
 <div class="jk-muted">{{ $group->category ?? 'Umum' }} · {{ $group->members_count }} anggota · {{ $group->visibility?->value ?? $group->visibility }}</div>
