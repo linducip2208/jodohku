@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureBlocked;
 use App\Http\Middleware\FeatureFlag;
 use App\Http\Middleware\NormalizeTrailingSlash;
 use App\Http\Middleware\PremiumOnly;
+use App\Http\Middleware\ResolveBrand;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             NormalizeTrailingSlash::class,
+            ResolveBrand::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

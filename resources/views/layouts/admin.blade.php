@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>@yield('title', 'Admin Jodohku')</title>
+<title>@yield('title', ($brandTheme['name'] ?? 'Jodohku').' Admin')</title>
 <link rel="icon" href="/favicon.ico">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.3.2/dist/css/tabler.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
@@ -13,7 +13,7 @@
 <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">
 <div class="container-fluid">
 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav"><span class="navbar-toggler-icon"></span></button>
-<h1 class="navbar-brand navbar-brand-autodark"><a href="/admin">Jodohku Admin</a></h1>
+<h1 class="navbar-brand navbar-brand-autodark"><a href="/admin">{{ ($brandTheme['name'] ?? 'Jodohku').' Admin' }}</a></h1>
 <div class="collapse navbar-collapse" id="adminNav"><ul class="navbar-nav pt-lg-3">
 <li class="nav-item"><a class="nav-link{{ request()->is('admin') ? ' active' : '' }}" href="/admin"><span class="nav-link-icon"><i class="ti ti-dashboard"></i></span> Dashboard</a></li>@can('moderator')
 <li class="nav-item"><a class="nav-link{{ request()->is('admin/users*') ? ' active' : '' }}" href="/admin/users"><span class="nav-link-icon"><i class="ti ti-users"></i></span> Users</a></li>

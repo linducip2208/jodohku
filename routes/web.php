@@ -43,6 +43,7 @@ use App\Models\User;
 use App\Models\UserMatch;
 use App\Models\VerificationRequest;
 use App\Services\BoostService;
+use App\Services\BrandService;
 use App\Services\ChatService;
 use App\Services\GiftService;
 use App\Services\MatchingEngine;
@@ -113,8 +114,23 @@ Route::get('/', function () {
 })->name('landing');
 
 // PWA manifest (installable, standalone, push-ready architecture).
+// Brand-aware: name, theme color, and icons follow the active whitelabel brand.
 Route::get('/manifest.webmanifest', function () {
-    $name = (string) config('app.name', 'Jodohku');
+    try {
+        $theme = app(BrandService::class)->theme();
+    } catch (Throwable) {
+        $theme = ['name' => 'Jodohku', 'primary' => '#f43f5e', 'logo' => null, 'favicon' => null];
+    }
+    $name = (string) ($theme['name'] ?? config('app.name', 'Jodohku'));
+    $icons = [
+        ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
+        ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
+        ['src' => '/icons/icon-maskable.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+    ];
+    // Brand logo doubles as install icon when set (prepended, highest priority).
+    if (! empty($theme['logo'])) {
+        array_unshift($icons, ['src' => $theme['logo'], 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any']);
+    }
 
     return response()->json([
         'name' => $name.' — Biro Jodoh Modern Indonesia',
@@ -124,13 +140,9 @@ Route::get('/manifest.webmanifest', function () {
         'display' => 'standalone',
         'orientation' => 'portrait',
         'background_color' => '#fafafb',
-        'theme_color' => '#f43f5e',
+        'theme_color' => (string) ($theme['primary'] ?? '#f43f5e'),
         'description' => 'Social dating, matchmaking, taaruf, dan komunitas Indonesia.',
-        'icons' => [
-            ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
-            ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
-            ['src' => '/icons/icon-maskable.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
-        ],
+        'icons' => $icons,
     ])->header('Content-Type', 'application/manifest+json');
 })->name('pwa.manifest');
 
