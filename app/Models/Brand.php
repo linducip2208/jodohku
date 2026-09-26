@@ -12,7 +12,7 @@ class Brand extends Model
     protected $fillable = [
         'slug', 'name', 'tagline', 'primary_color', 'secondary_color',
         'logo_path', 'favicon_path', 'domain', 'is_active', 'is_default',
-        'features', 'footer',
+        'expires_at', 'max_users', 'features', 'footer', 'content',
     ];
 
     protected function casts(): array
@@ -20,9 +20,18 @@ class Brand extends Model
         return [
             'is_active' => 'boolean',
             'is_default' => 'boolean',
+            'expires_at' => 'datetime',
             'features' => 'array',
             'footer' => 'array',
+            'content' => 'array',
         ];
+    }
+
+    /** Commercial license check: expired brands are treated as inactive. */
+    public function licensed(): bool
+    {
+        return (bool) $this->is_active
+            && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 
     public function logoUrl(): ?string

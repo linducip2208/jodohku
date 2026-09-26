@@ -168,4 +168,43 @@ class BrandWhitelabelTest extends TestCase
         $lone = User::factory()->create(['role' => UserRole::Client]);
         $this->actingAs($lone)->get('/admin/brands')->assertForbidden();
     }
+
+    public function test_brand_stats_scoped_per_brand(): void
+    {
+        $a = Brand::create(['slug' => 'sa', 'name' => 'SA', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true]);
+        $b = Brand::create(['slug' => 'sb', 'name' => 'SB', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true]);
+        User::factory()->count(3)->create(['brand_id' => $a->id]);
+        User::factory()->count(1)->create(['brand_id' => $b->id]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $json = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/brands/{$a->id}/stats")->assertOk()->json();
+        $this->assertSame(3, $json['users_total']);
+        $client = User::factory()->create(['role' => UserRole::Client, 'brand_id' => $a->id]);
+        $this->actingAs($client)->get("/admin/brands/{$a->id}/stats")->assertOk();
+        $this->actingAs($client)->get("/admin/brands/{$b->id}/stats")->assertForbidden();
+        $this->actingAs($client, 'sanctum')->getJson("/api/v1/admin/brands/{$b->id}/stats")->assertForbidden();
+    }
+
+    public function test_brand_templates_icons_license_hero(): void
+    {
+        $this->assertCount(5, BrandService::TEMPLATES);
+        $this->assertArrayHasKey('islami', BrandService::TEMPLATES);
+
+        Brand::create(['slug' => 'ex', 'name' => 'Expired', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true, 'is_default' => true, 'expires_at' => now()->subDay()]);
+        $this->assertNull(app(BrandService::class)->current('anything.test'));
+
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $logo = UploadedFile::fake()->image('logo.png', 400, 120);
+        $this->actingAs($admin)->post('/admin/brands', [
+            'name' => 'IconTest', 'primary_color' => '#0ea5e9', 'is_active' => true,
+            'logo' => $logo,
+        ])->assertRedirect();
+        $brand = Brand::where('slug', 'icontest')->firstOrFail();
+        Storage::disk('public')->assertExists('brands/icontest/icons/icon-512.png');
+        Storage::disk('public')->assertExists('brands/icontest/icons/icon-maskable.png');
+
+        $brand->update(['content' => ['hero_title' => 'Cinta Sejati Dimulai']]);
+        $html = $this->actingAs($admin)->get("/?preview_brand={$brand->id}")->assertOk()->getContent();
+        $this->assertStringContainsString('Cinta Sejati Dimulai', $html);
+    }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Admin\GatewayController as AdminGatewayController;
 use App\Http\Controllers\Admin\ModerationController as AdminModerationController;
 use App\Http\Controllers\Admin\UserController;
@@ -314,5 +315,6 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/admin/gateways/{gateway}/credentials', [AdminGatewayController::class, 'credentials'])->middleware('role:superadmin');
         Route::post('/admin/gateways/{gateway}/priority', [AdminGatewayController::class, 'priority'])->middleware('role:admin,superadmin');
         Route::post('/admin/reports/{report}/resolve', [AdminModerationController::class, 'resolveReport'])->middleware('role:moderator,admin,superadmin');
+        Route::get('/admin/brands/{brand}/stats', [AdminBrandController::class, 'stats'])->middleware('can:view,brand');
     });
 });

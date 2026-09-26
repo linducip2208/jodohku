@@ -14,6 +14,7 @@
 <td>{{ $b->is_active ? 'aktif' : 'nonaktif' }}</td>
 <td style="white-space:nowrap">
 <a class="btn btn-sm btn-secondary" href="{{ route('admin.brands.edit', $b) }}">Edit</a>
+<a class="btn btn-sm btn-info" href="{{ route('admin.brands.stats', $b) }}">Stats</a>
 <a class="btn btn-sm btn-info" href="{{ route('admin.brands.export', $b) }}">Export</a>
 <form method="POST" action="{{ route('admin.brands.destroy', $b) }}" style="display:inline" onsubmit="return confirm('Hapus brand?')">@csrf @method('DELETE')<button class="btn btn-sm btn-danger" type="submit">Hapus</button></form>
 </td></tr>

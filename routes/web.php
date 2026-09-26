@@ -127,9 +127,23 @@ Route::get('/manifest.webmanifest', function () {
         ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
         ['src' => '/icons/icon-maskable.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
     ];
-    // Brand logo doubles as install icon when set (prepended, highest priority).
-    if (! empty($theme['logo'])) {
-        array_unshift($icons, ['src' => $theme['logo'], 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any']);
+    // Per-brand generated icons win over the logo fallback and defaults.
+    try {
+        $slug = $theme['slug'] ?? null;
+        $disk = Storage::disk('public');
+        if ($slug && $disk->exists("brands/{$slug}/icons/icon-512.png")) {
+            $icons = [
+                ['src' => "/storage/brands/{$slug}/icons/icon-192.png", 'sizes' => '192x192', 'type' => 'image/png'],
+                ['src' => "/storage/brands/{$slug}/icons/icon-512.png", 'sizes' => '512x512', 'type' => 'image/png'],
+                ['src' => "/storage/brands/{$slug}/icons/icon-maskable.png", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+            ];
+        } elseif (! empty($theme['logo'])) {
+            array_unshift($icons, ['src' => $theme['logo'], 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any']);
+        }
+    } catch (Throwable) {
+        if (! empty($theme['logo'])) {
+            array_unshift($icons, ['src' => $theme['logo'], 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any']);
+        }
     }
 
     return response()->json([

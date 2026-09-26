@@ -210,6 +210,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::get('/brands/wizard', [BrandController::class, 'wizard'])->name('brands.wizard');
         Route::post('/brands/wizard/draft', [BrandController::class, 'wizardDraft'])->name('brands.wizard.draft')->middleware('throttle:20,1,brand-admin');
         Route::get('/brands/{brand}/edit', [BrandController::class, 'edit'])->name('brands.edit');
+        Route::get('/brands/{brand}/stats', [BrandController::class, 'stats'])->name('brands.stats');
         Route::put('/brands/{brand}', [BrandController::class, 'update'])->name('brands.update')->middleware('throttle:10,1,brand-admin');
         Route::delete('/brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
         Route::get('/brands/{brand}/export', [BrandController::class, 'export'])->name('brands.export');

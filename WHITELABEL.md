@@ -37,6 +37,19 @@ Jual codebase yang sama ke banyak klien dengan brand berbeda.
   Buat/hapus/impor tetap admin.
 - Gate `brand-manager` + `BrandPolicy` (viewAny/view/update/delete).
 
+## Paket jualan (siap demo ke klien)
+
+- **Stats per brand** (`/admin/brands/{brand}/stats` + API):
+  user, verified, premium, aktif 7d, matches, pesan, revenue —
+  dasar penagihan ke klien.
+- **Template gallery**: 5 preset (Jodohku, Islami, Premium, Playful, Navy)
+  sekali-klik di wizard.
+- **Ikon PWA otomatis**: tiap upload logo → icon-192/512/maskable +
+  apple-touch di `brands/{slug}/icons/`; manifest memakai itu dulu.
+- **Copy landing per brand**: hero title/subtitle/CTA di form brand.
+- **Lisensi**: `expires_at` + `max_users`; kedaluwarsa → fallback
+  Jodohku otomatis; stats tampilkan status lisensi & kuota.
+
 ## File kunci
 
 - `app/Services/BrandService.php` (theme, resolve, export/import)

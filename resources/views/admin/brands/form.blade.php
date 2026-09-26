@@ -22,6 +22,12 @@
 <div class="col-md-6">
 <div class="mb-2"><label><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $brand->is_active))> Aktif</label></div>
 <div class="mb-2"><label><input type="checkbox" name="is_default" value="1" @checked(old('is_default', $brand->is_default))> Jadikan default</label></div>
+<div class="mb-2"><label>Lisensi berakhir (kosong = selamanya)</label><input type="date" name="expires_at" class="form-control" value="{{ old('expires_at', $brand->expires_at?->format('Y-m-d')) }}"></div>
+<div class="mb-2"><label>Maks user (kosong = tanpa batas)</label><input type="number" name="max_users" class="form-control" min="1" value="{{ old('max_users', $brand->max_users) }}"></div>
+<div class="mb-2"><strong>Copy landing</strong> (kosong = default)</div>
+<div class="mb-2"><label>Hero title</label><input name="content[hero_title]" class="form-control" maxlength="120" value="{{ old('content.hero_title', $brand->content['hero_title'] ?? '') }}"></div>
+<div class="mb-2"><label>Hero subtitle</label><input name="content[hero_subtitle]" class="form-control" maxlength="300" value="{{ old('content.hero_subtitle', $brand->content['hero_subtitle'] ?? '') }}"></div>
+<div class="mb-2"><label>Teks CTA</label><input name="content[cta_text]" class="form-control" maxlength="60" value="{{ old('content.cta_text', $brand->content['cta_text'] ?? '') }}"></div>
 <div class="mb-2"><strong>Fitur per-brand</strong> (kosong = ikut default global)<br>
 @foreach(['taaruf' => 'Taaruf', 'counselor' => 'Konselor', 'community' => 'Komunitas', 'events' => 'Events', 'gifts' => 'Gifts', 'boost' => 'Boost'] as $k => $label)
 <label style="margin-right:12px"><input type="checkbox" name="features[{{ $k }}]" value="1" @checked(old('features.'.$k, ($brand->features[$k] ?? true)))> {{ $label }}</label>

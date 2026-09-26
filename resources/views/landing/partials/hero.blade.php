@@ -1,11 +1,12 @@
 <section class="ld-hero"><div class="ld-wrap ld-hero-grid">
 <div>
 <div class="ld-card" style="display:inline-block;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#be123c;background:#fff1f2;border-color:#fecdd3">{{ number_format($stats['members'] ?? 0) }} member aktif</div>
-<h1>Jodohku</h1>
-<p class="ld-sub" style="font-size:19px;font-weight:600;color:#18181b">Temukan orang yang cocok. Kenali. Ngobrol. Bangun hubungan.</p>
+@php $heroContent = $brandTheme['content'] ?? []; @endphp
+<h1>{{ $heroContent['hero_title'] ?? ($brandTheme['name'] ?? 'Jodohku') }}</h1>
+<p class="ld-sub" style="font-size:19px;font-weight:600;color:#18181b">{{ $heroContent['hero_subtitle'] ?? 'Temukan orang yang cocok. Kenali. Ngobrol. Bangun hubungan.' }}</p>
 <p class="ld-sub">Matching berbasis kepribadian, minat &amp; tujuan hubungan. Chat realtime, profil terverifikasi, dan event seru di kotamu. Gratis untuk memulai.</p>
 <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
-<a class="ld-btn" href="{{ route('register') }}">Mulai Gratis →</a>
+<a class="ld-btn" href="{{ route('register') }}">{{ ($heroContent['cta_text'] ?? 'Mulai Gratis').' →' }}</a>
 <a class="ld-btn ghost" href="#demo">Lihat Demo Member</a>
 </div>
 <div style="display:flex;gap:18px;margin-top:18px;font-size:13px;color:#52525b;flex-wrap:wrap">

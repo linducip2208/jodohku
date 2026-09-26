@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Models\Message;
+use App\Models\Payment;
+use App\Models\User;
+use App\Models\UserMatch;
 use App\Services\AuditService;
 use App\Services\BrandService;
 use Illuminate\Http\Request;
@@ -70,9 +74,18 @@ class BrandController extends Controller
             'domain' => $data['domain'] ?? null,
             'is_active' => (bool) ($data['is_active'] ?? false),
             'features' => $this->features($request),
+            'expires_at' => $data['expires_at'] ?? null,
+            'max_users' => $data['max_users'] ?? null,
+            'content' => $this->content($request),
         ]);
         $this->storeAssets($request, $brand);
         $brand->save();
+        if ($request->hasFile('logo') && $brand->logo_path) {
+            try {
+                $brands->generateIcons($brand);
+            } catch (\Throwable) {
+            }
+        }
         if ($brand->is_active && $request->boolean('is_default')) {
             Brand::where('id', '!=', $brand->id)->update(['is_default' => false]);
             $brand->update(['is_default' => true]);
@@ -104,6 +117,9 @@ class BrandController extends Controller
             'domain' => $data['domain'] ?? null,
             'is_active' => (bool) ($data['is_active'] ?? false),
             'features' => $this->features($request),
+            'expires_at' => $data['expires_at'] ?? null,
+            'max_users' => $data['max_users'] ?? null,
+            'content' => $this->content($request),
         ]);
         $this->storeAssets($request, $brand);
         if (! $brand->is_active) {
@@ -113,6 +129,12 @@ class BrandController extends Controller
             $brand->is_default = true;
         }
         $brand->save();
+        if ($request->hasFile('logo') && $brand->logo_path) {
+            try {
+                $brands->generateIcons($brand);
+            } catch (\Throwable) {
+            }
+        }
         $brands->forgetCache($brand);
         $audit->log('admin.brand.updated', $request->user(), $brand);
 
@@ -132,6 +154,28 @@ class BrandController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Deleted.'])
             : redirect()->route('admin.brands')->with('status', 'Brand dihapus.');
+    }
+
+    /** Per-brand stats for clients (billing basis) + admins. */
+    public function stats(Request $request, Brand $brand)
+    {
+        $this->authorize('view', $brand);
+        $users = User::where('brand_id', $brand->id);
+        $ids = (clone $users)->pluck('id');
+        $data = [
+            'brand' => $brand->only(['id', 'slug', 'name']),
+            'users_total' => (clone $users)->count(),
+            'users_verified' => (clone $users)->where('is_verified', true)->count(),
+            'users_premium' => (clone $users)->where('is_premium', true)->count(),
+            'users_active_7d' => (clone $users)->where('last_active_at', '>', now()->subDays(7))->count(),
+            'matches' => UserMatch::where(fn ($q) => $q->whereIn('user_a_id', $ids)->orWhereIn('user_b_id', $ids))->count(),
+            'messages_sent' => Message::whereIn('sender_id', $ids)->count(),
+            'revenue_paid' => Payment::whereIn('user_id', $ids)->where('status', 'paid')->sum('total_amount'),
+        ];
+
+        return $request->wantsJson()
+            ? response()->json($data)
+            : view('admin.brands.stats', ['brand' => $brand, 'stats' => $data]);
     }
 
     /** Download brand package zip (pindah server). */
@@ -180,6 +224,21 @@ class BrandController extends Controller
             'favicon' => ['nullable', 'file', 'max:1024', 'mimetypes:image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon,image/vnd.microsoft.icon'],
             'is_active' => ['nullable', 'boolean'],
             'is_default' => ['nullable', 'boolean'],
+            'expires_at' => ['nullable', 'date', 'after:today'],
+            'max_users' => ['nullable', 'integer', 'min:1', 'max:10000000'],
+            'content.hero_title' => ['nullable', 'string', 'max:120'],
+            'content.hero_subtitle' => ['nullable', 'string', 'max:300'],
+            'content.cta_text' => ['nullable', 'string', 'max:60'],
+        ]);
+    }
+
+    /** @return array<string,string> */
+    protected function content(Request $request): array
+    {
+        return array_filter([
+            'hero_title' => $request->string('content.hero_title')->toString() ?: null,
+            'hero_subtitle' => $request->string('content.hero_subtitle')->toString() ?: null,
+            'cta_text' => $request->string('content.cta_text')->toString() ?: null,
         ]);
     }
 

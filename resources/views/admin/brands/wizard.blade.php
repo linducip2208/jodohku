@@ -3,6 +3,14 @@
 @section('content')
 <h1>Onboarding brand baru (4 langkah)</h1>
 @if($errors->any())<div class="alert alert-danger"><ul>@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
+<div class="card mb-3"><div class="card-header"><strong>Template</strong> — mulai dari preset sekali-klik (opsional)</div><div class="card-body" id="w-templates" style="display:flex;gap:8px;flex-wrap:wrap">
+@php $templates = \App\Services\BrandService::TEMPLATES; @endphp
+@foreach($templates as $key => $t)
+<button type="button" class="btn btn-secondary" data-tpl="{{ $key }}" data-name="{{ $t['name'] }}" data-tag="{{ $t['tagline'] }}" data-p="{{ $t['primary'] }}" data-s="{{ $t['secondary'] }}" title="{{ $t['tagline'] }}">
+<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,{{ $t['primary'] }},{{ $t['secondary'] }})"></span> {{ $t['name'] }}
+</button>
+@endforeach
+</div></div>
 <form id="wiz-form" method="POST" action="{{ route('admin.brands.store') }}" enctype="multipart/form-data">
 @csrf
 <div class="card mb-3"><div class="card-header"><strong>Langkah 1</strong> — Identitas</div><div class="card-body">
@@ -49,6 +57,15 @@
         document.getElementById('w-preview').style.borderTop = '4px solid ' + p.value;
     }
     [n, t, p, s].forEach(function (el) { el.addEventListener('input', paint); });
+    document.querySelectorAll('#w-templates [data-tpl]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            n.value = btn.getAttribute('data-name');
+            t.value = btn.getAttribute('data-tag');
+            p.value = btn.getAttribute('data-p');
+            s.value = btn.getAttribute('data-s');
+            paint();
+        });
+    });
     logo.addEventListener('change', function () {
         var f = logo.files[0], img = document.getElementById('w-logo-pv');
         if (f) { img.src = URL.createObjectURL(f); img.style.display = 'block'; }
