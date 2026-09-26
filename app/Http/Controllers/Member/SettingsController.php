@@ -83,6 +83,7 @@ class SettingsController extends Controller
             'push_follows' => $request->boolean('follow'),
             'push_comments' => $request->boolean('comment'),
             'push_mentions' => $request->boolean('mention'),
+            'push_dates' => $request->boolean('date'),
         ]);
 
         return $request->wantsJson()

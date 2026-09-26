@@ -10,6 +10,7 @@ use App\Jobs\ExpireVerifications;
 use App\Jobs\GenerateDailyMatches;
 use App\Jobs\PruneDisappearingMessages;
 use App\Jobs\PruneStaleData;
+use App\Jobs\SendDateReminders;
 use App\Jobs\SendMatchReminders;
 use App\Jobs\SendTaarufReminders;
 use Illuminate\Foundation\Inspiring;
@@ -32,3 +33,4 @@ Schedule::job(new CleanupOldSessions)->dailyAt('03:00')->withoutOverlapping()->o
 Schedule::job(new PruneStaleData)->dailyAt('03:30')->withoutOverlapping()->onOneServer();
 Schedule::job(new SendMatchReminders)->weeklyOn(1, '09:00')->withoutOverlapping()->onOneServer();
 Schedule::job(new SendTaarufReminders)->weeklyOn(4, '09:00')->withoutOverlapping()->onOneServer();
+Schedule::job(new SendDateReminders)->hourly()->withoutOverlapping()->onOneServer();

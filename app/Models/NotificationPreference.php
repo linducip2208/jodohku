@@ -13,7 +13,7 @@ class NotificationPreference extends Model
     protected $fillable = [
         'user_id', 'email_matches', 'email_messages', 'email_promotions',
         'push_matches', 'push_messages', 'push_likes', 'push_super_likes',
-        'push_follows', 'push_comments', 'push_mentions', 'sms_enabled',
+        'push_follows', 'push_comments', 'push_mentions', 'push_dates', 'sms_enabled',
     ];
 
     protected function casts(): array
@@ -29,6 +29,7 @@ class NotificationPreference extends Model
             'push_follows' => 'boolean',
             'push_comments' => 'boolean',
             'push_mentions' => 'boolean',
+            'push_dates' => 'boolean',
             'sms_enabled' => 'boolean',
         ];
     }
@@ -52,6 +53,7 @@ class NotificationPreference extends Model
             'push_follows' => true,
             'push_comments' => true,
             'push_mentions' => true,
+            'push_dates' => true,
             'sms_enabled' => false,
         ];
     }

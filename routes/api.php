@@ -20,6 +20,7 @@ use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BiroJodohController;
 use App\Http\Controllers\Member\BlogController;
 use App\Http\Controllers\Member\ChatRequestController;
+use App\Http\Controllers\Member\DatePlanController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\ForumController;
 use App\Http\Controllers\Member\MatchController;
@@ -274,9 +275,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
             Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
             Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
-            Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
-            Route::post('/events/{event}/speed/start', [EventController::class, 'startSpeedRounds'])->middleware('throttle:5,1,events');
             Route::get('/events/{event}/speed', [EventController::class, 'speedRounds']);
+            Route::post('/events/{event}/speed/start', [EventController::class, 'startSpeedRounds'])->middleware('throttle:5,1,events');
+            Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
+
+            // Ajak Kencan: propose → accept/decline → H-24 reminder.
+            Route::get('/dates', [DatePlanController::class, 'index']);
+            Route::post('/dates', [DatePlanController::class, 'store'])->middleware('throttle:10,1,dates');
+            Route::post('/dates/{datePlan}/respond', [DatePlanController::class, 'respond'])->middleware('throttle:20,1,dates');
+            Route::delete('/dates/{datePlan}', [DatePlanController::class, 'destroy']);
         });
 
         Route::middleware('brand.feature:taaruf')->group(function () {

@@ -38,6 +38,7 @@
 <label><input type="checkbox" name="follow" value="1" @checked(($np?->push_follows ?? true))> Pengikut baru</label>
 <label><input type="checkbox" name="comment" value="1" @checked(($np?->push_comments ?? true))> Komentar &amp; reaksi</label>
 <label><input type="checkbox" name="mention" value="1" @checked(($np?->push_mentions ?? true))> Mention</label>
+<label><input type="checkbox" name="date" value="1" @checked(($np?->push_dates ?? true))> Ajakan & pengingat kencan</label>
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan Notifikasi</button></form>
 </div>
 <div class="jk-section"><div class="jk-h2">Langganan</div>

@@ -10,6 +10,7 @@ use App\Http\Controllers\Member\ChatController;
 use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\CommunityController;
 use App\Http\Controllers\Member\ContactBlockController;
+use App\Http\Controllers\Member\DatePlanController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\FollowController;
 use App\Http\Controllers\Member\ForumController;
@@ -665,6 +666,12 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         Route::post('/events', [EventController::class,
             'store'])->name('member.events.store')->middleware('throttle:5,1,event-create');
     });
+
+    // Ajak Kencan: propose → accept/decline → H-24 reminder.
+    Route::get('/dates', [DatePlanController::class, 'index'])->name('member.dates');
+    Route::post('/dates', [DatePlanController::class, 'store'])->name('member.dates.store')->middleware('throttle:10,1,dates');
+    Route::post('/dates/{datePlan}/respond', [DatePlanController::class, 'respond'])->name('member.dates.respond')->middleware('throttle:20,1,dates');
+    Route::delete('/dates/{datePlan}', [DatePlanController::class, 'destroy'])->name('member.dates.destroy');
 
     // Biro jodoh (brand-gated: taaruf/counselor nonaktif → 404).
     Route::middleware('brand.feature:taaruf')->group(function () {

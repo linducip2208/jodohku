@@ -8,6 +8,8 @@ use App\Notifications\BroadcastMessage;
 use App\Notifications\ChatRequestReceived;
 use App\Notifications\ConsultationStatusChanged;
 use App\Notifications\CourtshipStageChanged;
+use App\Notifications\DateProposed;
+use App\Notifications\DateReminder;
 use App\Notifications\MatchFound;
 use App\Notifications\MatchNudge;
 use App\Notifications\NewMessage;
@@ -35,6 +37,9 @@ class NotificationService
             return;
         }
         if ($prefs && $notification instanceof ChatRequestReceived && ! $prefs->push_messages) {
+            return;
+        }
+        if ($prefs && ($notification instanceof DateProposed || $notification instanceof DateReminder) && ! ($prefs->push_dates ?? true)) {
             return;
         }
         // Like / super-like pushes share the like preference gates.
