@@ -11,6 +11,7 @@ use App\Models\AuditLog;
 use App\Models\MatchScore;
 use App\Models\ModerationQueue;
 use App\Models\ProfileView;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\AiService;
 use App\Services\DiscoveryService;
@@ -121,6 +122,22 @@ class ScaleHardeningTest extends TestCase
         $this->assertDatabaseHas('notifications', ['id' => $freshId]);
         $this->assertEquals(0, AuditLog::where('action', 'old')->count());
         $this->assertEquals(0, MatchScore::where('computed_at', '<', now()->subDays(90))->count());
+    }
+
+    public function test_prune_honors_admin_retention_settings(): void
+    {
+        // set() refreshes the static cache (updateOrCreate alone would not).
+        Setting::set('notifications_read_days', 1000, 'retention', 'integer');
+        $user = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id, 'type' => 'x', 'notifiable_type' => User::class,
+            'notifiable_id' => $user->id, 'data' => '{}',
+            'read_at' => now()->subDays(100), 'created_at' => now()->subDays(100), 'updated_at' => now()->subDays(100),
+        ]);
+        (new PruneStaleData)->handle();
+        // 100 days < custom 1000-day retention: survives.
+        $this->assertDatabaseHas('notifications', ['id' => $id]);
     }
 
     public function test_analytics_endpoints_are_cached(): void

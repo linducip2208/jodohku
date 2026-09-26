@@ -57,6 +57,7 @@ class SettingsController extends Controller
             foreach ((array) $request->input('flags') as $flag => $enabled) {
                 Setting::updateOrCreate(['key' => 'feature.'.$flag], ['value' => $enabled ? '1' : '0', 'group' => 'features']);
             }
+            Setting::clearCache();
             $audit->log('admin.flags.updated', $request->user());
 
             return response()->json(['flags' => $request->input('flags')]);

@@ -46,6 +46,16 @@ class SettingsSeeder extends Seeder
             ['group' => 'moderation', 'key' => 'auto_flag_risk', 'value' => '60', 'type' => 'integer'],
             ['group' => 'moderation', 'key' => 'warn_risk', 'value' => '35', 'type' => 'integer'],
             ['group' => 'moderation', 'key' => 'ai_review_enabled', 'value' => '1', 'type' => 'boolean'],
+            // retention (days; PruneStaleData reads these, min 1)
+            ['group' => 'retention', 'key' => 'notifications_read_days', 'value' => '90', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'notifications_days', 'value' => '365', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'audit_days', 'value' => '180', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'failed_jobs_days', 'value' => '30', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'ai_usage_days', 'value' => '365', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'profile_views_days', 'value' => '180', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'match_scores_days', 'value' => '90', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'stories_days', 'value' => '7', 'type' => 'integer'],
+            ['group' => 'retention', 'key' => 'analytics_days', 'value' => '180', 'type' => 'integer'],
             // payment
             ['group' => 'payment', 'key' => 'default_gateway', 'value' => 'midtrans', 'type' => 'string'],
             ['group' => 'payment', 'key' => 'currency', 'value' => 'IDR', 'type' => 'string'],

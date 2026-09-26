@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Setting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Queue\Queueable;
@@ -13,10 +14,10 @@ use Illuminate\Support\Facades\DB;
  * Without this, notifications/audit_logs/failed_jobs/match_scores/
  * ai_usage_logs/profile_views grow forever on one MySQL instance (C3).
  * All deletes are chunked (1k rows) and time-bounded so the nightly job
- * never holds long locks. Thresholds are conservative — read notifications
- * survive 90d, everything else 30d–365d — and re-derivable data
- * (match_scores) is pruned most aggressively since scoreMany recomputes
- * on demand.
+ * never holds long locks. Thresholds default conservatively — read
+ * notifications survive 90d, everything else 30d–365d — and are
+ * admin-configurable via settings group `retention` (*_days keys,
+ * see admin/settings).
  */
 class PruneStaleData implements ShouldQueue
 {
@@ -28,17 +29,18 @@ class PruneStaleData implements ShouldQueue
 
     public function handle(): void
     {
-        $this->chunkDelete('notifications', fn ($q) => $q->whereNotNull('read_at')->where('read_at', '<', now()->subDays(90)));
-        $this->chunkDelete('notifications', fn ($q) => $q->where('created_at', '<', now()->subDays(365)));
-        $this->chunkDelete('audit_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(180)));
-        $this->chunkDelete('failed_jobs', fn ($q) => $q->where('failed_at', '<', now()->subDays(30)));
-        $this->chunkDelete('ai_usage_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(365)));
-        $this->chunkDelete('profile_views', fn ($q) => $q->where('viewed_at', '<', now()->subDays(180)));
-        $this->chunkDelete('match_scores', fn ($q) => $q->where('computed_at', '<', now()->subDays(90)));
+        $days = fn (string $key, int $default) => max(1, (int) Setting::get($key, $default, 'retention'));
+        $this->chunkDelete('notifications', fn ($q) => $q->whereNotNull('read_at')->where('read_at', '<', now()->subDays($days('notifications_read_days', 90))));
+        $this->chunkDelete('notifications', fn ($q) => $q->where('created_at', '<', now()->subDays($days('notifications_days', 365))));
+        $this->chunkDelete('audit_logs', fn ($q) => $q->where('created_at', '<', now()->subDays($days('audit_days', 180))));
+        $this->chunkDelete('failed_jobs', fn ($q) => $q->where('failed_at', '<', now()->subDays($days('failed_jobs_days', 30))));
+        $this->chunkDelete('ai_usage_logs', fn ($q) => $q->where('created_at', '<', now()->subDays($days('ai_usage_days', 365))));
+        $this->chunkDelete('profile_views', fn ($q) => $q->where('viewed_at', '<', now()->subDays($days('profile_views_days', 180))));
+        $this->chunkDelete('match_scores', fn ($q) => $q->where('computed_at', '<', now()->subDays($days('match_scores_days', 90))));
         // Stories live 24h; keep a 7d grace window (late viewers, disputes),
         // then cascade views/reactions via FKs. Analytics roll up elsewhere.
-        $this->chunkDelete('stories', fn ($q) => $q->where('expires_at', '<', now()->subDays(7)));
-        $this->chunkDelete('analytics_events', fn ($q) => $q->where('created_at', '<', now()->subDays(180)));
+        $this->chunkDelete('stories', fn ($q) => $q->where('expires_at', '<', now()->subDays($days('stories_days', 7))));
+        $this->chunkDelete('analytics_events', fn ($q) => $q->where('created_at', '<', now()->subDays($days('analytics_days', 180))));
 
         // Database queue driver only: stuck rows (unix timestamps) older
         // than 7 days are poison/orphaned — successful jobs self-delete.
