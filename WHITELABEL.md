@@ -47,6 +47,20 @@ Jual codebase yang sama ke banyak klien dengan brand berbeda.
   tidak resolve (fallback Jodohku). Default false (peringatan di admin).
 - `max_users` ditegakkan saat registrasi (422 bila penuh).
 
+## Email & subdomain
+
+- Sender per brand: `mail_from_address` + `mail_from_name` di form brand.
+  Berlaku untuk email sync (request lifecycle); job antrean memakai
+  default — butuh SPF/DKIM domain klien, lihat DEPLOY.md.
+- Subdomain wildcard: arahkan `*.domain-utama.com` ke server
+  (DNS A/AAAA + vhost default) — tiap subdomain resolve sebagai host
+  sendiri; daftarkan sebagai `domain` brand tanpa config tambahan.
+
+## Enforce lengkap & sender
+
+- Flag `gifts`/`boost` ditegakkan di service (bukan cuma nav):
+  kirim gift & aktivasi boost lempar 422 saat brand menonaktifkan.
+
 ## Paket jualan (siap demo ke klien)
 
 - **Stats per brand** (`/admin/brands/{brand}/stats` + API):

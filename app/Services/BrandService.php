@@ -239,6 +239,21 @@ class BrandService
         return [hexdec(substr($hex, 1, 2)), hexdec(substr($hex, 3, 2)), hexdec(substr($hex, 5, 2))];
     }
 
+    /** Global default overlaid with the active brand flag (no brand = global). */
+    public function featureEnabled(string $flag): bool
+    {
+        $on = (bool) config('jodohku.features.'.$flag, true);
+        try {
+            $brand = $this->current();
+            if ($brand) {
+                $on = $brand->featureOn($flag, $on);
+            }
+        } catch (\Throwable) {
+        }
+
+        return $on;
+    }
+
     /** License quota: throws 422 when the brand is full (null = unlimited). */
     public function assertRegistrationOpen(?int $brandId): void
     {

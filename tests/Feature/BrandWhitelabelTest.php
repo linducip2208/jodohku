@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\User;
+use App\Services\BoostService;
 use App\Services\BrandService;
+use App\Services\GiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -248,5 +250,40 @@ class BrandWhitelabelTest extends TestCase
         $this->assertSame(1, User::where('brand_id', $brand->id)->count());
         $this->expectException(HttpException::class);
         app(BrandService::class)->assertRegistrationOpen($brand->id);
+    }
+
+    public function test_gifts_boost_flags_enforced_in_services(): void
+    {
+        Brand::create(['slug' => 'gb', 'name' => 'GB', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true, 'is_default' => true, 'features' => ['gifts' => false, 'boost' => false]]);
+        $this->assertFalse(app(BrandService::class)->featureEnabled('gifts'));
+        $this->assertFalse(app(BrandService::class)->featureEnabled('boost'));
+
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        try {
+            app(GiftService::class)->send($a, $b, 'rose');
+            $this->fail('Gift harus ditolak saat flag mati.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('disabled', $e->getMessage());
+        }
+        try {
+            app(BoostService::class)->activate($a);
+            $this->fail('Boost harus ditolak saat flag mati.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('disabled', $e->getMessage());
+        }
+    }
+
+    public function test_brand_mail_sender_applied(): void
+    {
+        $brand = Brand::create(['slug' => 'ml', 'name' => 'ML', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true, 'is_default' => true, 'mail_from_address' => 'halo@ml.test', 'mail_from_name' => 'ML Team']);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        // Invalid email rejected at admin form.
+        $this->actingAs($admin)->put("/admin/brands/{$brand->id}", [
+            'name' => 'ML', 'mail_from_address' => 'bukan-email',
+        ])->assertSessionHasErrors('mail_from_address');
+        // Middleware applies sender on web requests.
+        $this->actingAs($admin)->get('/admin/brands')->assertOk();
+        $this->assertSame('halo@ml.test', config('mail.from.address'));
     }
 }

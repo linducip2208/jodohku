@@ -76,6 +76,8 @@ class BrandController extends Controller
             'features' => $this->features($request),
             'expires_at' => $data['expires_at'] ?? null,
             'max_users' => $data['max_users'] ?? null,
+            'mail_from_address' => $data['mail_from_address'] ?? null,
+            'mail_from_name' => $data['mail_from_name'] ?? null,
             'content' => $this->content($request),
         ]);
         $this->storeAssets($request, $brand);
@@ -125,6 +127,8 @@ class BrandController extends Controller
             'features' => $this->features($request),
             'expires_at' => $data['expires_at'] ?? null,
             'max_users' => $data['max_users'] ?? null,
+            'mail_from_address' => $data['mail_from_address'] ?? null,
+            'mail_from_name' => $data['mail_from_name'] ?? null,
             'content' => $this->content($request),
         ]);
         $this->storeAssets($request, $brand);
@@ -260,6 +264,8 @@ class BrandController extends Controller
             'is_default' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date', 'after:today'],
             'max_users' => ['nullable', 'integer', 'min:1', 'max:10000000'],
+            'mail_from_address' => ['nullable', 'email', 'max:190'],
+            'mail_from_name' => ['nullable', 'string', 'max:120'],
             'content.hero_title' => ['nullable', 'string', 'max:120'],
             'content.hero_subtitle' => ['nullable', 'string', 'max:300'],
             'content.cta_text' => ['nullable', 'string', 'max:60'],

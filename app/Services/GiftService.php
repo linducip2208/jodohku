@@ -82,6 +82,14 @@ class GiftService
         if (! config('jodohku.features.gifts', true)) {
             throw new \RuntimeException('Gifts feature disabled.');
         }
+        try {
+            if (! app(BrandService::class)->featureEnabled('gifts')) {
+                throw new \RuntimeException('Gifts feature disabled.');
+            }
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Throwable) {
+        }
         if ((int) $sender->id === (int) $receiver->id) {
             throw new \InvalidArgumentException('Cannot send a gift to yourself.');
         }

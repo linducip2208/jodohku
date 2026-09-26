@@ -13,7 +13,8 @@ class Brand extends Model
         'slug', 'name', 'tagline', 'primary_color', 'secondary_color',
         'logo_path', 'favicon_path', 'domain', 'verification_token',
         'domain_verified_at', 'is_active', 'is_default',
-        'expires_at', 'max_users', 'features', 'footer', 'content',
+        'expires_at', 'max_users', 'mail_from_address', 'mail_from_name',
+        'features', 'footer', 'content',
     ];
 
     protected function casts(): array

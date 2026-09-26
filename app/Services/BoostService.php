@@ -15,6 +15,14 @@ class BoostService
         if (! config('jodohku.features.boost', true)) {
             throw new \RuntimeException('Boost feature disabled.');
         }
+        try {
+            if (! app(BrandService::class)->featureEnabled('boost')) {
+                throw new \RuntimeException('Boost feature disabled.');
+            }
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Throwable) {
+        }
 
         return DB::transaction(function () use ($user, $durationMinutes) {
             // Serialize concurrent activations for the same user.

@@ -37,6 +37,8 @@
 <div class="mb-2"><label>Hero title</label><input name="content[hero_title]" class="form-control" maxlength="120" value="{{ old('content.hero_title', $brand->content['hero_title'] ?? '') }}"></div>
 <div class="mb-2"><label>Hero subtitle</label><input name="content[hero_subtitle]" class="form-control" maxlength="300" value="{{ old('content.hero_subtitle', $brand->content['hero_subtitle'] ?? '') }}"></div>
 <div class="mb-2"><label>Teks CTA</label><input name="content[cta_text]" class="form-control" maxlength="60" value="{{ old('content.cta_text', $brand->content['cta_text'] ?? '') }}"></div>
+<div class="mb-2"><label>Email pengirim (opsional, harus domain terverifikasi SPF/DKIM)</label><input type="email" name="mail_from_address" class="form-control" maxlength="190" value="{{ old('mail_from_address', $brand->mail_from_address) }}"></div>
+<div class="mb-2"><label>Nama pengirim</label><input name="mail_from_name" class="form-control" maxlength="120" value="{{ old('mail_from_name', $brand->mail_from_name) }}"></div>
 <div class="mb-2"><strong>Fitur per-brand</strong> (kosong = ikut default global)<br>
 @foreach(['taaruf' => 'Taaruf', 'counselor' => 'Konselor', 'community' => 'Komunitas', 'events' => 'Events', 'gifts' => 'Gifts', 'boost' => 'Boost'] as $k => $label)
 <label style="margin-right:12px"><input type="checkbox" name="features[{{ $k }}]" value="1" @checked(old('features.'.$k, ($brand->features[$k] ?? true)))> {{ $label }}</label>
