@@ -31,6 +31,7 @@ class AuthController extends Controller
             'gender' => $data['gender'] ?? null,
             'city' => $data['city'] ?? null,
             'country' => 'Indonesia',
+            'brand_id' => User::currentBrandId(),
         ]);
 
         event(new UserRegistered($user));

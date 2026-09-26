@@ -6,6 +6,7 @@ enum UserRole: string
 {
     case Member = 'member';
     case Premium = 'premium';
+    case Client = 'client';
     case Operator = 'operator';
     case Moderator = 'moderator';
     case Admin = 'admin';
@@ -16,6 +17,7 @@ enum UserRole: string
         return match ($this) {
             self::Member => 'Member',
             self::Premium => 'Premium',
+            self::Client => 'Klien Brand',
             self::Operator => 'Operator',
             self::Moderator => 'Moderator',
             self::Admin => 'Admin',
@@ -33,6 +35,7 @@ enum UserRole: string
         return match ($this) {
             self::Member => 10,
             self::Premium => 20,
+            self::Client => 30,
             self::Operator => 40,
             self::Moderator => 60,
             self::Admin => 80,

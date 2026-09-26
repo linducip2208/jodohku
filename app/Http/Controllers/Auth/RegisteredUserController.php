@@ -40,6 +40,7 @@ class RegisteredUserController extends Controller
                 'gender' => $request->input('gender'),
                 'city' => $request->input('city'),
                 'province' => $request->input('province'),
+                'brand_id' => User::currentBrandId(),
             ]);
             Profile::firstOrCreate(['user_id' => $u->id]);
             $u->partnerPreference()->firstOrCreate([]);

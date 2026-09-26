@@ -14,6 +14,7 @@ use App\Listeners\RecordProfileViewListener;
 use App\Listeners\ReferralListener;
 use App\Listeners\SendMatchNotification;
 use App\Listeners\WarmNewUserMatches;
+use App\Models\Brand;
 use App\Models\Comment;
 use App\Models\CompatibilityReport;
 use App\Models\Consultation;
@@ -35,6 +36,7 @@ use App\Models\VirtualConversation;
 use App\Observers\MatchRecalcObserver;
 use App\Observers\PostObserver;
 use App\Payments\PaymentGatewayManager;
+use App\Policies\BrandPolicy;
 use App\Policies\CommentPolicy;
 use App\Policies\CompatibilityReportPolicy;
 use App\Policies\ConsultationPolicy;
@@ -59,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
 {
     /** @var array<class-string, class-string> */
     protected array $policies = [
+        Brand::class => BrandPolicy::class,
         User::class => UserPolicy::class,
         Conversation::class => ConversationPolicy::class,
         Message::class => MessagePolicy::class,
@@ -94,6 +97,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('moderator', fn (User $u) => in_array($u->role, [UserRole::Moderator, UserRole::Admin, UserRole::Superadmin], true));
         Gate::define('admin', fn (User $u) => in_array($u->role, [UserRole::Admin, UserRole::Superadmin], true));
         Gate::define('superadmin', fn (User $u) => $u->role === UserRole::Superadmin);
+        // Whitelabel brand managers: admins + clients bound to a brand.
+        Gate::define('brand-manager', fn (User $u) => in_array($u->role, [UserRole::Admin, UserRole::Superadmin], true) || ($u->role === UserRole::Client && $u->brand_id !== null));
         // Any staff (operator/moderator/admin/superadmin) — read-only areas.
         Gate::define('staff', fn (User $u) => in_array($u->role, [UserRole::Operator, UserRole::Moderator, UserRole::Admin, UserRole::Superadmin], true));
 

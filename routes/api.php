@@ -98,7 +98,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/social/stories', [SocialController::class, 'stories']);
         Route::get('/social/stories/{story}', [SocialController::class, 'showStory']);
         Route::get('/social/search', [SocialController::class, 'search']);
-        Route::get('/social/groups', [SocialController::class, 'groups']);
+        Route::get('/social/groups', [SocialController::class, 'groups'])->middleware('brand.feature:community');
         Route::get('/social/recommendations', [SocialController::class, 'recommendations']);
         Route::get('/discover/picks', [DiscoveryController::class, 'picks']);
         Route::post('/discover/picks/reset', [DiscoveryController::class, 'resetPicks']);
@@ -242,60 +242,65 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/ads/{ad}/click', [SafetyController::class, 'adClick']);
         Route::get('/settings', [AccountController::class, 'settings']);
 
-        Route::get('/blog', [BlogController::class, 'index']);
-        Route::get('/blog/popular', [BlogController::class, 'popular']);
-        Route::get('/blog/search', [BlogController::class, 'search']);
-        Route::get('/blog/{slug}', [BlogController::class, 'show']);
-        Route::get('/blog/{slug}/related', [BlogController::class, 'related']);
-        Route::get('/forums', [ForumController::class, 'index']);
-        Route::get('/forums/search', [ForumController::class, 'search']);
-        Route::get('/forums/trending', [ForumController::class, 'trending']);
-        Route::get('/forums/popular', [ForumController::class, 'popular']);
-        Route::get('/forums/{slug}', [ForumController::class, 'threads']);
-        Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1,forum-threads');
-        Route::get('/forum-threads/{thread}', [ForumController::class, 'show']);
-        Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1,forum-replies');
-        Route::put('/forum-threads/{thread}', [ForumController::class, 'updateThread']);
-        Route::delete('/forum-threads/{thread}', [ForumController::class, 'destroyThread']);
-        Route::put('/forum-replies/{reply}', [ForumController::class, 'updateReply']);
-        Route::delete('/forum-replies/{reply}', [ForumController::class, 'destroyReply']);
+        Route::middleware('brand.feature:community')->group(function () {
+            Route::get('/blog', [BlogController::class, 'index']);
+            Route::get('/blog/popular', [BlogController::class, 'popular']);
+            Route::get('/blog/search', [BlogController::class, 'search']);
+            Route::get('/blog/{slug}', [BlogController::class, 'show']);
+            Route::get('/blog/{slug}/related', [BlogController::class, 'related']);
+            Route::get('/forums', [ForumController::class, 'index']);
+            Route::get('/forums/search', [ForumController::class, 'search']);
+            Route::get('/forums/trending', [ForumController::class, 'trending']);
+            Route::get('/forums/popular', [ForumController::class, 'popular']);
+            Route::get('/forums/{slug}', [ForumController::class, 'threads']);
+            Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->middleware('throttle:10,1,forum-threads');
+            Route::get('/forum-threads/{thread}', [ForumController::class, 'show']);
+            Route::post('/forum-threads/{thread}/replies', [ForumController::class, 'reply'])->middleware('throttle:30,1,forum-replies');
+            Route::put('/forum-threads/{thread}', [ForumController::class, 'updateThread']);
+            Route::delete('/forum-threads/{thread}', [ForumController::class, 'destroyThread']);
+            Route::put('/forum-replies/{reply}', [ForumController::class, 'updateReply']);
+            Route::delete('/forum-replies/{reply}', [ForumController::class, 'destroyReply']);
+        });
 
-        Route::get('/events/upcoming', [EventController::class, 'upcoming']);
-        Route::get('/events/mine', [EventController::class, 'mine']);
-        Route::get('/events', [EventController::class, 'index']);
-        Route::get('/events/{event}', [EventController::class, 'show']);
-        Route::post('/events/{event}/join', [EventController::class, 'join'])->middleware('throttle:20,1,events');
-        Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
-        Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
-        Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
-        Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
+        Route::middleware('brand.feature:events')->group(function () {
+            Route::get('/events/upcoming', [EventController::class, 'upcoming']);
+            Route::get('/events/mine', [EventController::class, 'mine']);
+            Route::get('/events', [EventController::class, 'index']);
+            Route::get('/events/{event}', [EventController::class, 'show']);
+            Route::post('/events/{event}/join', [EventController::class, 'join'])->middleware('throttle:20,1,events');
+            Route::post('/events/{event}/leave', [EventController::class, 'leave'])->middleware('throttle:20,1,events');
+            Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
+            Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
+            Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
+        });
 
-        Route::get('/courtships', [BiroJodohController::class, 'courtships']);
-        Route::post('/courtships', [BiroJodohController::class, 'startCourtship'])->middleware('throttle:10,1,courtships');
-        Route::get('/courtships/journey/{partner}', [BiroJodohController::class, 'journey']);
-        Route::get('/courtships/{courtship}', [BiroJodohController::class, 'showCourtship']);
-        Route::post('/courtships/{courtship}/advance', [BiroJodohController::class, 'advanceCourtship']);
-        Route::post('/courtships/{courtship}/withdraw', [BiroJodohController::class, 'withdrawCourtship']);
-        Route::put('/courtships/{courtship}/guardian', [BiroJodohController::class, 'setGuardian']);
-        Route::post('/courtships/{courtship}/guardian/approve', [BiroJodohController::class, 'approveGuardian']);
-        Route::post('/courtships/{courtship}/chaperone', [BiroJodohController::class, 'addChaperone']);
-        Route::delete('/courtships/{courtship}/chaperone', [BiroJodohController::class, 'removeChaperone']);
-
-        Route::get('/counselors', [BiroJodohController::class, 'counselors']);
-        Route::post('/consultations', [BiroJodohController::class, 'bookConsultation'])->middleware('throttle:10,1,consultations');
-        Route::get('/consultations', [BiroJodohController::class, 'consultations']);
-        Route::get('/consultations/counseling', [BiroJodohController::class, 'counselorBookings']);
-        Route::post('/consultations/{consultation}/confirm', [BiroJodohController::class, 'confirmConsultation']);
-        Route::post('/consultations/{consultation}/complete', [BiroJodohController::class, 'completeConsultation']);
-        Route::post('/consultations/{consultation}/cancel', [BiroJodohController::class, 'cancelConsultation']);
-
-        Route::get('/compatibility-reports', [BiroJodohController::class, 'reports']);
-        Route::post('/compatibility-reports', [BiroJodohController::class, 'generateReport'])->middleware('throttle:20,1,compatibility-reports');
-        Route::get('/compatibility-reports/{report}', [BiroJodohController::class, 'showReport']);
-
-        Route::get('/success-stories', [BiroJodohController::class, 'stories']);
-        Route::get('/success-stories/mine', [BiroJodohController::class, 'myStories']);
-        Route::post('/success-stories', [BiroJodohController::class, 'submitStory'])->middleware('throttle:5,1,success-stories');
+        Route::middleware('brand.feature:taaruf')->group(function () {
+            Route::get('/courtships', [BiroJodohController::class, 'courtships']);
+            Route::post('/courtships', [BiroJodohController::class, 'startCourtship'])->middleware('throttle:10,1,courtships');
+            Route::get('/courtships/journey/{partner}', [BiroJodohController::class, 'journey']);
+            Route::get('/courtships/{courtship}', [BiroJodohController::class, 'showCourtship']);
+            Route::post('/courtships/{courtship}/advance', [BiroJodohController::class, 'advanceCourtship']);
+            Route::post('/courtships/{courtship}/withdraw', [BiroJodohController::class, 'withdrawCourtship']);
+            Route::put('/courtships/{courtship}/guardian', [BiroJodohController::class, 'setGuardian']);
+            Route::post('/courtships/{courtship}/guardian/approve', [BiroJodohController::class, 'approveGuardian']);
+            Route::post('/courtships/{courtship}/chaperone', [BiroJodohController::class, 'addChaperone']);
+            Route::delete('/courtships/{courtship}/chaperone', [BiroJodohController::class, 'removeChaperone']);
+            Route::get('/compatibility-reports', [BiroJodohController::class, 'reports']);
+            Route::post('/compatibility-reports', [BiroJodohController::class, 'generateReport'])->middleware('throttle:20,1,compatibility-reports');
+            Route::get('/compatibility-reports/{report}', [BiroJodohController::class, 'showReport']);
+            Route::get('/success-stories', [BiroJodohController::class, 'stories']);
+            Route::get('/success-stories/mine', [BiroJodohController::class, 'myStories']);
+            Route::post('/success-stories', [BiroJodohController::class, 'submitStory'])->middleware('throttle:5,1,success-stories');
+            Route::middleware('brand.feature:counselor')->group(function () {
+                Route::get('/counselors', [BiroJodohController::class, 'counselors']);
+                Route::post('/consultations', [BiroJodohController::class, 'bookConsultation'])->middleware('throttle:10,1,consultations');
+                Route::get('/consultations', [BiroJodohController::class, 'consultations']);
+                Route::get('/consultations/counseling', [BiroJodohController::class, 'counselorBookings']);
+                Route::post('/consultations/{consultation}/confirm', [BiroJodohController::class, 'confirmConsultation']);
+                Route::post('/consultations/{consultation}/complete', [BiroJodohController::class, 'completeConsultation']);
+                Route::post('/consultations/{consultation}/cancel', [BiroJodohController::class, 'cancelConsultation']);
+            });
+        });
 
         // Staff overview for dashboards / monitoring clients.
         Route::get('/admin/overview', [AdminController::class, 'overview'])

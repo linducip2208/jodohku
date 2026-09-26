@@ -11,6 +11,9 @@ return [
         'boost' => env('FEATURE_BOOST', true),
         'ads' => env('FEATURE_ADS', true),
         'verification' => env('FEATURE_VERIFICATION', true),
+        'taaruf' => env('FEATURE_TAARUF', true),
+        'counselor' => env('FEATURE_COUNSELOR', true),
+        'events' => env('FEATURE_EVENTS', true),
     ],
 
     'limits' => [

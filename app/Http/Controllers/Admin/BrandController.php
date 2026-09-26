@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Services\AuditService;
@@ -14,7 +15,12 @@ class BrandController extends Controller
 {
     public function index(Request $request)
     {
-        $brands = Brand::latest('id')->paginate(20);
+        $this->authorize('viewAny', Brand::class);
+        $query = Brand::latest('id');
+        if ($request->user()->role === UserRole::Client) {
+            $query->where('id', $request->user()->brand_id);
+        }
+        $brands = $query->paginate(20);
 
         return $request->wantsJson()
             ? response()->json($brands)
@@ -23,18 +29,23 @@ class BrandController extends Controller
 
     public function create(Request $request)
     {
+        $this->authorize('create', Brand::class);
+
         return view('admin.brands.form', ['brand' => new Brand(['primary_color' => '#f43f5e', 'secondary_color' => '#8b5cf6'])]);
     }
 
     /** Self-service onboarding wizard (4 steps, live preview). */
     public function wizard(Request $request)
     {
+        $this->authorize('create', Brand::class);
+
         return view('admin.brands.wizard');
     }
 
     /** Save text-only draft to session for landing preview (?preview_brand=draft). */
     public function wizardDraft(Request $request, BrandService $brands)
     {
+        $this->authorize('create', Brand::class);
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:80'],
             'tagline' => ['nullable', 'string', 'max:200'],
@@ -48,6 +59,7 @@ class BrandController extends Controller
 
     public function store(Request $request, BrandService $brands, AuditService $audit)
     {
+        $this->authorize('create', Brand::class);
         $data = $this->validated($request);
         $brand = new Brand([
             'slug' => $this->slug($data['slug'] ?? $data['name']),
@@ -75,11 +87,14 @@ class BrandController extends Controller
 
     public function edit(Request $request, Brand $brand)
     {
+        $this->authorize('view', $brand);
+
         return view('admin.brands.form', ['brand' => $brand]);
     }
 
     public function update(Request $request, Brand $brand, BrandService $brands, AuditService $audit)
     {
+        $this->authorize('update', $brand);
         $data = $this->validated($request, $brand->id);
         $brand->fill([
             'name' => trim($data['name']),
@@ -108,6 +123,7 @@ class BrandController extends Controller
 
     public function destroy(Request $request, Brand $brand, BrandService $brands, AuditService $audit)
     {
+        $this->authorize('delete', $brand);
         Storage::disk('public')->delete([$brand->logo_path, $brand->favicon_path]);
         $audit->log('admin.brand.deleted', $request->user(), $brand);
         $brand->delete();
@@ -121,6 +137,7 @@ class BrandController extends Controller
     /** Download brand package zip (pindah server). */
     public function export(Request $request, Brand $brand, BrandService $brands)
     {
+        $this->authorize('view', $brand);
         $tmp = $brands->exportPackage($brand);
 
         return response()->download($tmp, 'brand-'.$brand->slug.'.zip')->deleteFileAfterSend();
@@ -129,6 +146,7 @@ class BrandController extends Controller
     /** Upload brand package zip. */
     public function import(Request $request, BrandService $brands, AuditService $audit)
     {
+        $this->authorize('create', Brand::class);
         $request->validate(['package' => ['required', 'file', 'max:10240', 'mimetypes:application/zip,application/x-zip-compressed,multipart/x-zip']]);
         $file = $request->file('package');
         if (! $file->isValid()) {

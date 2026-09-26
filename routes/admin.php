@@ -123,18 +123,6 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
         Route::post('/users/stop-impersonate', [UserController::class, 'stopImpersonate'])->name('users.stop-impersonate');
         Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
 
-        // Whitelabel brands (admin manages; secrets never stored here).
-        Route::get('/brands', [BrandController::class, 'index'])->name('brands');
-        Route::get('/brands/create', [BrandController::class, 'create'])->name('brands.create');
-        Route::get('/brands/wizard', [BrandController::class, 'wizard'])->name('brands.wizard');
-        Route::post('/brands/wizard/draft', [BrandController::class, 'wizardDraft'])->name('brands.wizard.draft')->middleware('throttle:20,1,brand-admin');
-        Route::post('/brands', [BrandController::class, 'store'])->name('brands.store')->middleware('throttle:10,1,brand-admin');
-        Route::get('/brands/{brand}/edit', [BrandController::class, 'edit'])->name('brands.edit');
-        Route::put('/brands/{brand}', [BrandController::class, 'update'])->name('brands.update')->middleware('throttle:10,1,brand-admin');
-        Route::delete('/brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
-        Route::get('/brands/{brand}/export', [BrandController::class, 'export'])->name('brands.export');
-        Route::post('/brands/import', [BrandController::class, 'import'])->name('brands.import')->middleware('throttle:10,1,brand-admin');
-
         Route::get('/matching/questions', [MatchingAdminController::class, 'questions'])->name('matching.questions');
         Route::post('/matching/questions', [MatchingAdminController::class, 'storeQuestion'])->name('matching.questions.store');
         Route::put('/matching/questions/{question}', [MatchingAdminController::class, 'updateQuestion'])->name('matching.questions.update');
@@ -211,6 +199,21 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth', 'active.accou
 
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+    });
+
+    // ---- Whitelabel brands: admins manage all, clients only their own
+    // (BrandPolicy scopes per-action; create/delete/import stay admin-only).
+    Route::middleware('can:brand-manager')->group(function () {
+        Route::get('/brands', [BrandController::class, 'index'])->name('brands');
+        Route::get('/brands/create', [BrandController::class, 'create'])->name('brands.create');
+        Route::post('/brands', [BrandController::class, 'store'])->name('brands.store')->middleware('throttle:10,1,brand-admin');
+        Route::get('/brands/wizard', [BrandController::class, 'wizard'])->name('brands.wizard');
+        Route::post('/brands/wizard/draft', [BrandController::class, 'wizardDraft'])->name('brands.wizard.draft')->middleware('throttle:20,1,brand-admin');
+        Route::get('/brands/{brand}/edit', [BrandController::class, 'edit'])->name('brands.edit');
+        Route::put('/brands/{brand}', [BrandController::class, 'update'])->name('brands.update')->middleware('throttle:10,1,brand-admin');
+        Route::delete('/brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+        Route::get('/brands/{brand}/export', [BrandController::class, 'export'])->name('brands.export');
+        Route::post('/brands/import', [BrandController::class, 'import'])->name('brands.import')->middleware('throttle:10,1,brand-admin');
     });
 
     // ---- Secrets & system switches: superadmin only ----

@@ -24,8 +24,18 @@ Jual codebase yang sama ke banyak klien dengan brand berbeda.
 - Pindah server: Export (.zip berisi `brand.json` + aset) → Impor di
   server tujuan (+ opsi jadikan default).
 - Preview brand tersimpan: `/?preview_brand={id}` (staff only).
-- Feature flags per-brand (taaruf/konselor/komunitas/events/gifts/boost)
-  menyembunyikan link navigasi member; kosong = ikut default.
+- Feature flags per-brand (taaruf/konselor/komunitas/events/gifts/boost):
+  ditegakkan backend via `brand.feature` (404, tanpa bocor) + link
+  navigasi disembunyikan. Tanpa brand aktif = ikut flag global.
+
+## P1 — Enforce, atribusi, role klien
+
+- `users.brand_id` diisi otomatis dari domain saat registrasi
+  (web + API + controller) → dasar hitung user per klien.
+- Role `client` (rank 30, bukan staff): kelola HANYA brand sendiri
+  (lihat/edit/export); tanpa brand terikat = 403 total.
+  Buat/hapus/impor tetap admin.
+- Gate `brand-manager` + `BrandPolicy` (viewAny/view/update/delete).
 
 ## File kunci
 

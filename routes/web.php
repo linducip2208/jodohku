@@ -259,6 +259,7 @@ Route::middleware('guest')->group(function () {
             'date_of_birth' => $data['date_of_birth'],
             'gender' => $data['gender'],
             'password' => Hash::make($data['password']),
+            'brand_id' => User::currentBrandId(),
         ]);
         try {
             $user->profile()->create([]);
@@ -595,65 +596,78 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         }
     });
 
-    Route::get('/events', fn () => view('member.events.index'))->name('member.events');
-    Route::get('/events/status', function () {
-        $statuses = EventStatus::cases();
+    // Events (brand-gated: nonaktif → 404).
+    Route::middleware('brand.feature:events')->group(function () {
+        Route::get('/events', fn () => view('member.events.index'))->name('member.events');
+        Route::get('/events/status', function () {
+            $statuses = EventStatus::cases();
 
-        return response()->json($statuses);
-    })->name('member.events.status');
-    Route::get('/events/{event}', function (Event $event) {
-        return view('member.events.show', ['event' => $event]);
-    })->name('member.events.show');
-    Route::post('/events/{event}/join', [EventController::class, 'join'])->name('member.events.join');
-    Route::post('/events/{event}/leave', [EventController::class, 'leave'])->name('member.events.leave');
-    Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->name('member.events.rsvp');
-    Route::get('/events/{event}/attendees', [EventController::class, 'attendees'])->name('member.events.attendees');
-    Route::get('/events/{event}/kenalan', [EventController::class, 'suggested'])->name('member.events.suggested');
-    Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
+            return response()->json($statuses);
+        })->name('member.events.status');
+        Route::get('/events/{event}', function (Event $event) {
+            return view('member.events.show', ['event' => $event]);
+        })->name('member.events.show');
+        Route::post('/events/{event}/join', [EventController::class, 'join'])->name('member.events.join');
+        Route::post('/events/{event}/leave', [EventController::class, 'leave'])->name('member.events.leave');
+        Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->name('member.events.rsvp');
+        Route::get('/events/{event}/attendees', [EventController::class, 'attendees'])->name('member.events.attendees');
+        Route::get('/events/{event}/kenalan', [EventController::class, 'suggested'])->name('member.events.suggested');
+        Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
+        Route::post('/events', [EventController::class,
+            'store'])->name('member.events.store')->middleware('throttle:5,1,event-create');
+    });
 
-    Route::get('/biro-jodoh/taaruf', [BiroJodohController::class, 'courtships'])->name('member.biro-jodoh.courtships');
-    Route::post('/biro-jodoh/taaruf/mulai', [BiroJodohController::class, 'startCourtship'])->name('member.biro-jodoh.start');
-    Route::get('/biro-jodoh/taaruf/{courtship}', [BiroJodohController::class, 'showCourtship'])->name('member.biro-jodoh.courtship');
-    Route::post('/biro-jodoh/taaruf/{courtship}/lanjut', [BiroJodohController::class, 'advanceCourtship'])->name('member.biro-jodoh.advance');
-    Route::post('/biro-jodoh/taaruf/{courtship}/mundur', [BiroJodohController::class, 'withdrawCourtship'])->name('member.biro-jodoh.withdraw');
-    Route::put('/biro-jodoh/taaruf/{courtship}/wali', [BiroJodohController::class, 'setGuardian'])->name('member.biro-jodoh.guardian');
-    Route::post('/biro-jodoh/taaruf/{courtship}/wali/setuju', [BiroJodohController::class, 'approveGuardian'])->name('member.biro-jodoh.guardian.approve');
-    Route::get('/biro-jodoh/taaruf/{courtship}/ringkasan', [BiroJodohController::class, 'digest'])->name('member.biro-jodoh.digest');
-    Route::get('/biro-jodoh/konselor', [BiroJodohController::class, 'counselors'])->name('member.biro-jodoh.counselors');
-    Route::get('/biro-jodoh/konsultasi', [BiroJodohController::class, 'consultations'])->name('member.biro-jodoh.consultations');
-    Route::post('/biro-jodoh/konsultasi', [BiroJodohController::class, 'bookConsultation'])->name('member.biro-jodoh.consultations.book');
-    Route::post('/biro-jodoh/konsultasi/{consultation}/batal', [BiroJodohController::class, 'cancelConsultation'])->name('member.biro-jodoh.consultations.cancel');
-    Route::get('/biro-jodoh/laporan', [BiroJodohController::class, 'reports'])->name('member.biro-jodoh.reports');
-    Route::get('/biro-jodoh/laporan/{report}', [BiroJodohController::class, 'showReport'])->name('member.biro-jodoh.report');
-    Route::get('/biro-jodoh/kisah', [BiroJodohController::class, 'stories'])->name('member.biro-jodoh.stories');
-    Route::get('/biro-jodoh/kisah/saya', [BiroJodohController::class, 'myStories'])->name('member.biro-jodoh.stories.mine');
-    Route::post('/biro-jodoh/kisah', [BiroJodohController::class, 'submitStory'])->name('member.biro-jodoh.stories.submit');
+    // Biro jodoh (brand-gated: taaruf/counselor nonaktif → 404).
+    Route::middleware('brand.feature:taaruf')->group(function () {
+        Route::get('/biro-jodoh/taaruf', [BiroJodohController::class, 'courtships'])->name('member.biro-jodoh.courtships');
+        Route::post('/biro-jodoh/taaruf/mulai', [BiroJodohController::class, 'startCourtship'])->name('member.biro-jodoh.start');
+        Route::get('/biro-jodoh/taaruf/{courtship}', [BiroJodohController::class, 'showCourtship'])->name('member.biro-jodoh.courtship');
+        Route::post('/biro-jodoh/taaruf/{courtship}/lanjut', [BiroJodohController::class, 'advanceCourtship'])->name('member.biro-jodoh.advance');
+        Route::post('/biro-jodoh/taaruf/{courtship}/mundur', [BiroJodohController::class, 'withdrawCourtship'])->name('member.biro-jodoh.withdraw');
+        Route::put('/biro-jodoh/taaruf/{courtship}/wali', [BiroJodohController::class, 'setGuardian'])->name('member.biro-jodoh.guardian');
+        Route::post('/biro-jodoh/taaruf/{courtship}/wali/setuju', [BiroJodohController::class, 'approveGuardian'])->name('member.biro-jodoh.guardian.approve');
+        Route::get('/biro-jodoh/taaruf/{courtship}/ringkasan', [BiroJodohController::class, 'digest'])->name('member.biro-jodoh.digest');
+        Route::middleware('brand.feature:counselor')->group(function () {
+            Route::get('/biro-jodoh/konselor', [BiroJodohController::class, 'counselors'])->name('member.biro-jodoh.counselors');
+            Route::get('/biro-jodoh/konsultasi', [BiroJodohController::class, 'consultations'])->name('member.biro-jodoh.consultations');
+            Route::post('/biro-jodoh/konsultasi', [BiroJodohController::class, 'bookConsultation'])->name('member.biro-jodoh.consultations.book');
+            Route::post('/biro-jodoh/konsultasi/{consultation}/batal', [BiroJodohController::class, 'cancelConsultation'])->name('member.biro-jodoh.consultations.cancel');
+            Route::get('/biro-jodoh/laporan', [BiroJodohController::class, 'reports'])->name('member.biro-jodoh.reports');
+            Route::get('/biro-jodoh/laporan/{report}', [BiroJodohController::class, 'showReport'])->name('member.biro-jodoh.report');
+        });
+        Route::get('/biro-jodoh/kisah', [BiroJodohController::class, 'stories'])->name('member.biro-jodoh.stories');
+        Route::get('/biro-jodoh/kisah/saya', [BiroJodohController::class, 'myStories'])->name('member.biro-jodoh.stories.mine');
+        Route::post('/biro-jodoh/kisah', [BiroJodohController::class, 'submitStory'])->name('member.biro-jodoh.stories.submit');
+    });
 
-    Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
-    Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');
-    Route::get('/komunitas', [CommunityController::class, 'index'])->name('member.community');
-    Route::post('/komunitas', [CommunityController::class, 'store'])->name('member.community.store')->middleware('throttle:10,1,community-post');
-    Route::post('/komunitas/{post}/like', [CommunityController::class, 'toggleLike'])->name('member.community.like');
-    Route::post('/komunitas/{post}/komentar', [CommunityController::class, 'comment'])->name('member.community.comment')->middleware('throttle:30,1,community-comment');
-    Route::delete('/komunitas/{post}', [CommunityController::class, 'destroy'])->name('member.community.destroy');
-    Route::post('/komunitas/postingan/{post}/laporkan', [CommunityController::class,
-        'report'])->name('member.community.report')->middleware('throttle:10,1,community-report');
-    Route::post('/komunitas/{post}/reaksi', [CommunityController::class,
-        'react'])->name('member.community.react')->middleware('throttle:60,1,community-react');
-    Route::post('/komunitas/{post}/simpan', [CommunityController::class,
-        'bookmark'])->name('member.community.bookmark')->middleware('throttle:60,1,community-bookmark');
-    Route::get('/komunitas/tersimpan', [CommunityController::class, 'bookmarks'])->name('member.community.bookmarks');
-    Route::post('/komunitas/{post}/bagikan', [CommunityController::class,
-        'share'])->name('member.community.share')->middleware('throttle:20,1,community-share');
-    Route::put('/komunitas/{post}', [CommunityController::class, 'postUpdate'])->name('member.community.update');
-    Route::post('/komunitas/{post}/boost', [CommunityController::class,
-        'boostPost'])->name('member.community.boost')->middleware('throttle:5,1,community-boost');
-    Route::put('/komunitas/komentar/{comment}', [CommunityController::class, 'commentUpdate'])->name('member.community.comment.update');
-    Route::delete('/komunitas/komentar/{comment}', [CommunityController::class, 'commentDestroy'])->name('member.community.comment.destroy');
-    Route::post('/komunitas/komentar/{comment}/laporkan', [CommunityController::class,
-        'reportComment'])->name('member.community.comment.report')->middleware('throttle:10,1,community-report');
-    Route::post('/komunitas/komentar/{comment}/reaksi', [CommunityController::class,
-        'commentReact'])->name('member.community.comment.react')->middleware('throttle:60,1,community-react');
+    // Blog + komunitas (brand-gated: nonaktif → 404).
+    Route::middleware('brand.feature:community')->group(function () {
+        Route::get('/blog', fn () => view('member.blog.index'))->name('member.blog');
+        Route::get('/blog/{slug}', fn (string $slug) => view('member.blog.show', ['slug' => $slug]))->name('member.blog.show');
+        Route::get('/komunitas', [CommunityController::class, 'index'])->name('member.community');
+        Route::post('/komunitas', [CommunityController::class, 'store'])->name('member.community.store')->middleware('throttle:10,1,community-post');
+        Route::post('/komunitas/{post}/like', [CommunityController::class, 'toggleLike'])->name('member.community.like');
+        Route::post('/komunitas/{post}/komentar', [CommunityController::class, 'comment'])->name('member.community.comment')->middleware('throttle:30,1,community-comment');
+        Route::delete('/komunitas/{post}', [CommunityController::class, 'destroy'])->name('member.community.destroy');
+        Route::post('/komunitas/postingan/{post}/laporkan', [CommunityController::class,
+            'report'])->name('member.community.report')->middleware('throttle:10,1,community-report');
+        Route::post('/komunitas/{post}/reaksi', [CommunityController::class,
+            'react'])->name('member.community.react')->middleware('throttle:60,1,community-react');
+        Route::post('/komunitas/{post}/simpan', [CommunityController::class,
+            'bookmark'])->name('member.community.bookmark')->middleware('throttle:60,1,community-bookmark');
+        Route::get('/komunitas/tersimpan', [CommunityController::class, 'bookmarks'])->name('member.community.bookmarks');
+        Route::post('/komunitas/{post}/bagikan', [CommunityController::class,
+            'share'])->name('member.community.share')->middleware('throttle:20,1,community-share');
+        Route::put('/komunitas/{post}', [CommunityController::class, 'postUpdate'])->name('member.community.update');
+        Route::post('/komunitas/{post}/boost', [CommunityController::class,
+            'boostPost'])->name('member.community.boost')->middleware('throttle:5,1,community-boost');
+        Route::put('/komunitas/komentar/{comment}', [CommunityController::class, 'commentUpdate'])->name('member.community.comment.update');
+        Route::delete('/komunitas/komentar/{comment}', [CommunityController::class, 'commentDestroy'])->name('member.community.comment.destroy');
+        Route::post('/komunitas/komentar/{comment}/laporkan', [CommunityController::class,
+            'reportComment'])->name('member.community.comment.report')->middleware('throttle:10,1,community-report');
+        Route::post('/komunitas/komentar/{comment}/reaksi', [CommunityController::class,
+            'commentReact'])->name('member.community.comment.react')->middleware('throttle:60,1,community-react');
+    });
 
     // Social graph: follow / mute / suggested.
     Route::get('/pengikut/{user}', [FollowController::class, 'followers'])->name('member.followers');
@@ -698,41 +712,44 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::post('/stories/{story}/laporkan', [StoryController::class,
         'report'])->name('member.stories.report')->middleware('throttle:10,1,story-report');
 
-    // Communities (Groups).
-    Route::get('/groups', [GroupController::class, 'index'])->name('member.groups');
-    Route::post('/groups', [GroupController::class,
-        'store'])->name('member.groups.store')->middleware('throttle:5,1,group-create');
-    Route::get('/groups/{group:slug}', [GroupController::class, 'show'])->name('member.groups.show');
-    Route::post('/groups/{group}/join', [GroupController::class,
-        'join'])->name('member.groups.join')->middleware('throttle:20,1,group-join');
-    Route::delete('/groups/{group}/leave', [GroupController::class, 'leave'])->name('member.groups.leave');
-    // Premium platform: group cover / invite / join-request + member event create.
-    Route::post('/groups/{group}/cover', [GroupController::class,
-        'cover'])->name('member.groups.cover')->middleware('throttle:10,1,group-cover');
-    Route::post('/groups/{group}/invite', [GroupController::class,
-        'invite'])->name('member.groups.invite')->middleware('throttle:30,1,group-invite');
-    Route::post('/groups/{group}/request', [GroupController::class,
-        'requestJoin'])->name('member.groups.request')->middleware('throttle:10,1,group-request');
-    Route::post('/groups/{group}/requests/{joinRequest}', [GroupController::class,
-        'decideRequest'])->name('member.groups.requests.decide')->middleware('throttle:30,1,group-manage');
-    Route::post('/events', [EventController::class,
-        'store'])->name('member.events.store')->middleware('throttle:5,1,event-create');
-    Route::put('/groups/{group}', [GroupController::class, 'update'])->name('member.groups.update');
-    Route::post('/groups/{group}/members', [GroupController::class,
-        'manageMember'])->name('member.groups.members')->middleware('throttle:30,1,group-manage');
+    // Communities (Groups, brand-gated).
+    Route::middleware('brand.feature:community')->group(function () {
+        Route::get('/groups', [GroupController::class, 'index'])->name('member.groups');
+        Route::post('/groups', [GroupController::class,
+            'store'])->name('member.groups.store')->middleware('throttle:5,1,group-create');
+        Route::get('/groups/{group:slug}', [GroupController::class, 'show'])->name('member.groups.show');
+        Route::post('/groups/{group}/join', [GroupController::class,
+            'join'])->name('member.groups.join')->middleware('throttle:20,1,group-join');
+        Route::delete('/groups/{group}/leave', [GroupController::class, 'leave'])->name('member.groups.leave');
+        // Premium platform: group cover / invite / join-request + member event create.
+        Route::post('/groups/{group}/cover', [GroupController::class,
+            'cover'])->name('member.groups.cover')->middleware('throttle:10,1,group-cover');
+        Route::post('/groups/{group}/invite', [GroupController::class,
+            'invite'])->name('member.groups.invite')->middleware('throttle:30,1,group-invite');
+        Route::post('/groups/{group}/request', [GroupController::class,
+            'requestJoin'])->name('member.groups.request')->middleware('throttle:10,1,group-request');
+        Route::post('/groups/{group}/requests/{joinRequest}', [GroupController::class,
+            'decideRequest'])->name('member.groups.requests.decide')->middleware('throttle:30,1,group-manage');
+        Route::put('/groups/{group}', [GroupController::class, 'update'])->name('member.groups.update');
+        Route::post('/groups/{group}/members', [GroupController::class,
+            'manageMember'])->name('member.groups.members')->middleware('throttle:30,1,group-manage');
+    });
 
     // Global search.
     Route::get('/cari', [SearchController::class, 'index'])->name('member.search');
-    Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
-    Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
-    Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');
-    Route::post('/forums/search', [ForumController::class, 'search'])->name('member.forums.search');
-    Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->name('member.forums.threads.store');
-    Route::post('/forums/thread/{thread}/reply', [ForumController::class, 'reply'])->name('member.forums.thread.reply');
-    Route::put('/forums/thread/{thread}', [ForumController::class, 'updateThread'])->name('member.forums.thread.update');
-    Route::delete('/forums/thread/{thread}', [ForumController::class, 'destroyThread'])->name('member.forums.thread.destroy');
-    Route::put('/forums/reply/{reply}', [ForumController::class, 'updateReply'])->name('member.forums.reply.update');
-    Route::delete('/forums/reply/{reply}', [ForumController::class, 'destroyReply'])->name('member.forums.reply.destroy');
+    // Forums (brand-gated community).
+    Route::middleware('brand.feature:community')->group(function () {
+        Route::get('/forums', fn () => view('member.forums.index'))->name('member.forums');
+        Route::get('/forums/{slug}', fn (string $slug) => view('member.forums.threads', ['slug' => $slug]))->name('member.forums.threads');
+        Route::get('/forums/thread/{thread}', fn (int $thread) => view('member.forums.thread', ['threadId' => $thread]))->name('member.forums.thread');
+        Route::post('/forums/search', [ForumController::class, 'search'])->name('member.forums.search');
+        Route::post('/forums/{slug}/threads', [ForumController::class, 'storeThread'])->name('member.forums.threads.store');
+        Route::post('/forums/thread/{thread}/reply', [ForumController::class, 'reply'])->name('member.forums.thread.reply');
+        Route::put('/forums/thread/{thread}', [ForumController::class, 'updateThread'])->name('member.forums.thread.update');
+        Route::delete('/forums/thread/{thread}', [ForumController::class, 'destroyThread'])->name('member.forums.thread.destroy');
+        Route::put('/forums/reply/{reply}', [ForumController::class, 'updateReply'])->name('member.forums.reply.update');
+        Route::delete('/forums/reply/{reply}', [ForumController::class, 'destroyReply'])->name('member.forums.reply.destroy');
+    });
 });
 
 /* ---------- Admin HTML views (role-gated mirrors of admin.php) ---------- */

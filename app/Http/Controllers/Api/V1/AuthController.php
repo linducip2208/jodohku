@@ -28,6 +28,7 @@ class AuthController extends Controller
                 'date_of_birth' => $request->date('date_of_birth'),
                 'gender' => $request->input('gender'),
                 'city' => $request->input('city'),
+                'brand_id' => User::currentBrandId(),
             ]);
             Profile::firstOrCreate(['user_id' => $u->id]);
             $u->partnerPreference()->firstOrCreate([]);

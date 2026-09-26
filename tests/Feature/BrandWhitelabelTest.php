@@ -113,4 +113,59 @@ class BrandWhitelabelTest extends TestCase
         $html = $this->actingAs($admin)->get('/?preview_brand=draft')->assertOk()->getContent();
         $this->assertStringContainsString('Draf Cinta', $html);
     }
+
+    public function test_brand_feature_flag_enforced_backend(): void
+    {
+        $brand = Brand::create([
+            'slug' => 'g1', 'name' => 'Gated', 'primary_color' => '#111111',
+            'secondary_color' => '#222222', 'is_active' => true, 'is_default' => true,
+            'features' => ['events' => false, 'community' => false, 'taaruf' => false, 'counselor' => false],
+        ]);
+        $user = User::factory()->create();
+        // Nav hides + backend 404s (previously only hidden).
+        $html = $this->actingAs($user)->get('/home')->assertOk()->getContent();
+        $this->assertStringNotContainsString('> Events<', $html);
+        $this->actingAs($user)->get('/events')->assertNotFound();
+        $this->actingAs($user)->get('/komunitas')->assertNotFound();
+        $this->actingAs($user)->get('/biro-jodoh/taaruf')->assertNotFound();
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/events')->assertNotFound();
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/courtships')->assertNotFound();
+        unset($brand);
+    }
+
+    public function test_registration_attributes_brand(): void
+    {
+        $brand = Brand::create([
+            'slug' => 'r1', 'name' => 'Reg', 'primary_color' => '#111111',
+            'secondary_color' => '#222222', 'domain' => 'reg.test',
+            'is_active' => true, 'is_default' => true,
+        ]);
+        $this->post('/register', [
+            'name' => 'Brand User', 'email' => 'branduser@test.local',
+            'date_of_birth' => '1995-01-01', 'gender' => 'male',
+            'password' => 'password123', 'password_confirmation' => 'password123',
+        ])->assertRedirect('/home');
+        $this->assertSame($brand->id, User::where('email', 'branduser@test.local')->value('brand_id'));
+    }
+
+    public function test_client_scoped_to_own_brand(): void
+    {
+        $mine = Brand::create(['slug' => 'm1', 'name' => 'Mine', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true]);
+        $theirs = Brand::create(['slug' => 't1', 'name' => 'Theirs', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true]);
+        $client = User::factory()->create(['role' => UserRole::Client, 'brand_id' => $mine->id]);
+
+        // Index shows only own.
+        $list = $this->actingAs($client)->get('/admin/brands')->assertOk()->getContent();
+        $this->assertStringContainsString('Mine', $list);
+        $this->assertStringNotContainsString('Theirs', $list);
+        // Own edit OK, theirs forbidden.
+        $this->actingAs($client)->get("/admin/brands/{$mine->id}/edit")->assertOk();
+        $this->actingAs($client)->get("/admin/brands/{$theirs->id}/edit")->assertForbidden();
+        // Client cannot create/delete.
+        $this->actingAs($client)->get('/admin/brands/wizard')->assertForbidden();
+        $this->actingAs($client)->delete("/admin/brands/{$mine->id}")->assertForbidden();
+        // Unbound client gets nothing.
+        $lone = User::factory()->create(['role' => UserRole::Client]);
+        $this->actingAs($lone)->get('/admin/brands')->assertForbidden();
+    }
 }

@@ -7,12 +7,14 @@ use App\Enums\Gender;
 use App\Enums\SubscriptionStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Services\BrandService;
 use App\Services\ContactBlockService;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -39,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
         // controllers — always use validated only() allowlists (see
         // ProfileController::update, AuthController::register).
         'account_type',
+        'brand_id',
         'role',
         'status',
         'username',
@@ -318,6 +321,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function affiliateAccount(): HasOne
     {
         return $this->hasOne(AffiliateAccount::class);
+    }
+
+    /** Whitelabel brand this user registered under (null = default Jodohku). */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    /** Current request brand id for registration attribution (null-safe). */
+    public static function currentBrandId(): ?int
+    {
+        try {
+            return app(BrandService::class)->current()?->id;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function isFollowing(User $user): bool
