@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Brand;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -37,13 +39,77 @@ class BrandService
 
         return Cache::remember($key, 3600, function () use ($host) {
             $byDomain = Brand::where('is_active', true)->where('domain', $host)->first();
-            if ($byDomain && $byDomain->licensed()) {
+            if ($byDomain && $byDomain->licensed() && $this->domainAllowed($byDomain)) {
                 return $byDomain;
             }
             $default = Brand::where('is_active', true)->where('is_default', true)->first();
 
             return $default && $default->licensed() ? $default : null;
         });
+    }
+
+    /** Strict mode (BRAND_REQUIRE_VERIFICATION=true): unverified domains don't resolve. */
+    protected function domainAllowed(Brand $brand): bool
+    {
+        if ($brand->domain === null) {
+            return true;
+        }
+        if (! (bool) config('brands.require_verification', false)) {
+            return true;
+        }
+
+        return $brand->domain_verified_at !== null;
+    }
+
+    /** Issue (or reuse) the domain ownership token. */
+    public function verificationToken(Brand $brand): string
+    {
+        if (! $brand->verification_token) {
+            $brand->update(['verification_token' => bin2hex(random_bytes(16))]);
+        }
+
+        return $brand->fresh()->verification_token;
+    }
+
+    /**
+     * Verify domain ownership via DNS TXT (token) or HTTP file
+     * /.well-known/brand-verification.txt served by this app.
+     */
+    public function verifyDomain(Brand $brand): bool
+    {
+        if (! $brand->domain) {
+            throw new \RuntimeException('Brand belum punya domain.');
+        }
+        $token = $this->verificationToken($brand);
+        // 1) DNS TXT check.
+        try {
+            $records = @dns_get_record($brand->domain, DNS_TXT) ?: [];
+            foreach ($records as $r) {
+                if (isset($r['txt']) && str_contains($r['txt'], $token)) {
+                    return $this->markVerified($brand);
+                }
+            }
+        } catch (\Throwable) {
+        }
+        // 2) HTTP file check (works when DNS already points here).
+        try {
+            $res = Http::timeout(10)
+                ->get('http://'.$brand->domain.'/.well-known/brand-verification.txt');
+            if ($res->ok() && str_contains($res->body(), $token)) {
+                return $this->markVerified($brand);
+            }
+        } catch (\Throwable) {
+        }
+
+        return false;
+    }
+
+    protected function markVerified(Brand $brand): bool
+    {
+        $brand->update(['domain_verified_at' => now()]);
+        $this->forgetCache($brand);
+
+        return true;
     }
 
     /** @return array{name:string,tagline:string,primary:string,secondary:string,logo:?string,favicon:?string,slug:?string,features:array,content:array,expires_at:?string} */
@@ -171,6 +237,22 @@ class BrandService
         $hex = $this->sanitizeHex($hex) ?? '#f43f5e';
 
         return [hexdec(substr($hex, 1, 2)), hexdec(substr($hex, 3, 2)), hexdec(substr($hex, 5, 2))];
+    }
+
+    /** License quota: throws 422 when the brand is full (null = unlimited). */
+    public function assertRegistrationOpen(?int $brandId): void
+    {
+        if ($brandId === null) {
+            return;
+        }
+        $brand = Brand::find($brandId);
+        if (! $brand || ! $brand->max_users) {
+            return;
+        }
+        $count = User::where('brand_id', $brand->id)->count();
+        if ($count >= $brand->max_users) {
+            abort(422, 'Pendaftaran brand ini sudah penuh.');
+        }
     }
 
     /**

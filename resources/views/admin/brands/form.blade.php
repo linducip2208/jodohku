@@ -12,6 +12,15 @@
 <div class="mb-2"><label>Slug (kosongkan = otomatis)</label><input name="slug" class="form-control" maxlength="60" value="{{ old('slug', $brand->slug) }}" @if($brand->exists) readonly @endif></div>
 <div class="mb-2"><label>Tagline</label><input name="tagline" class="form-control" maxlength="200" value="{{ old('tagline', $brand->tagline) }}"></div>
 <div class="mb-2"><label>Domain (opsional, cth brand-anda.com)</label><input name="domain" class="form-control" maxlength="190" value="{{ old('domain', $brand->domain) }}"></div>
+@if($brand->exists && $brand->domain)
+<div class="mb-2"><div class="card"><div class="card-header">Verifikasi domain</div><div class="card-body">
+@if($brand->domain_verified_at)<div class="alert alert-success">Terverifikasi {{ $brand->domain_verified_at->diffForHumans() }} ✅</div>
+@else<div class="alert alert-warning">Belum terverifikasi — tanpa ini orang bisa klaim domain Anda.</div>@endif
+<p>Token: <code>{{ $brand->verification_token ?? '—' }}</code></p>
+<p class="text-muted">Cara 1 (DNS): TXT record <code>{{ $brand->domain }}</code> berisi token di atas.<br>Cara 2 (HTTP): arahkan DNS ke server ini — file verifikasi otomatis tayang.</p>
+<form method="POST" action="{{ route('admin.brands.verify', $brand) }}">@csrf<button class="btn btn-info" type="submit">Cek verifikasi</button></form>
+</div></div></div>
+@endif
 <div class="mb-2"><label>Warna primer</label><input type="color" name="primary_color" id="f-primary" value="{{ old('primary_color', $brand->primary_color ?? '#f43f5e') }}"></div>
 <div class="mb-2"><label>Warna sekunder</label><input type="color" name="secondary_color" id="f-secondary" value="{{ old('secondary_color', $brand->secondary_color ?? '#8b5cf6') }}"></div>
 <div class="mb-2"><label>Logo (PNG/JPG/WebP/SVG ≤2MB)</label><input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp,.svg" class="form-control">

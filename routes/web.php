@@ -31,6 +31,7 @@ use App\Http\Controllers\Member\SettingsController;
 use App\Http\Controllers\Member\StoryController;
 use App\Http\Controllers\PublicSeoController;
 use App\Models\Block;
+use App\Models\Brand;
 use App\Models\ContactMessage;
 use App\Models\Conversation;
 use App\Models\Event;
@@ -160,6 +161,20 @@ Route::get('/manifest.webmanifest', function () {
     ])->header('Content-Type', 'application/manifest+json');
 })->name('pwa.manifest');
 
+// Brand domain-ownership file (whitelabel verification method #2).
+// Looks the brand up by host directly (bypasses the verification gate,
+// otherwise strict mode could never verify via HTTP).
+Route::get('/.well-known/brand-verification.txt', function (Request $request) {
+    try {
+        $brand = Brand::where('is_active', true)->where('domain', $request->getHost())->first();
+        if ($brand?->verification_token) {
+            return response($brand->verification_token, 200, ['Content-Type' => 'text/plain']);
+        }
+    } catch (Throwable) {
+    }
+    abort(404);
+})->name('brand.verification-file');
+
 // PWA offline shell (cached by sw.js; never breaks web when offline).
 Route::get('/offline-fallback', fn () => response()->view('pwa.offline'))->name('pwa.offline');
 
@@ -266,6 +281,8 @@ Route::middleware('guest')->group(function () {
             'gender' => 'required|in:male,female',
             'password' => 'required|min:8|confirmed',
         ]);
+        $brandId = User::currentBrandId();
+        app(BrandService::class)->assertRegistrationOpen($brandId);
         $user = User::create([
             'name' => $data['name'],
             'display_name' => $data['name'],
@@ -273,7 +290,7 @@ Route::middleware('guest')->group(function () {
             'date_of_birth' => $data['date_of_birth'],
             'gender' => $data['gender'],
             'password' => Hash::make($data['password']),
-            'brand_id' => User::currentBrandId(),
+            'brand_id' => $brandId,
         ]);
         try {
             $user->profile()->create([]);

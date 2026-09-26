@@ -11,7 +11,8 @@ class Brand extends Model
 
     protected $fillable = [
         'slug', 'name', 'tagline', 'primary_color', 'secondary_color',
-        'logo_path', 'favicon_path', 'domain', 'is_active', 'is_default',
+        'logo_path', 'favicon_path', 'domain', 'verification_token',
+        'domain_verified_at', 'is_active', 'is_default',
         'expires_at', 'max_users', 'features', 'footer', 'content',
     ];
 
@@ -21,6 +22,7 @@ class Brand extends Model
             'is_active' => 'boolean',
             'is_default' => 'boolean',
             'expires_at' => 'datetime',
+            'domain_verified_at' => 'datetime',
             'features' => 'array',
             'footer' => 'array',
             'content' => 'array',

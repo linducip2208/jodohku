@@ -37,6 +37,16 @@ Jual codebase yang sama ke banyak klien dengan brand berbeda.
   Buat/hapus/impor tetap admin.
 - Gate `brand-manager` + `BrandPolicy` (viewAny/view/update/delete).
 
+## Keamanan domain & kuota lisensi
+
+- Setiap brand ber-domain dapat token verifikasi otomatis.
+  Buktikan kepemilikan via DNS TXT **atau** file HTTP
+  (ditayangkan app ini di `/.well-known/brand-verification.txt`).
+- Tombol "Cek verifikasi" di form brand; ganti domain me-reset status.
+- Mode ketat `BRAND_REQUIRE_VERIFICATION=true`: domain tak terverifikasi
+  tidak resolve (fallback Jodohku). Default false (peringatan di admin).
+- `max_users` ditegakkan saat registrasi (422 bila penuh).
+
 ## Paket jualan (siap demo ke klien)
 
 - **Stats per brand** (`/admin/brands/{brand}/stats` + API):

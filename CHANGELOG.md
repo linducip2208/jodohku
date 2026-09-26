@@ -62,6 +62,7 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Whitelabel Tier 3: tabel `brands`, resolusi per-domain (cache 1 jam), admin CRUD + wizard onboarding (live preview + preview landing), feature flag per-brand di navigasi, brand di layout/mail/manifest/PWA, export/import paket zip.
 - Whitelabel P1: enforce `brand.feature` backend (web+API, 404), `users.brand_id` atribusi registrasi, role `client` + `BrandPolicy` scope own-brand.
 - Whitelabel jualan: stats per brand (API+web, dasar tagihan), 5 template preset, ikon PWA auto-generate, copy landing per brand, lisensi `expires_at`/`max_users`.
+- Whitelabel trust: verifikasi domain (DNS TXT / HTTP well-known, reset saat ganti domain, mode ketat opsional), enforce kuota `max_users` di registrasi.
 - Chat draft outbox: draf tersimpan per-percakapan (localStorage), pulih saat kembali.
 - Sapu TODO: tidak ada TODO/FIXME/placeholder di app/views; 623 routes OK.
 

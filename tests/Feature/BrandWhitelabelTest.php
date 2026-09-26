@@ -8,7 +8,10 @@ use App\Models\User;
 use App\Services\BrandService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class BrandWhitelabelTest extends TestCase
@@ -206,5 +209,44 @@ class BrandWhitelabelTest extends TestCase
         $brand->update(['content' => ['hero_title' => 'Cinta Sejati Dimulai']]);
         $html = $this->actingAs($admin)->get("/?preview_brand={$brand->id}")->assertOk()->getContent();
         $this->assertStringContainsString('Cinta Sejati Dimulai', $html);
+    }
+
+    public function test_domain_verification_and_strict_mode(): void
+    {
+        $brand = Brand::create(['slug' => 'dv', 'name' => 'DV', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'domain' => 'dv.test', 'is_active' => true]);
+        $svc = app(BrandService::class);
+        $token = $svc->verificationToken($brand);
+        $this->assertNotEmpty($token);
+        $this->assertNull($brand->fresh()->domain_verified_at);
+        $this->assertTrue(Brand::where('domain', 'dv.test')->exists());
+
+        // Well-known file serves the token for that host.
+        // NOTE: test URLs are built from the booted UrlGenerator, so force
+        // the root host for host-dependent routes.
+        URL::forceRootUrl('http://dv.test');
+        $res = $this->get('/.well-known/brand-verification.txt');
+        $this->assertSame(200, $res->status());
+        $this->assertStringContainsString($token, (string) $res->getContent());
+
+        // HTTP verification passes with faked HTTP (DNS fails locally).
+        Http::fake(['http://dv.test/*' => Http::response($token, 200)]);
+        $this->assertTrue($svc->verifyDomain($brand->fresh()));
+        $this->assertNotNull($brand->fresh()->domain_verified_at);
+
+        // Strict mode: unverified domains don't resolve.
+        config(['brands.require_verification' => true]);
+        $unv = Brand::create(['slug' => 'uv', 'name' => 'UV', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'domain' => 'uv.test', 'is_active' => true]);
+        $svc->verificationToken($unv);
+        $this->assertNull($svc->current('uv.test'));
+        config(['brands.require_verification' => false]);
+    }
+
+    public function test_max_users_enforced_at_registration(): void
+    {
+        $brand = Brand::create(['slug' => 'mq', 'name' => 'MQ', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'domain' => 'mq.test', 'is_active' => true, 'is_default' => true, 'max_users' => 1]);
+        User::factory()->create(['brand_id' => $brand->id]);
+        $this->assertSame(1, User::where('brand_id', $brand->id)->count());
+        $this->expectException(HttpException::class);
+        app(BrandService::class)->assertRegistrationOpen($brand->id);
     }
 }

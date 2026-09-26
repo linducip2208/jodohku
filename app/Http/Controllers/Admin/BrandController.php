@@ -80,6 +80,12 @@ class BrandController extends Controller
         ]);
         $this->storeAssets($request, $brand);
         $brand->save();
+        if ($brand->domain && ! $brand->verification_token) {
+            try {
+                $brands->verificationToken($brand->fresh());
+            } catch (\Throwable) {
+            }
+        }
         if ($request->hasFile('logo') && $brand->logo_path) {
             try {
                 $brands->generateIcons($brand);
@@ -129,6 +135,16 @@ class BrandController extends Controller
             $brand->is_default = true;
         }
         $brand->save();
+        if ($brand->wasChanged('domain')) {
+            // Domain swap resets verification (anti-takeover).
+            $brand->update(['domain_verified_at' => null]);
+        }
+        if ($brand->domain && ! $brand->fresh()->verification_token) {
+            try {
+                $brands->verificationToken($brand->fresh());
+            } catch (\Throwable) {
+            }
+        }
         if ($request->hasFile('logo') && $brand->logo_path) {
             try {
                 $brands->generateIcons($brand);
@@ -154,6 +170,24 @@ class BrandController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => 'Deleted.'])
             : redirect()->route('admin.brands')->with('status', 'Brand dihapus.');
+    }
+
+    /** Verify domain ownership (DNS TXT or HTTP file). */
+    public function verifyDomain(Request $request, Brand $brand, BrandService $brands, AuditService $audit)
+    {
+        $this->authorize('update', $brand);
+        try {
+            $ok = $brands->verifyDomain($brand);
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['domain' => $e->getMessage()]);
+        }
+        $audit->log('admin.brand.domain_verified', $request->user(), $brand->fresh(), [], ['ok' => $ok]);
+
+        return $request->wantsJson()
+            ? response()->json(['verified' => $ok])
+            : back()->with('status', $ok ? 'Domain terverifikasi ✅' : 'Belum terverifikasi — pasang TXT atau arahkan DNS dulu.');
     }
 
     /** Per-brand stats for clients (billing basis) + admins. */

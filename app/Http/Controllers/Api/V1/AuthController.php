@@ -8,6 +8,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\BrandService;
 use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,9 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request)
     {
-        $user = DB::transaction(function () use ($request) {
+        $brandId = User::currentBrandId();
+        app(BrandService::class)->assertRegistrationOpen($brandId);
+        $user = DB::transaction(function () use ($request, $brandId) {
             $u = User::create([
                 'name' => $request->string('name'),
                 'email' => $request->string('email'),
@@ -28,7 +31,7 @@ class AuthController extends Controller
                 'date_of_birth' => $request->date('date_of_birth'),
                 'gender' => $request->input('gender'),
                 'city' => $request->input('city'),
-                'brand_id' => User::currentBrandId(),
+                'brand_id' => $brandId,
             ]);
             Profile::firstOrCreate(['user_id' => $u->id]);
             $u->partnerPreference()->firstOrCreate([]);

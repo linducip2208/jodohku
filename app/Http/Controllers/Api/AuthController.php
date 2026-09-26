@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\UserRegistered;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\BrandService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -22,6 +23,8 @@ class AuthController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
         ]);
 
+        $brandId = User::currentBrandId();
+        app(BrandService::class)->assertRegistrationOpen($brandId);
         $user = User::create([
             'name' => $data['name'],
             'display_name' => explode(' ', $data['name'])[0],
@@ -31,7 +34,7 @@ class AuthController extends Controller
             'gender' => $data['gender'] ?? null,
             'city' => $data['city'] ?? null,
             'country' => 'Indonesia',
-            'brand_id' => User::currentBrandId(),
+            'brand_id' => $brandId,
         ]);
 
         event(new UserRegistered($user));
