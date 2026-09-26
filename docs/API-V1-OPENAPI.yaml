@@ -34,10 +34,12 @@ components:
 paths:
   /health: { get: { security: [], summary: Public health alias (redirects to GET /health) } }
   /sync: { get: { summary: Incremental sync (matches/messages/notifications since timestamp) } }
+  /trial: { post: { summary: Claim once-ever premium trial } }
   /dates:
     get: { summary: My date plans }
     post: { summary: Propose a date (match/chat only) }
   /dates/{id}/respond: { post: { summary: Accept/decline (partner only) } }
+  /admin/brands/{id}/stats: { get: { summary: Per-brand stats (admin/client own) } }
   /auth/register:
     post:
       security: []
