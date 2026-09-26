@@ -91,7 +91,7 @@ php artisan queue:work
 
 ```bash
 php artisan migrate:fresh --seed --force
-php artisan test   # 280 passed
+php artisan test   # 294 passed
 ```
 
 ## التوثيق

@@ -89,7 +89,7 @@ Test & fresh seed:
 
 ```bash
 php artisan migrate:fresh --seed --force
-php artisan test   # 280 passed
+php artisan test   # 294 passed
 ```
 
 ## Docs
