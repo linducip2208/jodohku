@@ -194,7 +194,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/plans/features', [AccountController::class, 'plansFeatures']);
         Route::get('/subscriptions', [AccountController::class, 'subscriptions']);
         Route::get('/subscriptions/history', [AccountController::class, 'subscriptionHistory']);
-        Route::post('/subscriptions/{subscription}/cancel', [AccountController::class, 'cancelSubscription']);
+        Route::post('/subscriptions/{subscription}/cancel', [AccountController::class,
+            'cancelSubscription']);
+        Route::post('/trial', [AccountController::class, 'trial'])->middleware('throttle:3,1,trial');
 
         Route::get('/payments', [AccountController::class, 'payments']);
         Route::get('/payments/summary', [AccountController::class, 'paymentSummary']);

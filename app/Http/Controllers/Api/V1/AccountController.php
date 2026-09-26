@@ -52,6 +52,21 @@ class AccountController extends Controller
         return response()->json($membership->plans());
     }
 
+    /** Claim the once-ever free trial (brand-catalog aware). */
+    public function trial(Request $request, SubscriptionService $subs)
+    {
+        if (! $subs->trialEligible($request->user())) {
+            return response()->json(['message' => 'Trial sudah pernah dipakai.'], 422);
+        }
+        try {
+            $sub = $subs->startTrial($request->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($sub->fresh(), 201);
+    }
+
     public function subscriptions(Request $request)
     {
         return response()->json(SubscriptionResource::collection($request->user()->subscriptions()->with('plan')->latest('id')->paginate(20))->response()->getData());

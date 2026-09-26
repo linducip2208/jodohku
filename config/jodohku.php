@@ -22,6 +22,10 @@ return [
         'rewind_cooldown_minutes' => 5,
     ],
 
+    'trial' => [
+        'days' => env('TRIAL_DAYS', 7),
+    ],
+
     'boost' => [
         'post_cost' => env('BOOST_POST_COST', 50),
     ],

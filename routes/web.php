@@ -51,6 +51,7 @@ use App\Services\MatchingEngine;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
 use App\Services\PseoService;
+use App\Services\SubscriptionService;
 use App\Services\TwoFactorService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
@@ -490,6 +491,18 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     });
 
     Route::get('/premium', fn () => view('member.premium.plans'))->name('member.premium');
+    Route::post('/premium/trial', function (Request $r, SubscriptionService $subs) {
+        if (! $subs->trialEligible($r->user())) {
+            return back()->withErrors(['trial' => 'Trial sudah pernah dipakai.']);
+        }
+        try {
+            $subs->startTrial($r->user());
+        } catch (Throwable $e) {
+            return back()->withErrors(['trial' => $e->getMessage()]);
+        }
+
+        return redirect('/premium')->with('status', 'Trial Premium aktif 🎉 Nikmati semua fitur!');
+    })->name('member.premium.trial')->middleware('throttle:3,1,trial');
     Route::get('/payments', function () {
         $payments = Auth::user()->payments()->latest('id')->paginate(20);
 

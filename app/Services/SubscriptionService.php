@@ -75,6 +75,24 @@ class SubscriptionService
         return ! Subscription::where('user_id', $user->id)->whereNotNull('trial_ends_at')->exists();
     }
 
+    /**
+     * Claim the free trial (default plan = first brand-catalog plan).
+     * Once-ever per user; throws when ineligible.
+     */
+    public function startTrial(User $user, ?MembershipPlan $plan = null): Subscription
+    {
+        if (! $this->trialEligible($user)) {
+            throw new \RuntimeException('Trial sudah pernah dipakai.');
+        }
+        $plan ??= app(MembershipService::class)->plans()->first();
+        if (! $plan) {
+            throw new \RuntimeException('Paket trial belum tersedia.');
+        }
+        $days = max(1, (int) config('jodohku.trial.days', 7));
+
+        return $this->activate($user, $plan, ['trial_days' => $days, 'auto_renew' => false]);
+    }
+
     /** Immediate plan switch: activate the new plan (overlapping actives expire). */
     public function switchPlan(User $user, MembershipPlan $plan, array $opts = []): Subscription
     {
@@ -88,7 +106,8 @@ class SubscriptionService
     {
         $count = 0;
         Subscription::whereIn('status', [SubscriptionStatus::Active->value, SubscriptionStatus::Trialing->value])
-            ->where('ends_at', '<=', now())
+            ->where(fn ($q) => $q->where('ends_at', '<=', now())
+                ->orWhere(fn ($qq) => $qq->where('status', SubscriptionStatus::Trialing->value)->whereNotNull('trial_ends_at')->where('trial_ends_at', '<=', now())))
             ->limit($batch)->get()->each(function (Subscription $s) use (&$count) {
                 $this->expire($s);
                 $count++;

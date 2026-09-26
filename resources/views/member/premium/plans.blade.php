@@ -2,6 +2,13 @@
 @section('title', 'Premium — Jodohku')
 @section('content')
 <h1 class="jk-h1">Premium</h1><p class="jk-muted">Pilih paket yang sesuai dengan perjalananmu.</p>
+@php $trialOk = false; try { $trialOk = ! auth()->user()?->isPremium() && app(\App\Services\SubscriptionService::class)->trialEligible(auth()->user()); } catch (\Throwable) {} @endphp
+@if($trialOk)
+<div class="jk-section" style="border:2px solid var(--brand-primary, #f43f5e)"><div class="jk-h2">🎉 Coba Premium gratis {{ config('jodohku.trial.days', 7) }} hari</div>
+<p class="jk-muted">Sekali per akun, tanpa kartu kredit. Otomatis berakhir.</p>
+<form method="POST" action="{{ route('member.premium.trial') }}">@csrf<button class="jk-submit" type="submit">Aktifkan trial</button></form></div>
+@endif
+@if($errors->has('trial'))<div class="jk-alert">{{ $errors->first('trial') }}</div>@endif
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" aria-label="Fitur premium lainnya">
 <a class="jk-pill" href="/gifts">🎁 Gifts</a>
 <a class="jk-pill" href="/boosts">🚀 Boost</a>

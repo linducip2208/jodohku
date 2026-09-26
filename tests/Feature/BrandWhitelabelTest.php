@@ -10,6 +10,7 @@ use App\Services\BoostService;
 use App\Services\BrandService;
 use App\Services\GiftService;
 use App\Services\MembershipService;
+use App\Services\SubscriptionService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -308,5 +309,30 @@ class BrandWhitelabelTest extends TestCase
         $html = $this->get('/harga')->assertOk()->getContent();
         $this->assertStringContainsString('PL Premium', $html);
         $this->assertStringContainsString('49.000', $html);
+    }
+
+    public function test_premium_trial_once_and_expiry(): void
+    {
+        MembershipPlan::create(['code' => 'trial_plan', 'name' => 'Trial Plan', 'price' => 99000, 'is_active' => true]);
+        $user = User::factory()->create();
+        $svc = app(SubscriptionService::class);
+
+        $this->assertTrue($svc->trialEligible($user));
+        $sub = $svc->startTrial($user);
+        $this->assertSame('trialing', $sub->status->value ?? (string) $sub->status);
+        $this->assertTrue($user->fresh()->isPremium());
+        $this->assertFalse($svc->trialEligible($user->fresh()));
+        try {
+            $svc->startTrial($user->fresh());
+            $this->fail('Trial kedua harus ditolak.');
+        } catch (\RuntimeException) {
+        }
+        $sub->update(['trial_ends_at' => now()->subMinute()]);
+        $this->assertSame(1, $svc->expireDue());
+        $this->assertFalse($user->fresh()->isPremium());
+
+        $fresh = User::factory()->create();
+        $this->actingAs($fresh, 'sanctum')->postJson('/api/v1/trial')->assertCreated();
+        $this->actingAs($fresh, 'sanctum')->postJson('/api/v1/trial')->assertStatus(422);
     }
 }
