@@ -22,6 +22,7 @@ class PlanController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
             'is_active' => ['nullable', 'boolean'],
+            'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
         ]);
         $plan = MembershipPlan::create($request->all());
         $audit->log('admin.plan.created', $request->user(), $plan);

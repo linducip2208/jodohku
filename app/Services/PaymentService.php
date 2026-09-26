@@ -23,6 +23,7 @@ class PaymentService
         protected CreditService $credits,
         protected AuditService $audit,
         protected CouponService $coupons,
+        protected MembershipService $membership,
     ) {}
 
     /**
@@ -58,7 +59,8 @@ class PaymentService
 
         $plan = null;
         if (! empty($order['subscription_plan'])) {
-            $plan = MembershipPlan::where('code', $order['subscription_plan'])->firstOrFail();
+            // Brand-scoped: resolves within the active brand's catalog.
+            $plan = $this->membership->findOrFail($order['subscription_plan']);
             $amount += (float) $plan->price;
             $items[] = ['item_type' => 'subscription', 'item_id' => $plan->id, 'name' => $plan->name, 'quantity' => 1, 'unit_price' => (float) $plan->price, 'subtotal' => (float) $plan->price];
         }

@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Brand;
+use App\Models\MembershipPlan;
 use App\Models\User;
 use App\Services\BoostService;
 use App\Services\BrandService;
 use App\Services\GiftService;
+use App\Services\MembershipService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -285,5 +288,25 @@ class BrandWhitelabelTest extends TestCase
         // Middleware applies sender on web requests.
         $this->actingAs($admin)->get('/admin/brands')->assertOk();
         $this->assertSame('halo@ml.test', config('mail.from.address'));
+    }
+
+    public function test_brand_scoped_plans_and_public_pricing(): void
+    {
+        $brand = Brand::create(['slug' => 'pl', 'name' => 'PL', 'primary_color' => '#111111', 'secondary_color' => '#222222', 'is_active' => true, 'is_default' => true]);
+        MembershipPlan::create(['brand_id' => $brand->id, 'code' => 'pl_premium', 'name' => 'PL Premium', 'price' => 49000, 'is_active' => true]);
+        MembershipPlan::create(['code' => 'global_basic', 'name' => 'Global Basic', 'price' => 29000, 'is_active' => true]);
+
+        $codes = app(MembershipService::class)->plans()->pluck('code')->all();
+        $this->assertContains('pl_premium', $codes);
+        $this->assertNotContains('global_basic', $codes);
+        $this->assertSame('PL Premium', app(MembershipService::class)->findOrFail('pl_premium')->name);
+        try {
+            app(MembershipService::class)->findOrFail('global_basic');
+            $this->fail('Global plan harus tak terlihat di brand ber-katalog.');
+        } catch (ModelNotFoundException) {
+        }
+        $html = $this->get('/harga')->assertOk()->getContent();
+        $this->assertStringContainsString('PL Premium', $html);
+        $this->assertStringContainsString('49.000', $html);
     }
 }

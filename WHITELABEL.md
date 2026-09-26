@@ -61,6 +61,15 @@ Jual codebase yang sama ke banyak klien dengan brand berbeda.
 - Flag `gifts`/`boost` ditegakkan di service (bukan cuma nav):
   kirim gift & aktivasi boost lempar 422 saat brand menonaktifkan.
 
+## Harga per brand (siap jual)
+
+- `membership_plans.brand_id` (null = global). Brand berisi katalog
+  sendiri → katalog itu yang tampil & bisa di-checkout; global
+  tersembunyi untuk brand tersebut (kode tetap unik global).
+- Checkout (`PaymentService`) resolve via `MembershipService` sehingga
+  scoping otomatis berlaku di web + API.
+- Halaman publik `/harga`: tema + katalog brand aktif.
+
 ## Paket jualan (siap demo ke klien)
 
 - **Stats per brand** (`/admin/brands/{brand}/stats` + API):

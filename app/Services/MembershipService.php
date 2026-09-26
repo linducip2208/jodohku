@@ -4,23 +4,49 @@ namespace App\Services;
 
 use App\Models\MembershipPlan;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class MembershipService
 {
+    /**
+     * Plans for the active brand (brand's own when defined, else global).
+     * Brand plans use globally-unique codes (prefix per brand).
+     */
     public function plans(): Collection
     {
-        return MembershipPlan::active()->get();
+        return $this->scoped()->get();
     }
 
     public function find(string $code): ?MembershipPlan
     {
-        return MembershipPlan::where('code', $code)->where('is_active', true)->first();
+        return $this->scoped()->where('code', $code)->first();
     }
 
     public function findOrFail(string $code): MembershipPlan
     {
-        return MembershipPlan::where('code', $code)->where('is_active', true)->firstOrFail();
+        return $this->scoped()->where('code', $code)->firstOrFail();
+    }
+
+    /** Brand-owned plans win entirely when defined; else globals. */
+    protected function scoped(): Builder
+    {
+        $brandId = $this->currentBrandId();
+        $query = MembershipPlan::where('is_active', true);
+        if ($brandId !== null && MembershipPlan::where('brand_id', $brandId)->where('is_active', true)->exists()) {
+            return $query->where('brand_id', $brandId);
+        }
+
+        return $query->whereNull('brand_id');
+    }
+
+    protected function currentBrandId(): ?int
+    {
+        try {
+            return app(BrandService::class)->current()?->id;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** Feature entitlement matrix for the frontend comparison table. */

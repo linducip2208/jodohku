@@ -114,6 +114,9 @@ Route::get('/', function () {
     return view('welcome', compact('stats', 'demoMembers', 'stories', 'plans', 'onlineNow', 'feedPosts'));
 })->name('landing');
 
+// Public brand-aware pricing (uses the active brand's plan catalog).
+Route::get('/harga', fn () => view('landing.pricing'))->name('pricing');
+
 // PWA manifest (installable, standalone, push-ready architecture).
 // Brand-aware: name, theme color, and icons follow the active whitelabel brand.
 Route::get('/manifest.webmanifest', function () {
