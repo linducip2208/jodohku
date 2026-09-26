@@ -273,6 +273,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp'])->middleware('throttle:20,1,events');
             Route::get('/events/{event}/attendees', [EventController::class, 'attendees']);
             Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
+            Route::post('/events/{event}/speed/start', [EventController::class, 'startSpeedRounds'])->middleware('throttle:5,1,events');
+            Route::get('/events/{event}/speed', [EventController::class, 'speedRounds']);
         });
 
         Route::middleware('brand.feature:taaruf')->group(function () {

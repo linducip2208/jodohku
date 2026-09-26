@@ -49,7 +49,7 @@ Platform matchmaking premium + chat aman + taaruf terpandu + komunitas, dibangun
 - **Social graph**: follow/unfollow/mute + suggested (`FollowService`), privasi granular.
 - **Feed**: `FeedService` (candidates → filter → skor → rank → paginate), trending, boost postingan 24 jam, bookmark/share/reaksi 6 tipe/hashtag/mention.
 - **Stories 24 jam**, **Groups** (roles + cover + invite/request flow + halaman publik `/g/{slug}`), **forums/blog**, **global search** privacy-aware.
-- **Events**: meetup online/offline, RSVP → saran kenalan peserta (`/events/{event}/kenalan` + API suggested), nearby geo-search.
+- **Events**: meetup online/offline, RSVP → saran kenalan peserta (`/events/{event}/kenalan` + API suggested), nearby geo-search, **speed dating online** (ronde bergilir + chat + Like/Lewati → match).
 
 ### Admin, Analitik & Keamanan
 - **Admin control center**: dashboard KPI, funnel penuh (register → verified → discover → like → match → chat → call → taaruf → paying), cohort analysis, audit log tanpa-sekret, gateway secrets terenkripsi.

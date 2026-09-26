@@ -11,6 +11,8 @@
 <label>Selesai (opsional)</label><input name="ends_at" type="datetime-local">
 <label>Kapasitas (opsional)</label><input name="capacity" type="number" min="2" max="10000">
 <label><input type="checkbox" name="is_online" value="1"> Event online</label>
+<label>Format</label><select name="format"><option value="meetup">Meetup biasa</option><option value="speed_dating">⚡ Speed dating (ronde 5 mnt)</option></select>
+<label>Durasi ronde (menit, khusus speed dating)</label><input name="round_minutes" type="number" min="1" max="30" value="5">
 <button class="jk-submit" style="margin-top:10px" type="submit">Terbitkan</button></form>
 </details>
 @php $events = collect(); try { $events = \App\Models\Event::where('status', 'published')->latest('id')->take(12)->get(); } catch (\Throwable) {} @endphp

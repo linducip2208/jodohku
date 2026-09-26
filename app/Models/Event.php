@@ -19,7 +19,7 @@ class Event extends Model
         'host_id', 'title', 'slug', 'description', 'cover_path', 'city',
         'latitude', 'longitude',
         'venue', 'starts_at', 'ends_at', 'capacity', 'price', 'status',
-        'is_online', 'online_url',
+        'is_online', 'online_url', 'format', 'round_minutes',
     ];
 
     protected function casts(): array
@@ -51,6 +51,16 @@ class Event extends Model
     public function members(): HasMany
     {
         return $this->hasMany(EventMember::class);
+    }
+
+    public function speedRounds(): HasMany
+    {
+        return $this->hasMany(SpeedDatingRound::class);
+    }
+
+    public function isSpeedDating(): bool
+    {
+        return ($this->format ?? 'meetup') === 'speed_dating';
     }
 
     /** @param Builder<Event> $query */

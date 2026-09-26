@@ -8,6 +8,7 @@ use App\Models\Block;
 use App\Models\Event;
 use App\Models\User;
 use App\Services\AnalyticsService;
+use App\Services\SpeedDatingService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -48,6 +49,8 @@ class EventController extends Controller
             'capacity' => ['nullable', 'integer', 'min:2', 'max:10000'],
             'is_online' => ['nullable', 'boolean'],
             'online_url' => ['nullable', 'string', 'max:500'],
+            'format' => ['nullable', 'string', 'in:meetup,speed_dating'],
+            'round_minutes' => ['nullable', 'integer', 'min:1', 'max:30'],
         ]);
         $event = Event::create([
             'host_id' => $request->user()->id,
@@ -62,6 +65,8 @@ class EventController extends Controller
             'is_online' => (bool) ($data['is_online'] ?? false),
             'online_url' => $data['online_url'] ?? null,
             'status' => EventStatus::Published,
+            'format' => $data['format'] ?? 'meetup',
+            'round_minutes' => $data['round_minutes'] ?? 5,
         ]);
 
         return $request->wantsJson()
@@ -128,6 +133,33 @@ class EventController extends Controller
         $attendees = $event->members()->with('user')->where('status', 'confirmed')->paginate(20);
 
         return response()->json($attendees);
+    }
+
+    /** Host starts speed-dating rounds (idempotent). */
+    public function startSpeedRounds(Request $request, Event $event, SpeedDatingService $speed)
+    {
+        try {
+            $rounds = $speed->generate($event, $request->user());
+        } catch (\RuntimeException $e) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : back()->withErrors(['speed' => $e->getMessage()]);
+        }
+
+        return $request->wantsJson()
+            ? response()->json(['rounds' => count($rounds)])
+            : back()->with('status', count($rounds).' ronde speed dating dibuat ✅');
+    }
+
+    /** My rounds with live/upcoming/done state. */
+    public function speedRounds(Request $request, Event $event, SpeedDatingService $speed)
+    {
+        abort_unless($event->isSpeedDating(), 404);
+        $rounds = $speed->roundsFor($event, $request->user());
+
+        return $request->wantsJson()
+            ? response()->json($rounds)
+            : view('member.events.speed', ['event' => $event, 'rounds' => $rounds]);
     }
 
     /**

@@ -49,7 +49,7 @@ A premium matchmaking platform + safe chat + guided taaruf + community, built on
 - **Social graph**: follow/unfollow/mute + suggested people (`FollowService`), granular privacy.
 - **Feed**: `FeedService` (candidates → filter → score → rank → paginate), trending, 24h credit-boosted posts, bookmarks/shares/6 reaction types/hashtags/mentions.
 - **24h stories**, **Groups** (roles + covers + invite/request flow + public `/g/{slug}` pages), **forums/blog**, privacy-aware **global search**.
-- **Events**: online/offline meetups, RSVP → attendee discovery (`/events/{event}/kenalan` + suggested API), nearby geo-search.
+- **Events**: online/offline meetups, RSVP → attendee discovery (`/events/{event}/kenalan` + suggested API), nearby geo-search, **online speed dating** (rotating rounds + chat + Like/Pass → match).
 
 ### Admin, Analytics & Security
 - **Admin control center**: KPI dashboard, full funnel (register → verified → discover → like → match → chat → call → taaruf → paying), cohort analysis, secret-free audit log, encrypted gateway secrets.

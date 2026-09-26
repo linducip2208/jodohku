@@ -64,6 +64,7 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - Whitelabel jualan: stats per brand (API+web, dasar tagihan), 5 template preset, ikon PWA auto-generate, copy landing per brand, lisensi `expires_at`/`max_users`.
 - Whitelabel trust: verifikasi domain (DNS TXT / HTTP well-known, reset saat ganti domain, mode ketat opsional), enforce kuota `max_users` di registrasi.
 - Whitelabel enforce lengkap: flag gifts/boost di service + sender email per brand + docs subdomain wildcard.
+- Speed dating online: event format `speed_dating`, pairing round-robin idempoten, ronde + chat + Like/Lewati → match (`SpeedDatingService`, `/events/{event}/speed` web+API).
 - Chat draft outbox: draf tersimpan per-percakapan (localStorage), pulih saat kembali.
 - Sapu TODO: tidak ada TODO/FIXME/placeholder di app/views; 623 routes OK.
 
