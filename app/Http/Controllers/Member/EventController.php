@@ -6,11 +6,14 @@ use App\Enums\EventStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Block;
 use App\Models\Event;
+use App\Models\Group;
 use App\Models\User;
 use App\Services\AnalyticsService;
 use App\Services\SpeedDatingService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class EventController extends Controller
@@ -133,6 +136,41 @@ class EventController extends Controller
         $attendees = $event->members()->with('user')->where('status', 'confirmed')->paginate(20);
 
         return response()->json($attendees);
+    }
+
+    /** Host creates (or gets) the linked discussion group. Idempotent. */
+    public function discussion(Request $request, Event $event)
+    {
+        if ((int) $event->host_id !== (int) $request->user()->id && ! $request->user()->isStaff()) {
+            abort(403, 'Hanya host yang bisa membuat grup diskusi.');
+        }
+        $group = $event->discussionGroup;
+        $created = false;
+        if (! $group) {
+            $created = true;
+            $group = DB::transaction(function () use ($event) {
+                $g = Group::create([
+                    'owner_id' => $event->host_id,
+                    'name' => 'Diskusi: '.$event->title,
+                    'description' => 'Grup diskusi peserta event '.$event->title.'.',
+                    'visibility' => 'members_only',
+                    'event_id' => $event->id,
+                ]);
+                $g->members()->create(['user_id' => $event->host_id, 'role' => 'admin', 'joined_at' => now()]);
+                $g->update(['members_count' => 1]);
+                $event->update(['group_id' => $g->id]);
+
+                return $g->fresh();
+            });
+            try {
+                Cache::forget('seo:sitemap:groups');
+            } catch (\Throwable) {
+            }
+        }
+
+        return $request->wantsJson()
+            ? response()->json($group, $created ? 201 : 200)
+            : redirect('/groups/'.$group->slug)->with('status', 'Grup diskusi siap 💬');
     }
 
     /** Host starts speed-dating rounds (idempotent). */

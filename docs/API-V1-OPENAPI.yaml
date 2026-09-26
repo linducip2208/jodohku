@@ -33,6 +33,11 @@ components:
         is_premium: { type: boolean }
 paths:
   /health: { get: { security: [], summary: Public health alias (redirects to GET /health) } }
+  /sync: { get: { summary: Incremental sync (matches/messages/notifications since timestamp) } }
+  /dates:
+    get: { summary: My date plans }
+    post: { summary: Propose a date (match/chat only) }
+  /dates/{id}/respond: { post: { summary: Accept/decline (partner only) } }
   /auth/register:
     post:
       security: []
@@ -75,6 +80,8 @@ paths:
   /saved-filters/{id}/default: { post: { summary: Set default } }
   /events: { get: { summary: List events } }
   /events/{id}/suggested: { get: { summary: Discoverable attendees } }
+  /events/{id}/discussion: { post: { summary: Host creates linked group } }
+  /events/{id}/speed: { get: { summary: My speed-dating rounds } }
   /push-tokens:
     post: { summary: Register device token }
     delete: { summary: Remove token }

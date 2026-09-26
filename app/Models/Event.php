@@ -19,7 +19,7 @@ class Event extends Model
         'host_id', 'title', 'slug', 'description', 'cover_path', 'city',
         'latitude', 'longitude',
         'venue', 'starts_at', 'ends_at', 'capacity', 'price', 'status',
-        'is_online', 'online_url', 'format', 'round_minutes',
+        'is_online', 'online_url', 'format', 'round_minutes', 'group_id',
     ];
 
     protected function casts(): array
@@ -61,6 +61,12 @@ class Event extends Model
     public function isSpeedDating(): bool
     {
         return ($this->format ?? 'meetup') === 'speed_dating';
+    }
+
+    /** Linked discussion group (created on demand by the host). */
+    public function discussionGroup(): BelongsTo
+    {
+        return $this->belongsTo(Group::class, 'group_id');
     }
 
     /** @param Builder<Event> $query */

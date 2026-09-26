@@ -20,5 +20,10 @@
 @endif
 </div>
 @endif
+@if($event->group_id)
+<div style="margin-top:8px"><a class="jk-pill" href="/groups/{{ $event->discussionGroup?->slug ?? $event->group_id }}">💬 Grup diskusi event</a></div>
+@elseif(auth()->check() && (int) $event->host_id === (int) auth()->id())
+<div style="margin-top:8px"><form method="POST" action="/events/{{ $event->id }}/discussion" style="display:inline">@csrf<button class="jk-pill" type="submit">＋ Buat grup diskusi</button></form></div>
+@endif
 </div>
 @endsection

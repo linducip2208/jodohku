@@ -17,7 +17,7 @@ class Group extends Model
 
     protected $fillable = [
         'owner_id', 'name', 'slug', 'description', 'cover_path', 'visibility',
-        'category', 'interests', 'rules', 'members_count', 'posts_count',
+        'category', 'interests', 'rules', 'members_count', 'posts_count', 'event_id',
     ];
 
     protected function casts(): array

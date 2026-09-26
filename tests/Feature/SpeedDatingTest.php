@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserMatch;
 use App\Services\LikeService;
 use App\Services\SpeedDatingService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -108,5 +109,38 @@ class SpeedDatingTest extends TestCase
         $this->assertSame(0, UserMatch::count());
         app(LikeService::class)->like($b, $a);
         $this->assertSame(1, UserMatch::count());
+    }
+
+    public function test_event_discussion_group_idempotent(): void
+    {
+        $host = User::factory()->create();
+        $event = Event::create([
+            'host_id' => $host->id, 'title' => 'Ngopi',
+            'slug' => 'ngopi-'.uniqid(), 'city' => 'Jakarta',
+            'starts_at' => now()->addDays(2), 'status' => 'published',
+        ]);
+        $member = User::factory()->create();
+
+        $this->actingAs($member, 'sanctum')->postJson("/api/v1/events/{$event->id}/discussion")->assertForbidden();
+        $first = $this->actingAs($host, 'sanctum')->postJson("/api/v1/events/{$event->id}/discussion")->assertCreated()->json();
+        $second = $this->actingAs($host, 'sanctum')->postJson("/api/v1/events/{$event->id}/discussion")->assertOk()->json();
+        $this->assertSame($first['id'], $second['id']);
+        $this->assertSame($first['id'], $event->fresh()->group_id);
+        $this->assertStringContainsString('Diskusi:', $first['name']);
+    }
+
+    public function test_sync_delta_returns_sections(): void
+    {
+        [$a, $b] = [User::factory()->create(), User::factory()->create()];
+        app(LikeService::class)->like($a, $b);
+        app(LikeService::class)->like($b, $a);
+
+        $json = $this->actingAs($a, 'sanctum')->getJson('/api/v1/sync?since='.urlencode(now()->subHour()->toIso8601String()))->assertOk()->json();
+        $this->assertArrayHasKey('server_time', $json);
+        $this->assertNotEmpty($json['matches']);
+        $this->assertArrayHasKey('messages', $json);
+        $this->assertArrayHasKey('notifications', $json);
+        $old = $this->actingAs($a, 'sanctum')->getJson('/api/v1/sync?since='.urlencode(now()->subDays(30)->toIso8601String()))->assertOk()->json();
+        $this->assertTrue(Carbon::parse($old['since'])->gte(now()->subDays(7)->subMinute()));
     }
 }

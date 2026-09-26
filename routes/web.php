@@ -662,6 +662,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
         Route::get('/events/{event}/kenalan', [EventController::class, 'suggested'])->name('member.events.suggested');
         Route::post('/events/{event}/speed/start', [EventController::class, 'startSpeedRounds'])->name('member.events.speed.start')->middleware('throttle:5,1,events');
         Route::get('/events/{event}/speed', [EventController::class, 'speedRounds'])->name('member.events.speed');
+        Route::post('/events/{event}/discussion', [EventController::class, 'discussion'])->name('member.events.discussion')->middleware('throttle:5,1,events');
         Route::post('/events/nearby', [EventController::class, 'nearby'])->name('member.events.nearby');
         Route::post('/events', [EventController::class,
             'store'])->name('member.events.store')->middleware('throttle:5,1,event-create');

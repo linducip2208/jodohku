@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PushController;
 use App\Http\Controllers\Api\V1\SavedFilterController;
 use App\Http\Controllers\Api\V1\SocialController;
+use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Member\AiAssistantController;
 use App\Http\Controllers\Member\BiroJodohController;
@@ -198,6 +199,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/subscriptions/{subscription}/cancel', [AccountController::class,
             'cancelSubscription']);
         Route::post('/trial', [AccountController::class, 'trial'])->middleware('throttle:3,1,trial');
+        Route::get('/sync', [SyncController::class, 'delta'])->middleware('throttle:60,1,sync');
 
         Route::get('/payments', [AccountController::class, 'payments']);
         Route::get('/payments/summary', [AccountController::class, 'paymentSummary']);
@@ -278,6 +280,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             Route::get('/events/{event}/speed', [EventController::class, 'speedRounds']);
             Route::post('/events/{event}/speed/start', [EventController::class, 'startSpeedRounds'])->middleware('throttle:5,1,events');
             Route::get('/events/{event}/suggested', [EventController::class, 'suggested']);
+            Route::post('/events/{event}/discussion', [EventController::class, 'discussion'])->middleware('throttle:5,1,events');
 
             // Ajak Kencan: propose → accept/decline → H-24 reminder.
             Route::get('/dates', [DatePlanController::class, 'index']);
