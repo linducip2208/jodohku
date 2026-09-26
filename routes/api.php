@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\GatewayController as AdminGatewayController;
+use App\Http\Controllers\Admin\ModerationController as AdminModerationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AdminController;
@@ -20,11 +22,14 @@ use App\Http\Controllers\Member\ChatRequestController;
 use App\Http\Controllers\Member\EventController;
 use App\Http\Controllers\Member\ForumController;
 use App\Http\Controllers\Member\MatchController;
+use App\Http\Controllers\Member\MessageController as MemberMessageController;
 use App\Http\Controllers\Member\SafetyController;
 use App\Http\Controllers\Member\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
+    // Public health alias (single source of truth lives at GET /health).
+    Route::get('/health', fn () => redirect('/health'))->middleware('throttle:60,1,api-health')->name('health');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1,auth-register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,auth-login');
 
@@ -123,7 +128,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/conversations/{conversation}', [ChatController::class, 'show']);
         Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
         Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:30,1,chat-send');
-        Route::post('/chat/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
+        Route::post('/chat/{conversation}/attachments', [ChatController::class,
+            'upload'])->middleware('throttle:30,1,chat-upload');
+        Route::get('/chat/attachments/{attachment}', [MemberMessageController::class, 'download']);
         Route::post('/conversations/{conversation}/attachments', [ChatController::class, 'upload'])->middleware('throttle:30,1,chat-upload');
         Route::get('/chat/conversations', [ChatController::class, 'conversations']);
         Route::get('/chat/conversations/search', [ChatController::class, 'search']);
@@ -296,5 +303,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/admin/users/export', [UserController::class, 'export'])->middleware('role:admin,superadmin');
         Route::post('/admin/users/impersonate', [UserController::class, 'impersonate'])->middleware('role:admin,superadmin');
         Route::post('/admin/users/stop-impersonate', [UserController::class, 'stopImpersonate'])->middleware('role:admin,superadmin');
+        // Payment gateways (masked secrets, Crypt at rest) + report resolution.
+        Route::get('/admin/gateways', [AdminGatewayController::class, 'index'])->middleware('role:admin,superadmin');
+        Route::post('/admin/gateways/{gateway}/toggle', [AdminGatewayController::class, 'toggle'])->middleware('role:admin,superadmin');
+        Route::post('/admin/gateways/{gateway}/credentials', [AdminGatewayController::class, 'credentials'])->middleware('role:superadmin');
+        Route::post('/admin/gateways/{gateway}/priority', [AdminGatewayController::class, 'priority'])->middleware('role:admin,superadmin');
+        Route::post('/admin/reports/{report}/resolve', [AdminModerationController::class, 'resolveReport'])->middleware('role:moderator,admin,superadmin');
     });
 });

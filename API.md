@@ -17,7 +17,9 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | POST | `/checkout` | sanctum | `gateway` + `subscription_plan`/`credit_product` + opsional `coupon_code` (diskon persen/nominal, redeem atomik; kupon tak valid → 422 tanpa orphan payment) |
 | GET | `/admin/overview` | sanctum+`admin` | `users_total`, `reports_pending` (403 untuk member) |
 | GET | `/admin/gateways` | sanctum+`can:admin` | daftar gateway; sekret dimask `***encrypted***` |
-| POST | `/admin/gateways/{code}` | sanctum+`can:admin` | simpan setting; sekret dienkripsi `Crypt` |
+| POST | `/admin/gateways/{gateway}/toggle` | sanctum+`admin` | aktif/nonaktif gateway |
+| POST | `/admin/gateways/{gateway}/credentials` | sanctum+`superadmin` | simpan setting; sekret dienkripsi `Crypt` |
+| POST | `/admin/gateways/{gateway}/priority` | sanctum+`admin` | urutan prioritas gateway |
 | POST | `/conversations/{conversation}/messages` | sanctum | kirim pesan (`client_message_id` idempoten; kuota per peer: free 1, premium 30 → 429 + `upgrade`) |
 | GET | `/chat/quota?user_id=` | sanctum | sisa kuota pesan ke user (`limit/used/remaining`) |
 | GET | `/chat/themes`, `/chat/stickers` | sanctum | preset tema & katalog stiker |
@@ -37,7 +39,7 @@ Base: `/api/v1`. Auth Sanctum bearer (`POST /auth/*` → `token`).
 | GET | `/courtships/journey/{partner}` | sanctum | marriage journey dari data aktual (match/chat/stage/konseling/wali/nikah) |
 | GET | `/consultations/counseling` | sanctum+konselor | booking yang ditugaskan + laporan yang dibagikan eksplisit |
 | GET | `/ai/taaruf-topics/{user}` | sanctum | topik taaruf grounded + pertanyaan siap pakai |
-| GET | `/health` | publik | status aplikasi + database (tanpa secrets) |
+| GET | `/health` + `/api/v1/health` (alias redirect) | publik | status aplikasi + database (tanpa secrets) |
 | POST | `/conversations/{conversation}/attachments` | sanctum | upload foto/video/audio/PDF + kirim sebagai pesan (throttle chat-upload; disk privat) |
 | GET | `/chat/attachments/{attachment}` | sanctum+policy | unduh lampiran (hanya member percakapan/staff; fallback baca file lama publik) |
 | POST | `/conversations/{conversation}/typing` | sanctum | indikator mengetik (broadcast Reverb) |

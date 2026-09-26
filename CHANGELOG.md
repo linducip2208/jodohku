@@ -58,6 +58,7 @@ Format: `Added / Changed / Fixed / Security`. Version di `config/app.php`
 - TOTP QR SVG (`/settings/2fa/totp/qr`, bacon-qr-code) — pindai tanpa ketik.
 - Video: batas durasi opsional via `FFPROBE_PATH` (skip aman bila absen).
 - Docs: contoh register API lengkap, INSTALL hitungan tes, SECURITY (TOTP/HMAC/GPS/FCM), DEPLOY (FCMv1/QR/ffprobe).
+- Tutup gap MD-vs-source: API admin gateways, report resolve, attachment download, `/api/v1/health` alias; OpenAPI diperluas.
 - Chat draft outbox: draf tersimpan per-percakapan (localStorage), pulih saat kembali.
 - Sapu TODO: tidak ada TODO/FIXME/placeholder di app/views; 623 routes OK.
 

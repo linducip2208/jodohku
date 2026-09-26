@@ -11,6 +11,7 @@ use App\Models\Courtship;
 use App\Models\CreditTransaction;
 use App\Models\Event;
 use App\Models\Group;
+use App\Models\Report;
 use App\Models\SavedFilter;
 use App\Models\User;
 use App\Models\VerificationRequest;
@@ -302,5 +303,24 @@ class MasterMissionRegressionTest extends TestCase
         $good = UploadedFile::fake()->createWithContent('clip.mp4', $mp4);
         $res = $this->actingAs($user, 'sanctum')->postJson('/api/v1/profile/video', ['video' => $good]);
         $this->assertTrue(in_array($res->status(), [201, 422], true));
+    }
+
+    public function test_docs_promised_api_endpoints_exist(): void
+    {
+        // API.md menjanjikan endpoint ini — dulu HILANG, kini di-wire.
+        $this->get('/api/v1/health')->assertRedirect('/health');
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/gateways')->assertOk();
+        $member = User::factory()->create();
+        $this->actingAs($member, 'sanctum')->getJson('/api/v1/admin/gateways')->assertForbidden();
+
+        $reporter = User::factory()->create();
+        $reported = User::factory()->create();
+        $report = Report::create([
+            'reporter_id' => $reporter->id, 'reported_user_id' => $reported->id,
+            'reason' => 'spam', 'status' => 'pending',
+        ]);
+        $mod = User::factory()->create(['role' => UserRole::Moderator]);
+        $this->actingAs($mod, 'sanctum')->postJson("/api/v1/admin/reports/{$report->id}/resolve", ['notes' => 'ok'])->assertOk();
     }
 }

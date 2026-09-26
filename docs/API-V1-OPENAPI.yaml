@@ -32,6 +32,7 @@ components:
             identity: { type: boolean }
         is_premium: { type: boolean }
 paths:
+  /health: { get: { security: [], summary: Public health alias (redirects to GET /health) } }
   /auth/register:
     post:
       security: []
@@ -77,6 +78,13 @@ paths:
   /push-tokens:
     post: { summary: Register device token }
     delete: { summary: Remove token }
+  /admin/gateways: { get: { summary: List payment gateways (admin) } }
+  /admin/gateways/{code}/toggle: { post: { summary: Toggle gateway (admin) } }
+  /admin/gateways/{code}/credentials: { post: { summary: Save encrypted credentials (superadmin) } }
+  /admin/reports/{id}/resolve: { post: { summary: Resolve report (moderator+) } }
+  /admin/overview: { get: { summary: Staff overview (admin) } }
+  /chat/attachments/{id}: { get: { summary: Download attachment (participant/staff) } }
+  /webhooks/{gateway}: { post: { security: [], summary: Gateway webhook (HMAC, idempotent) } }
   /boost: { post: { summary: Activate boost (50 credits, idempotent ref) } }
   /2fa/totp/start: { post: { summary: Start authenticator setup } }
   /2fa/totp/confirm: { post: { summary: Confirm + get backup codes } }
