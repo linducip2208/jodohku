@@ -79,6 +79,10 @@ $dist = $distance;
 <a class="jk-btn jk-btn-like" style="flex:1;text-decoration:none;text-align:center" href="/matches">Lihat Matches</a>
 <a class="jk-btn jk-btn-pass" style="flex:1;text-decoration:none;text-align:center" href="/profile/{{ $matchedUserId }}">Profil dia</a>
 </div>
+<div style="display:flex;gap:8px;margin-top:8px">
+<a class="jk-btn jk-btn-like" style="flex:1;text-decoration:none;text-align:center" href="/chat">Sapa via Chat 💬</a>
+<a class="jk-btn jk-btn-pass" style="flex:1;text-decoration:none;text-align:center" href="/dates?partner={{ $matchedUserId }}">Ajak Kencan 💘</a>
+</div>
 <button class="jk-pill" style="margin-top:10px" wire:click="$set('matchedUserId', null)">Lanjut swipe</button>
 </div>
 </div>

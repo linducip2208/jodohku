@@ -55,7 +55,7 @@
 <button class="jk-submit" style="margin-top:12px" type="submit">Simpan</button></form>
 </div>
 <div class="jk-section jk-form"><div class="jk-h2">Prompt profil</div>
-<p class="jk-muted">Jawab 1–3 pertanyaan biar profilmu hidup. Kosongkan untuk melewati.</p>
+<p class="jk-muted">Jawab 1–3 pertanyaan biar profilmu hidup. Kosongkan untuk melewati. Untuk kompatibilitas matchmaking yang lebih akurat, isi juga <a href="/questionnaire">kuesioner →</a></p>
 <form method="POST" action="/settings/profile">@csrf
 @php $savedPrompts = $user->profile?->prompts ?? []; @endphp
 @foreach(\App\Models\Profile::PROMPT_QUESTIONS as $i => $q)

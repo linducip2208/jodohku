@@ -2,7 +2,7 @@
 @section('title', 'Pusat Keamanan — Jodohku')
 @section('content')
 <h1 class="jk-h1">Pusat Keamanan</h1><p class="jk-muted">Blokir, laporkan, sembunyikan, incognito. Jangan pernah kirim uang ke orang baru kenal.</p>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><a class="jk-pill" href="/kontak-blokir">Blokir kontak HP</a><a class="jk-pill" href="/privasi">Pusat Privasi →</a></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><a class="jk-pill" href="/kontak-blokir">Blokir kontak HP</a><a class="jk-pill" href="/privasi">Pusat Privasi →</a><a class="jk-pill" href="/verification">Ajukan verifikasi ✓</a></div>
 @if(session('status'))<div class="jk-alert ok">{{ session('status') }}</div>@endif
 @if(!empty($safetyStatus))
 <div class="jk-section"><div class="jk-h2">Status Keamanan Akunmu</div>
@@ -11,7 +11,7 @@
 <tr><td>Identitas terverifikasi</td><td>{{ $safetyStatus['is_verified'] ? 'Ya' : 'Belum' }}</td></tr>
 <tr><td>Verifikasi 2 langkah</td><td>{{ $safetyStatus['two_factor'] ? 'Aktif' : 'Mati' }} (<a href="/settings">atur</a>)</td></tr>
 <tr><td>Mode incognito</td><td>{{ $safetyStatus['incognito'] ? 'Aktif' : 'Mati' }}</td></tr>
-<tr><td>Pengajuan verifikasi</td><td>{{ count($safetyStatus['verification_requests'] ?? []) }} pengajuan</td></tr>
+<tr><td>Pengajuan verifikasi</td><td>{{ count($safetyStatus['verification_requests'] ?? []) }} pengajuan (<a href="/verification">ajukan</a>)</td></tr>
 <tr><td>Blokir &amp; laporan dibuat</td><td>{{ $safetyStatus['blocks_count'] }} blokir, {{ $safetyStatus['reports_count'] }} laporan</td></tr>
 </tbody></table>
 </div>

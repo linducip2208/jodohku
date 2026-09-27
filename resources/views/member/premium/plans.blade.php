@@ -13,6 +13,8 @@
 <a class="jk-pill" href="/gifts">🎁 Gifts</a>
 <a class="jk-pill" href="/boosts">🚀 Boost</a>
 <a class="jk-pill" href="/credits">💰 Kredit</a>
+<a class="jk-pill" href="/referral">🤝 Ajak teman, dapat kredit</a>
+<a class="jk-pill" href="/harga">💳 Semua harga</a>
 </div>
 @php $plans = collect(); try { $plans = app(\App\Services\MembershipService::class)->plans(); } catch (\Throwable) {} @endphp
 <div class="jk-grid">

@@ -46,6 +46,7 @@ try {
 @include('components.empty', ['icon' => 'hati', 'title' => 'Belum ada yang menyukaimu', 'hint' => 'Lengkapi profil dan aktif di Discover.'])
 @else
 <div class="jk-grid">@foreach($received as $l) @if($l->liker) @include('components.profile-card', ['user' => $l->liker, 'compact' => true]) @endif @endforeach</div>
+<div style="margin-top:10px"><a class="jk-pill" href="/who-liked">Buka halaman Who Liked →</a></div>
 @endif
 </div>
 @elseif($tab === 'given')
